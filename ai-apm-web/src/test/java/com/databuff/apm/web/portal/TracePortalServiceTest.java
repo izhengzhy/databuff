@@ -162,10 +162,10 @@ class TracePortalServiceTest {
     }
 
     @Test
-    void errorResourceSpanListFiltersErrors() {
-        TraceQueryService traceQuery = mock(TraceQueryService.class);
-        when(traceQuery.spanListCount(any())).thenReturn(1L);
-        when(traceQuery.spanList(any())).thenReturn(List.of(
+    void errorResourceSpanListFiltersErrors() throws Exception {
+        ApmReadRepository reader = mock(ApmReadRepository.class);
+        when(reader.queryCallSpanCount(anyString())).thenReturn(1L);
+        when(reader.querySpanSummaries(anyString())).thenReturn(List.of(
                 new SpanSummary(
                         "t1", "s1", "demo-order", null, "/demo/checkout",
                         "2026-06-01 12:00:00", 2_000_000L, 1,
@@ -176,7 +176,7 @@ class TracePortalServiceTest {
                         "host-1", "/demo/checkout", "host-1", 200, null)));
 
         TracePortalService service = new TracePortalService(
-                traceQuery, mock(ServiceFlowService.class), mock(ApmReadRepository.class), TestStorageSupport.storage());
+                mock(TraceQueryService.class), mock(ServiceFlowService.class), reader, TestStorageSupport.storage());
         Map<String, Object> resp = service.errorSpanList(Map.of(
                 "resource", "/demo/checkout",
                 "fromTime", "2026-06-01 11:00:00",

@@ -114,7 +114,72 @@ public class TracePortalService {
 
     /** Error interface spans ({@code POST /webapi/trace/errorSpanList}). */
     public Map<String, Object> errorSpanList(Map<String, Object> body) {
-        return queryResourceSpanList(body, query -> query.put("error", 1));
+        int offset = ServicePortalService.intValue(body.get("offset"), 0);
+        int size = ServicePortalService.intValue(body.get("size"), 50);
+        long now = System.currentTimeMillis();
+        long from = PortalTimeParser.rangeFrom(body, now - 3_600_000L);
+        long to = PortalTimeParser.rangeTo(body, now);
+        List<String> serviceKeys = resolveTraceServiceKeys(body);
+        boolean virtualServiceFilter = isVirtualTraceServiceFilter(body);
+        String exception = decodeQueryValue(body.get("exception"));
+        String resource = ServicePortalService.decodeResourceValue(decodeQueryValue(body.get("resource")));
+        String sortField = ServicePortalService.stringValue(body.get("sortField"), "startTime");
+        String sortOrder = ServicePortalService.stringValue(body.get("sortOrder"), "desc");
+        int limit = Math.max(1, Math.min(size <= 0 ? 50 : size, 500));
+
+        try {
+            String listSql = MetricQueryBuilder.errorSpanListSql(
+                    traceDatabase,
+                    serviceKeys,
+                    virtualServiceFilter,
+                    from,
+                    to,
+                    limit,
+                    Math.max(0, offset),
+                    PortalTimeParser.rangeFromText(body),
+                    PortalTimeParser.rangeToText(body),
+                    sortField,
+                    sortOrder,
+                    resource,
+                    exception);
+            String countSql = MetricQueryBuilder.errorSpanListCountSql(
+                    traceDatabase,
+                    serviceKeys,
+                    virtualServiceFilter,
+                    from,
+                    to,
+                    PortalTimeParser.rangeFromText(body),
+                    PortalTimeParser.rangeToText(body),
+                    resource,
+                    exception);
+            List<Map<String, Object>> spans = readRepository.querySpanSummaries(listSql).stream()
+                    .map(this::toPortalSpan)
+                    .toList();
+            Map<String, Object> filterBody = new LinkedHashMap<>(body);
+            filterBody.put("error", 1);
+            List<Map<String, Object>> filtered = filterPortalSpans(spans, filterBody, true);
+            long total = readRepository.queryCallSpanCount(countSql);
+
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("list", filtered);
+            data.put("total", total);
+
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("status", 200);
+            response.put("message", "success");
+            response.put("data", data);
+            return response;
+        } catch (Exception ignored) {
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("list", List.of());
+            data.put("total", 0L);
+
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("status", 200);
+            response.put("message", "success");
+            response.put("data", data);
+            return response;
+        }
     }
 
     /** Exception detail rows from {@code metric_service_exception} ({@code POST /webapi/trace/exceptionList}). */
@@ -1151,19 +1216,35 @@ public class TracePortalService {
         };
     }
 
+    private boolean isVirtualTraceServiceFilter(Map<String, Object> body) {
+        String serviceId = resolveExceptionListServiceId(body);
+        if (serviceId == null || serviceId.isBlank()) {
+            return false;
+        }
+        MetaServicePoint meta = loadMetaService(PortalServiceIdResolver.normalize(serviceId.trim()));
+        return meta != null && Boolean.TRUE.equals(meta.virtualService());
+    }
+
     private List<Map<String, Object>> filterPortalSpans(List<Map<String, Object>> list, Map<String, Object> body) {
+        return filterPortalSpans(list, body, false);
+    }
+
+    private List<Map<String, Object>> filterPortalSpans(
+            List<Map<String, Object>> list, Map<String, Object> body, boolean skipServiceFilter) {
         List<Map<String, Object>> rows = new ArrayList<>(list);
 
-        String serviceId = ServicePortalService.stringValue(body.get("serviceId"), null);
-        if (serviceId != null) {
-            rows.removeIf(row -> !PortalServiceIdResolver.matches(
-                    serviceId, String.valueOf(row.get("serviceId"))));
-        }
+        if (!skipServiceFilter) {
+            String serviceId = ServicePortalService.stringValue(body.get("serviceId"), null);
+            if (serviceId != null) {
+                rows.removeIf(row -> !PortalServiceIdResolver.matches(
+                        serviceId, String.valueOf(row.get("serviceId"))));
+            }
 
-        List<String> serviceIds = parseStringList(body.get("serviceIds"));
-        if (!serviceIds.isEmpty()) {
-            rows.removeIf(row -> serviceIds.stream().noneMatch(id -> PortalServiceIdResolver.matches(
-                    id, String.valueOf(row.get("serviceId")))));
+            List<String> serviceIds = parseStringList(body.get("serviceIds"));
+            if (!serviceIds.isEmpty()) {
+                rows.removeIf(row -> serviceIds.stream().noneMatch(id -> PortalServiceIdResolver.matches(
+                        id, String.valueOf(row.get("serviceId")))));
+            }
         }
 
         List<String> serviceInstances = parseStringList(body.get("serviceInstances"));

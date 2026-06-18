@@ -19,8 +19,6 @@
       "alarmCount": 0,
       "alarmPendingCount": 0,
       "alarmMetric": {
-        "unprocessed": 0,
-        "onprocess": 0,
         "total": 0
       }
     }

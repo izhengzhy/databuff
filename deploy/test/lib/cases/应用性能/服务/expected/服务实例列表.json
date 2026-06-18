@@ -26,7 +26,6 @@
         "virtual_service": false,
         "describe": "",
         "alarmCount": 0,
-        "silenceIds": [],
         "tags": {
           "custom": []
         },

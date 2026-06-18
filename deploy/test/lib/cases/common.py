@@ -12,6 +12,8 @@ DEMO_SERVICE_A = "service-a"
 DEMO_SERVICE_B = "service-b"
 DEMO_SERVICE_A_ID = "9bf61532d56eb7b5"
 DEMO_SERVICE_B_ID = "5457a0119281bb98"
+DEMO_MYSQL_DEMO_APM_ID = "c72cc83a8831e407"
+DEMO_EXCEPTION_INSUFFICIENT_STOCK = "InsufficientStockException"
 
 
 @dataclass
@@ -48,6 +50,24 @@ def service_body(frm_ms: int, to_ms: int, service: str = DEMO_SERVICE_A, **extra
     body = time_window(frm_ms, to_ms)
     body["service"] = service
     body["serviceId"] = service
+    body.update(extra)
+    return body
+
+
+def error_span_list_body(frm_ms: int, to_ms: int, **extra: Any) -> dict[str, Any]:
+    """Error detail drill-down: web service filter should include virtual DB caller spans."""
+    body = service_body(
+        frm_ms,
+        to_ms,
+        service=DEMO_SERVICE_B,
+        serviceId=DEMO_SERVICE_B_ID,
+        limit=50,
+    )
+    body["exception"] = DEMO_EXCEPTION_INSUFFICIENT_STOCK
+    body["offset"] = 0
+    body["size"] = 50
+    body["sortField"] = "start"
+    body["sortOrder"] = "desc"
     body.update(extra)
     return body
 

@@ -160,6 +160,60 @@ class MetricQueryBuilderTest {
     }
 
     @Test
+    void errorSpanListSqlMatchesOwnedOrCallerServiceForWebApps() {
+        String sql = MetricQueryBuilder.errorSpanListSql(
+                "databuff",
+                List.of("5457a0119281bb98"),
+                false,
+                0L,
+                3_600_000L,
+                50,
+                0,
+                "2026-06-18 09:57:00",
+                "2026-06-18 10:57:00",
+                "start",
+                "desc",
+                null,
+                "InsufficientStockException");
+        assertThat(sql).contains("`serviceId` = '5457a0119281bb98'");
+        assertThat(sql).contains("`srcServiceId` = '5457a0119281bb98'");
+        assertThat(sql).contains("`error` = 1");
+        assertThat(sql).contains("InsufficientStockException");
+
+        String countSql = MetricQueryBuilder.errorSpanListCountSql(
+                "databuff",
+                List.of("5457a0119281bb98"),
+                false,
+                0L,
+                3_600_000L,
+                "2026-06-18 09:57:00",
+                "2026-06-18 10:57:00",
+                null,
+                "InsufficientStockException");
+        assertThat(countSql).contains("`srcServiceId` = '5457a0119281bb98'");
+    }
+
+    @Test
+    void errorSpanListSqlUsesServiceIdOnlyForVirtualServices() {
+        String sql = MetricQueryBuilder.errorSpanListSql(
+                "databuff",
+                List.of("c72cc83a8831e407"),
+                true,
+                0L,
+                3_600_000L,
+                50,
+                0,
+                "2026-06-18 09:57:00",
+                "2026-06-18 10:57:00",
+                "start",
+                "desc",
+                null,
+                null);
+        assertThat(sql).contains("`serviceId` = 'c72cc83a8831e407'");
+        assertThat(sql).doesNotContain("srcServiceId");
+    }
+
+    @Test
     void buildsServiceInstanceDistinctSql() {
         String sql = MetricQueryBuilder.serviceInstanceDistinctSql("databuff", "demo-order", 0L, 3_600_000L, 50);
         assertThat(sql).contains("group_value");

@@ -235,6 +235,93 @@ public final class MetricQueryBuilder {
                 """.formatted(database, from, to, filters);
     }
 
+    /** Error span list ({@code POST /webapi/trace/errorSpanList}) — web apps match owned or caller service. */
+    public static String errorSpanListSql(
+            String database,
+            java.util.Collection<String> serviceKeys,
+            boolean virtualServiceFilter,
+            long fromMillis,
+            long toMillis,
+            int limit,
+            int offset,
+            String fromTimeText,
+            String toTimeText,
+            String sortField,
+            String sortOrder,
+            String resourceExact,
+            String exceptionContains) {
+        String from = resolveSpanTimeFrom(fromMillis, fromTimeText);
+        String to = resolveSpanTimeTo(toMillis, toTimeText);
+        String filters = buildTraceErrorSpanListServiceFilter(serviceKeys, virtualServiceFilter)
+                + appendSpanListDetailFilters(resourceExact, null, 1)
+                + appendErrorSpanExceptionFilter(exceptionContains);
+        int safeLimit = Math.max(1, Math.min(limit, 500));
+        int safeOffset = Math.max(0, offset);
+        return """
+                SELECT `trace_id`, `span_id`, `parent_id`, `is_parent`, `service`,
+                       COALESCE(NULLIF(`serviceId`, ''), `service`) AS service_id,
+                       `name`, `startTime`, `duration`, `error`,
+                       COALESCE(`serviceInstance`, '') AS serviceInstance,
+                       COALESCE(`resource`, `name`) AS resource,
+                       COALESCE(`hostName`, '') AS hostName,
+                       `meta.http.status_code` AS meta_http_status_code,
+                       `meta.error.type` AS meta_error_type,
+                       COALESCE(`meta.http.url`, '') AS meta_http_url
+                FROM %s.`trace_dc_span`
+                WHERE `startTime` >= '%s' AND `startTime` <= '%s'
+                %s
+                ORDER BY %s %s
+                LIMIT %d OFFSET %d
+                """.formatted(
+                database,
+                from,
+                to,
+                filters,
+                spanListOrderColumn(sortField),
+                spanListOrderDirection(sortOrder),
+                safeLimit,
+                safeOffset);
+    }
+
+    public static String errorSpanListCountSql(
+            String database,
+            java.util.Collection<String> serviceKeys,
+            boolean virtualServiceFilter,
+            long fromMillis,
+            long toMillis,
+            String fromTimeText,
+            String toTimeText,
+            String resourceExact,
+            String exceptionContains) {
+        String from = resolveSpanTimeFrom(fromMillis, fromTimeText);
+        String to = resolveSpanTimeTo(toMillis, toTimeText);
+        String filters = buildTraceErrorSpanListServiceFilter(serviceKeys, virtualServiceFilter)
+                + appendSpanListDetailFilters(resourceExact, null, 1)
+                + appendErrorSpanExceptionFilter(exceptionContains);
+        return """
+                SELECT COUNT(*) AS total_cnt
+                FROM %s.`trace_dc_span`
+                WHERE `startTime` >= '%s' AND `startTime` <= '%s'
+                %s
+                """.formatted(database, from, to, filters);
+    }
+
+    static String buildTraceErrorSpanListServiceFilter(
+            java.util.Collection<String> keys, boolean virtualServiceFilter) {
+        if (virtualServiceFilter) {
+            return buildTraceServiceIdsFilter(keys);
+        }
+        return buildTraceOwnedOrCallerServiceFilter(keys);
+    }
+
+    private static String appendErrorSpanExceptionFilter(String exceptionContains) {
+        if (exceptionContains == null || exceptionContains.isBlank()) {
+            return "";
+        }
+        return " AND " + SPAN_EXCEPTION_NAME_EXPR
+                + " LIKE '%" + escapeLiteral(exceptionContains.trim()) + "%' ";
+    }
+
     private static String appendSpanListDetailFilters(String resourceExact, Long minDurationNs, Integer error) {
         StringBuilder filters = new StringBuilder();
         filters.append(appendSpanListResourceFilter(resourceExact));
@@ -290,10 +377,35 @@ public final class MetricQueryBuilder {
     }
 
     private static String buildTraceServiceIdsFilter(java.util.Collection<String> keys) {
-        if (keys == null || keys.isEmpty()) {
+        java.util.LinkedHashSet<String> normalized = normalizeTraceServiceKeys(keys);
+        if (normalized.isEmpty()) {
             return "";
         }
+        if (normalized.size() == 1) {
+            return " AND `serviceId` = '" + escapeLiteral(normalized.iterator().next()) + "' ";
+        }
+        String joined = joinEscapedLiterals(normalized);
+        return " AND `serviceId` IN (" + joined + ") ";
+    }
+
+    private static String buildTraceOwnedOrCallerServiceFilter(java.util.Collection<String> keys) {
+        java.util.LinkedHashSet<String> normalized = normalizeTraceServiceKeys(keys);
+        if (normalized.isEmpty()) {
+            return "";
+        }
+        if (normalized.size() == 1) {
+            String id = escapeLiteral(normalized.iterator().next());
+            return " AND (`serviceId` = '" + id + "' OR `srcServiceId` = '" + id + "') ";
+        }
+        String joined = joinEscapedLiterals(normalized);
+        return " AND (`serviceId` IN (" + joined + ") OR `srcServiceId` IN (" + joined + ")) ";
+    }
+
+    private static java.util.LinkedHashSet<String> normalizeTraceServiceKeys(java.util.Collection<String> keys) {
         java.util.LinkedHashSet<String> normalized = new java.util.LinkedHashSet<>();
+        if (keys == null) {
+            return normalized;
+        }
         for (String key : keys) {
             if (key != null && !key.isBlank()) {
                 String id = PortalServiceIdResolver.normalize(key.trim());
@@ -302,16 +414,13 @@ public final class MetricQueryBuilder {
                 }
             }
         }
-        if (normalized.isEmpty()) {
-            return "";
-        }
-        if (normalized.size() == 1) {
-            return " AND `serviceId` = '" + escapeLiteral(normalized.iterator().next()) + "' ";
-        }
-        String joined = normalized.stream()
+        return normalized;
+    }
+
+    private static String joinEscapedLiterals(java.util.Collection<String> values) {
+        return values.stream()
                 .map(id -> "'" + escapeLiteral(id) + "'")
                 .collect(java.util.stream.Collectors.joining(", "));
-        return " AND `serviceId` IN (" + joined + ") ";
     }
 
     private static String buildTraceColumnServiceIdFilter(String column, String serviceId) {

@@ -13,8 +13,8 @@
         "errCnt": 0,
         "errRate": 0.0,
         "avgLatency": 39.833333333333336,
-        "alarmCount": 0,
-        "errType": 0,
+        "alarmCount": 5,
+        "errType": 1,
         "service_type": "default",
         "type": "default"
       },
@@ -28,8 +28,8 @@
         "errCnt": 0,
         "errRate": 0.0,
         "avgLatency": 90.0,
-        "alarmCount": 0,
-        "errType": 0,
+        "alarmCount": 5,
+        "errType": 1,
         "service_type": "default",
         "type": "default"
       },
@@ -43,8 +43,8 @@
         "errCnt": 0,
         "errRate": 0.0,
         "avgLatency": 18.0,
-        "alarmCount": 0,
-        "errType": 0,
+        "alarmCount": 5,
+        "errType": 1,
         "service_type": "db",
         "type": "es"
       },
@@ -58,8 +58,8 @@
         "errCnt": 0,
         "errRate": 0.0,
         "avgLatency": 20.0,
-        "alarmCount": 0,
-        "errType": 0,
+        "alarmCount": 5,
+        "errType": 1,
         "service_type": "default",
         "type": "default"
       },
@@ -73,8 +73,8 @@
         "errCnt": 0,
         "errRate": 0.0,
         "avgLatency": 13.0,
-        "alarmCount": 0,
-        "errType": 0,
+        "alarmCount": 5,
+        "errType": 1,
         "service_type": "cache",
         "type": "redis"
       },
@@ -88,8 +88,8 @@
         "errCnt": 0,
         "errRate": 0.0,
         "avgLatency": 8.0,
-        "alarmCount": 0,
-        "errType": 0,
+        "alarmCount": 5,
+        "errType": 1,
         "service_type": "mq",
         "type": "order-events"
       }
