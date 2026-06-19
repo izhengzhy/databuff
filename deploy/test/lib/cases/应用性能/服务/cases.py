@@ -33,7 +33,6 @@ def build_cases(frm_ms: int, to_ms: int) -> list[ApiCase]:
         ApiCase(page, "告警总量", "POST", "/webapi/cockpit/countServiceAlarmsTotal", tw, CASE_DIR),
         ApiCase(page, "服务详情", "POST", "/webapi/service/serviceInfo", sb, CASE_DIR),
         ApiCase(page, "服务趋势图", "POST", "/webapi/service/serviceDetailTrendChart", sb, CASE_DIR),
-        ApiCase(page, "业务系统趋势", "POST", "/webapi/service/businessDetailTrendChart", tw, CASE_DIR),
         ApiCase(page, "服务图表", "POST", "/webapi/service/graph_stats", sb, CASE_DIR),
         ApiCase(page, "响应时间分布", "POST", "/webapi/service/distribution_stats", sb, CASE_DIR),
         ApiCase(page, "请求 Top", "POST", "/webapi/service/reqTop", sb, CASE_DIR),

@@ -173,14 +173,14 @@ export const formatSource = async (nodesMap: any, edgesMap: any, customConfig: C
       _nodeData.data = {
         ..._nodeData.data,
         alarmCount: n.alarmCount,
-        hasAlarm: !!(n.errType) || n.alarmCount > 0,
-        selectedfill: (!!(n.errType) || n.alarmCount > 0) ? '#E12828' : '#2962FF',
+        hasAlarm: n.alarmCount > 0,
+        selectedfill: n.alarmCount > 0 ? '#E12828' : '#2962FF',
       };
       _nodeData.style = {
         ..._nodeData.style,
-        fill: !!(n.errType) || n.alarmCount > 0 ? '#E12828' : '#F5F6F7',
-        stroke: !!(n.errType) || n.alarmCount > 0 ? '#E12828' : '#B5B7BB',
-        iconFill: !!(n.errType) || n.alarmCount > 0 ? '#FFFFFF' : '#121317',
+        fill: n.alarmCount > 0 ? '#E12828' : '#F5F6F7',
+        stroke: n.alarmCount > 0 ? '#E12828' : '#B5B7BB',
+        iconFill: n.alarmCount > 0 ? '#FFFFFF' : '#121317',
       }
       // 定位坐标
       const layoutNode = _layoutData.find(item => item.id === _nodeData.id);
@@ -192,7 +192,7 @@ export const formatSource = async (nodesMap: any, edgesMap: any, customConfig: C
       _nodeIdSet.add(String(_nodeData.id));
     });
 
-    _alarmData.error = layoutNodes.filter((n: any) => n.errType || n.alarmCount > 0).length;
+    _alarmData.error = layoutNodes.filter((n: any) => n.alarmCount > 0).length;
     _alarmData.total = layoutNodes.length;
 
     edgesData.forEach((e: any) => {

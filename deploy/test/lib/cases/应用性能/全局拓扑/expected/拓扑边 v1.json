@@ -9,7 +9,7 @@
     "srcService": "service-b",
     "dstService": "[mysql]demo_apm",
     "callCount": 20,
-    "errorCount": 0
+    "errorCount": 10
   },
   {
     "srcService": "service-a",

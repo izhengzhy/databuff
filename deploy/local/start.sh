@@ -2,7 +2,7 @@
 # 本地一键启动：编译 ingest / web / demo → 挂载 JAR 启动 Doris（含初始化 SQL）+ ingest + web + demo
 #
 # Usage:
-#   ./start.sh
+#   ./start.sh [ingest|web|demo|doris ...]
 #
 # Optional:
 #   SKIP_BUILD=1          复用已有 Maven 产物
@@ -25,6 +25,55 @@ ensure_openjdk_image
 # shellcheck source=../docker/scripts/runtime.sh
 . "${ROOT}/../docker/scripts/runtime.sh"
 
+# 解析要启动的服务；无参数时启动全部
+UP_SERVICES=()
+if [ "$#" -eq 0 ] && [ -z "${SERVICES:-}" ]; then
+  UP_SERVICES=(
+    "$DORIS_FE_SERVICE" "$DORIS_BE_SERVICE"
+    "$INGEST_SERVICE" "$WEB_SERVICE" "$DEMO_SERVICE"
+  )
+else
+  _raw=("$@")
+  if [ ${#_raw[@]} -eq 0 ] && [ -n "${SERVICES:-}" ]; then
+    IFS=',' read -ra _raw <<< "$SERVICES"
+  fi
+  _want_doris=0
+  _seen="|"
+  for _arg in "${_raw[@]}"; do
+    _name="$(printf '%s' "$_arg" | tr '[:upper:]' '[:lower]' | sed 's/^ai-apm-//')"
+    case "$_name" in
+      ingest|ing)
+        case "$_seen" in *"|${INGEST_SERVICE}|"*) ;; *)
+          UP_SERVICES+=("$INGEST_SERVICE"); _seen="${_seen}${INGEST_SERVICE}|"; _want_doris=1 ;; esac
+        ;;
+      web)
+        case "$_seen" in *"|${WEB_SERVICE}|"*) ;; *)
+          UP_SERVICES+=("$WEB_SERVICE"); _seen="${_seen}${WEB_SERVICE}|"; _want_doris=1 ;; esac
+        ;;
+      demo)
+        case "$_seen" in *"|${DEMO_SERVICE}|"*) ;; *)
+          UP_SERVICES+=("$DEMO_SERVICE"); _seen="${_seen}${DEMO_SERVICE}|"; _want_doris=1 ;; esac
+        case "$_seen" in *"|${INGEST_SERVICE}|"*) ;; *)
+          UP_SERVICES+=("$INGEST_SERVICE"); _seen="${_seen}${INGEST_SERVICE}|" ;; esac
+        ;;
+      doris|fe|be|doris-fe|doris-be)
+        _want_doris=1
+        ;;
+      *)
+        echo "[start] unknown service: ${_arg} (expected: ingest, web, demo, doris)" >&2
+        exit 1
+        ;;
+    esac
+  done
+  if [ "$_want_doris" = 1 ]; then
+    UP_SERVICES=("$DORIS_FE_SERVICE" "$DORIS_BE_SERVICE" "${UP_SERVICES[@]}")
+  fi
+  if [ ${#UP_SERVICES[@]} -eq 0 ]; then
+    echo "[start] no services selected" >&2
+    exit 1
+  fi
+fi
+
 ensure_vm_max_map_count
 
 if [ "${SKIP_BUILD:-0}" != "1" ]; then
@@ -35,22 +84,62 @@ verify_ingest_web_jars
 verify_demo_jar
 sync_all_run_dirs
 
+_up_apps=()
+for _svc in "${UP_SERVICES[@]}"; do
+  case "$_svc" in
+    "$DORIS_FE_SERVICE"|"$DORIS_BE_SERVICE") ;;
+    *) _up_apps+=("$_svc") ;;
+  esac
+done
+
 if doris_has_data; then
-  echo "[start] doris data exists, starting all services"
-  compose_up \
-    "$DORIS_FE_SERVICE" "$DORIS_BE_SERVICE" \
-    "$INGEST_SERVICE" "$WEB_SERVICE" "$DEMO_SERVICE"
+  echo "[start] doris data exists, starting selected services"
+  compose_up "${UP_SERVICES[@]}"
 else
   echo "[start] initializing doris"
   mkdir -p "${ROOT}/data/fe-meta" "${ROOT}/data/be-storage"
   compose_up "$DORIS_FE_SERVICE" "$DORIS_BE_SERVICE"
   "${ROOT}/scripts/init-doris.sh"
-  compose_up "$INGEST_SERVICE" "$WEB_SERVICE" "$DEMO_SERVICE"
+  if [ ${#_up_apps[@]} -gt 0 ]; then
+    compose_up "${_up_apps[@]}"
+  fi
 fi
-force_restart_jar_services
+
+_to_restart=()
+for _svc in "${UP_SERVICES[@]}"; do
+  case "$_svc" in
+    "$INGEST_SERVICE"|"$WEB_SERVICE") _to_restart+=("$_svc") ;;
+  esac
+done
+if [ ${#_to_restart[@]} -gt 0 ]; then
+  echo "[start] force restarting ${_to_restart[*]} to load updated jars"
+  compose_cmd restart "${_to_restart[@]}"
+fi
 
 if [ "${START_SKIP_READY:-0}" != "1" ]; then
-  wait_for_apm_services_ready || echo "[start] services not fully ready yet; see summary below" >&2
+  _wait_failed=0
+  _wait_pids=()
+  for _svc in "${UP_SERVICES[@]}"; do
+    case "$_svc" in
+      "$INGEST_SERVICE")
+        wait_for_http_ready "http://127.0.0.1:4318/health" "ingest" "${APM_READY_TIMEOUT:-300}" &
+        _wait_pids+=("$!")
+        ;;
+      "$WEB_SERVICE")
+        wait_for_http_ready "http://127.0.0.1:27403/health" "web" "${APM_READY_TIMEOUT:-300}" &
+        _wait_pids+=("$!")
+        ;;
+    esac
+  done
+  if [ ${#_wait_pids[@]} -gt 0 ]; then
+    echo "[start] waiting for selected services to become ready ..."
+    for _pid in "${_wait_pids[@]}"; do
+      wait "$_pid" || _wait_failed=1
+    done
+    if [ "$_wait_failed" -ne 0 ]; then
+      echo "[start] services not fully ready yet; see summary below" >&2
+    fi
+  fi
 fi
 
 if [ "${START_SKIP_SUMMARY:-0}" != "1" ]; then

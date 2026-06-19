@@ -74,7 +74,7 @@
           </el-collapse-item>
 
 
-          <template v-if="isService || isSystem">
+          <template v-if="isService">
             <el-collapse-item :title="$t('modules.views.alarmCenter.problemDetail.s_207c26c9')" name='2'>
               <div class="chart-wrap">
                 <div class="chart-cont" v-loading="loading.response">
@@ -310,7 +310,7 @@ export default class NodeDetail extends Vue {
       this.getMysqlChartData();
     }
     this.getEventSource();
-    if (this.isService || this.isSystem) {
+    if (this.isService) {
       this.getRequestSource()
       this.getErrorSource()
       this.getResponseSource()
@@ -427,19 +427,13 @@ export default class NodeDetail extends Vue {
       startTime: fromTime,
       endTime: toTime,
       interval,
-    }
-    if (this.isService) {
-      _params.serviceId = this.current.id;
-    } else {
-      _params.businessId = +this.current.id;
+      serviceId: this.current.id,
     }
     this.loading.request = true
-    // 需请求两个指标
-    const fetchPath = this.isService ? 'getServiceRequestMetric' : 'getSystemRequestMetric'
-    const successRst = await toAsyncWait(ServiceApi[fetchPath]({ ..._params, metric: 'succReqCount' }))
-    const successData = this.isService ? formatChartDataToMapping(successRst?.result?.data || []) : successRst?.result?.data || {}
-    const failedRst = await toAsyncWait(ServiceApi[fetchPath]({ ..._params, metric: 'errReqCount' }))
-    const failedData = this.isService ? formatChartDataToMapping(failedRst?.result?.data || []) : failedRst?.result?.data || {}
+    const successRst = await toAsyncWait(ServiceApi.getServiceRequestMetric({ ..._params, metric: 'succReqCount' }))
+    const successData = formatChartDataToMapping(successRst?.result?.data || [])
+    const failedRst = await toAsyncWait(ServiceApi.getServiceRequestMetric({ ..._params, metric: 'errReqCount' }))
+    const failedData = formatChartDataToMapping(failedRst?.result?.data || [])
     if (!Object.keys(successData).length && !Object.keys(failedData).length) {
       this.requestSource = []
     } else {
@@ -471,19 +465,13 @@ export default class NodeDetail extends Vue {
       startTime: fromTime,
       endTime: toTime,
       interval,
-    }
-    if (this.isService) {
-      _params.serviceId = this.current.id;
-    } else {
-      _params.businessId = +this.current.id;
+      serviceId: this.current.id,
     }
     this.loading.error = true;
-    // 需请求两个指标
-    const fetchPath = this.isService ? 'getServiceRequestMetric' : 'getSystemRequestMetric'
-    const typeErrorRst = await toAsyncWait(ServiceApi[fetchPath]({ ..._params, metric: 'typeErrCount' }))
-    const typeErrorData = this.isService ? formatChartDataToMapping(typeErrorRst?.result?.data || [], true) : typeErrorRst?.result?.data || {}
-    const errorRateRst = await toAsyncWait(ServiceApi[fetchPath]({ ..._params, metric: 'errRate' }))
-    const errorRateData = this.isService ? formatChartDataToMapping(errorRateRst?.result?.data || []) : errorRateRst?.result?.data || {}
+    const typeErrorRst = await toAsyncWait(ServiceApi.getServiceRequestMetric({ ..._params, metric: 'typeErrCount' }))
+    const typeErrorData = formatChartDataToMapping(typeErrorRst?.result?.data || [], true)
+    const errorRateRst = await toAsyncWait(ServiceApi.getServiceRequestMetric({ ..._params, metric: 'errRate' }))
+    const errorRateData = formatChartDataToMapping(errorRateRst?.result?.data || [])
     if (!Object.keys(typeErrorData).length && !Object.keys(errorRateData).length) {
       this.errorSource = []
     } else {
@@ -517,19 +505,13 @@ export default class NodeDetail extends Vue {
       startTime: fromTime,
       endTime: toTime,
       interval,
-    }
-    if (this.isService) {
-      _params.serviceId = this.current.id;
-    } else {
-      _params.businessId = +this.current.id;
+      serviceId: this.current.id,
     }
     this.loading.response = true;
-    // 需请求两个指标
-    const fetchPath = this.isService ? 'getServiceRequestMetric' : 'getSystemRequestMetric'
-    const avgTimeRst = await toAsyncWait(ServiceApi[fetchPath]({ ..._params, metric: 'avgTime' }))
-    const avgTimeData = this.isService ? formatChartDataToMapping(avgTimeRst?.result?.data || []) : avgTimeRst?.result?.data || {}
-    const reqCntRst = await toAsyncWait(ServiceApi[fetchPath]({ ..._params, metric: 'reqCount' }))
-    const reqCntData = this.isService ? formatChartDataToMapping(reqCntRst?.result?.data || []) : reqCntRst?.result?.data || {}
+    const avgTimeRst = await toAsyncWait(ServiceApi.getServiceRequestMetric({ ..._params, metric: 'avgTime' }))
+    const avgTimeData = formatChartDataToMapping(avgTimeRst?.result?.data || [])
+    const reqCntRst = await toAsyncWait(ServiceApi.getServiceRequestMetric({ ..._params, metric: 'reqCount' }))
+    const reqCntData = formatChartDataToMapping(reqCntRst?.result?.data || [])
     if (!Object.keys(avgTimeData).length && !Object.keys(reqCntData).length) {
       this.responseSource = []
     } else {

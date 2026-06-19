@@ -20,7 +20,6 @@
 | 方法 | HTTP | 路径 | 说明 |
 |------|------|------|------|
 | `getServiceRequestMetric` | `POST` | `/service/serviceDetailTrendChart` | 服务详情趋势图 |
-| `getSystemRequestMetric` | `POST` | `/service/businessDetailTrendChart` | 业务系统详情趋势图 |
 | `getServicesIds` | `POST` | `/service/basicServices` | 获取服务 ID/名称列表，受管理域限制 |
 | `getAllServicesIds` | `POST` | `/service/basicAllServices` | 获取全量服务 ID/名称列表，不受管理域限制 |
 | `getSrcServices` | `POST` | `/service/resourcesGroupBy` | 获取来源服务列表 |

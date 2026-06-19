@@ -44,11 +44,6 @@ public class ServicePortalController {
         return portalEnvelope(servicePortalService.serviceDetailTrendChart(body));
     }
 
-    @PostMapping("/businessDetailTrendChart")
-    public Map<String, Object> businessDetailTrendChart(@RequestBody Map<String, Object> body) {
-        return portalEnvelope(servicePortalService.businessDetailTrendChart(body));
-    }
-
     @PostMapping("/graph_stats")
     public Map<String, Object> graphStats(@RequestBody Map<String, Object> body) {
         return portalEnvelope(servicePortalService.graphStats(body));

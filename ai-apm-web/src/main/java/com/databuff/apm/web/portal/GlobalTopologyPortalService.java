@@ -149,9 +149,7 @@ public class GlobalTopologyPortalService {
         for (Map<String, Object> node : nodeMap.values()) {
             long alarmCount = resolveAlarmCount(node, alarmCountsByService);
             node.put("alarmCount", alarmCount);
-            if (alarmCount > 0) {
-                node.put("errType", 1);
-            }
+            node.put("errType", alarmCount > 0 ? 1 : 0);
         }
     }
 
@@ -282,7 +280,6 @@ public class GlobalTopologyPortalService {
             long errCnt = ServicePortalService.intValue(node.get("errCnt"), 0);
             double errRate = callCnt > 0 ? (double) errCnt / callCnt : 0;
             node.put("errRate", errRate);
-            node.put("errType", errRate > 0.05 ? 1 : 0);
             long latencyCallCnt = ServicePortalService.intValue(node.get("_latencyCallCnt"), 0);
             if (latencyCallCnt > 0) {
                 double sumLatency = toDouble(node.get("_sumLatency"), 0);

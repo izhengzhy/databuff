@@ -72,7 +72,7 @@ class DcSpanUtilTest {
     }
 
     @Test
-    void serviceExceptionAttributesToWebServiceForVirtualInboundDbSpan() {
+    void serviceExceptionSkipsVirtualInboundDbSpan() {
         DcSpan span = baseSpan();
         span.type = "SPAN_KIND_CLIENT";
         span.parent_id = "parent-span";
@@ -89,13 +89,8 @@ class DcSpanUtilTest {
         span.meta = "{\"db.system\":\"mysql\",\"db.name\":\"demo_apm\",\"db.operation\":\"select\","
                 + "\"entry.resource\":\"/api/orders/10001\"}";
 
-        OptimizedMetric exceptionMetric = DcSpanUtil.parseSpanData(span).stream()
-                .filter(metric -> "service.exception".equals(metric.measurement()))
-                .findFirst()
-                .orElseThrow();
-        assertThat(tagValue(exceptionMetric, "service")).isEqualTo("checkout");
-        assertThat(tagValue(exceptionMetric, "service_id")).isEqualTo("1af678a9b03e993f");
-        assertThat(tagValue(exceptionMetric, "resource")).isEqualTo("GET /cart");
+        Assertions.assertThat(DcSpanUtil.parseSpanData(span).stream().map(OptimizedMetric::measurement))
+                .doesNotContain("service.exception");
     }
 
     @Test
@@ -118,7 +113,7 @@ class DcSpanUtilTest {
     }
 
     @Test
-    void virtualInboundErrorMetricAttributesToWebServiceNotVirtualService() {
+    void virtualInboundComponentErrorCountsOnComponentMetricNotWebService() {
         DcSpan span = baseSpan();
         span.type = "SPAN_KIND_CLIENT";
         span.parent_id = "parent-span";
@@ -139,22 +134,19 @@ class DcSpanUtilTest {
                         && "[mysql]demo_apm".equals(tagValue(m, "service")))
                 .findFirst()
                 .orElseThrow();
-        assertThat(tagValue(virtualEntry, "errorType")).isEqualTo("ok");
-        assertThat(virtualEntry.fieldValues()[1]).isEqualTo(0L);
+        assertThat(tagValue(virtualEntry, "errorType")).isEqualTo("error");
+        assertThat(virtualEntry.fieldValues()[1]).isEqualTo(1L);
 
-        OptimizedMetric webError = metrics.stream()
+        assertThat(metrics.stream()
                 .filter(m -> "service".equals(m.measurement())
                         && "checkout".equals(tagValue(m, "service")))
-                .findFirst()
-                .orElseThrow();
-        assertThat(tagValue(webError, "errorType")).isEqualTo("error");
-        assertThat(webError.fieldValues()[1]).isEqualTo(1L);
+                .findFirst()).isEmpty();
 
         OptimizedMetric db = metrics.stream()
                 .filter(m -> "service.db".equals(m.measurement()))
                 .findFirst()
                 .orElseThrow();
-        assertThat(db.fieldValues()[1]).isEqualTo(0L);
+        assertThat(db.fieldValues()[1]).isEqualTo(1L);
     }
 
     @Test
@@ -170,22 +162,23 @@ class DcSpanUtilTest {
     @Test
     void serviceExceptionUsesErrorSpanResource() {
         DcSpan span = baseSpan();
-        span.type = "SPAN_KIND_CLIENT";
+        span.type = "SPAN_KIND_SERVER";
+        span.parent_id = "";
         span.error = 1;
-        span.resource = "SELECT demo_inventory";
-        span.name = "SELECT demo_inventory";
+        span.resource = "GET /api/orders/10001";
+        span.name = "GET /api/orders/10001";
         span.metaErrorType = "InsufficientStockException";
-        span.meta = "{\"db.system\":\"mysql\",\"entry.resource\":\"/api/orders/10001\"}";
+        span.meta = "{\"entry.resource\":\"/api/orders/10001\"}";
         OptimizedMetric exceptionMetric = DcSpanUtil.parseSpanData(span).stream()
                 .filter(metric -> "service.exception".equals(metric.measurement()))
                 .findFirst()
                 .orElseThrow();
-        assertThat(tagValue(exceptionMetric, "resource")).isEqualTo("SELECT demo_inventory");
+        assertThat(tagValue(exceptionMetric, "resource")).isEqualTo("GET /api/orders/10001");
         assertThat(tagValue(exceptionMetric, "exceptionName")).isEqualTo("InsufficientStockException");
     }
 
     @Test
-    void serviceExceptionWritesRootResourceForComponentError() {
+    void serviceExceptionSkipsComponentErrorSpan() {
         DcSpan span = baseSpan();
         span.type = "SPAN_KIND_CLIENT";
         span.error = 1;
@@ -194,13 +187,8 @@ class DcSpanUtilTest {
         span.metaErrorType = "ElasticsearchException";
         span.meta = "{\"db.system\":\"elasticsearch\",\"root.resource\":\"/api/search\"}";
 
-        OptimizedMetric exceptionMetric = DcSpanUtil.parseSpanData(span).stream()
-                .filter(metric -> "service.exception".equals(metric.measurement()))
-                .findFirst()
-                .orElseThrow();
-        assertThat(tagValue(exceptionMetric, "rootResource")).isEqualTo("/api/search");
-        assertThat(tagValue(exceptionMetric, "rootResource")).isNotEqualTo("/my_index_1/_doc/idTest");
-        assertThat(tagValue(exceptionMetric, "resource")).isEqualTo("/my_index_1/_doc/idTest");
+        Assertions.assertThat(DcSpanUtil.parseSpanData(span).stream().map(OptimizedMetric::measurement))
+                .doesNotContain("service.exception");
     }
 
     @Test
@@ -465,7 +453,7 @@ class DcSpanUtilTest {
     }
 
     @Test
-    void serviceRemoteMapsDurationToSumDurationNotError() {
+    void serviceRemoteMapsDurationToSumDurationAndCountsErrorOnRemoteMetric() {
         DcSpan span = baseSpan();
         span.type = "SPAN_KIND_CLIENT";
         span.isIn = 1;
@@ -481,25 +469,25 @@ class DcSpanUtilTest {
         span.metaHttpMethod = "GET";
         span.meta = "{\"remote\":\"true\",\"http.method\":\"GET\",\"server.address\":\"api.example.com\"}";
 
-        OptimizedMetric remote = DcSpanUtil.parseSpanData(span).stream()
+        List<OptimizedMetric> metrics = DcSpanUtil.parseSpanData(span);
+        OptimizedMetric remote = metrics.stream()
                 .filter(m -> "service.remote".equals(m.measurement()))
                 .findFirst()
                 .orElseThrow();
-        assertThat(remote.fieldValues()).containsExactly(1L, 0L, 7_000_000L);
+        assertThat(remote.fieldValues()[0]).isEqualTo(1L);
+        assertThat(remote.fieldValues()[1]).isEqualTo(1L);
+        assertThat(remote.fieldValues()[2]).isEqualTo(7_000_000L);
 
-        OptimizedMetric webError = DcSpanUtil.parseSpanData(span).stream()
+        assertThat(metrics.stream()
                 .filter(m -> "service".equals(m.measurement())
                         && "service-a".equals(tagValue(m, "service")))
-                .findFirst()
-                .orElseThrow();
-        assertThat(tagValue(webError, "errorType")).isEqualTo("error");
-        assertThat(webError.fieldValues()[1]).isEqualTo(1L);
+                .findFirst()).isEmpty();
 
         java.util.Map<String, Object> row = new java.util.LinkedHashMap<>();
         MetricSchemaRegistry.applyFieldValues(
                 row, "service.remote", remote.fieldValues());
         assertThat(row.get("cnt")).isEqualTo(1L);
-        assertThat(row.get("error")).isEqualTo(0L);
+        assertThat(row.get("error")).isEqualTo(1L);
         assertThat(row.get("sumDuration")).isEqualTo(7_000_000L);
     }
 

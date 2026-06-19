@@ -385,28 +385,6 @@ class ServicePortalServiceTest {
   }
 
   @Test
-  void buildsBusinessTrendMap() throws Exception {
-    ApmReadRepository reader = mock(ApmReadRepository.class);
-    when(reader.queryServiceTrendBuckets(anyString())).thenReturn(List.of(
-            new ServiceTrendBucketPoint(1_780_545_360L, "demo-order", 80, 0, 0),
-            new ServiceTrendBucketPoint(1_780_545_360L, "demo-pay", 20, 4, 0)));
-
-    ServicePortalService service = TestStorageSupport.servicePortalService(reader);
-    Map<String, Number> data = service.businessDetailTrendChart(Map.of(
-            "businessId", 1,
-            "startTime", "2026-06-04 11:00:00",
-            "endTime", "2026-06-04 12:00:00",
-            "interval", 60,
-            "metric", "succReqCount"));
-
-    long from = PortalTimeParser.rangeFrom(Map.of("startTime", "2026-06-04 11:00:00"), 0);
-    assertThat(data).hasSize(60);
-    assertThat(data.get(String.valueOf(TimeSeriesFillUtil.alignBucketEpochSec(from, 60) * 1000L)))
-            .isNull();
-    assertThat(data.get("1780545360000")).isEqualTo(96.0);
-  }
-
-  @Test
   void fillsMetricStatsGapsWithNull() throws Exception {
     ApmReadRepository reader = mock(ApmReadRepository.class);
     when(reader.queryMetricSeries(anyString())).thenReturn(List.of(

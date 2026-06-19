@@ -125,4 +125,25 @@ class GlobalTopologyPortalServiceTest {
         assertThat(orderNode).containsEntry("alarmCount", 2L).containsEntry("errType", 1);
         assertThat(payNode).containsEntry("alarmCount", 0L).containsEntry("errType", 0);
     }
+
+    @Test
+    void doesNotMarkNodesWithHighErrorRateWhenNoAlarm() {
+        GlobalTopologyQueryService queryService = Mockito.mock(GlobalTopologyQueryService.class);
+        when(queryService.listEdges(anyLong(), anyLong(), anyInt())).thenReturn(List.of(
+                new ServiceFlowEdge("order", "pay", 100, 10, 12.5, "order-id", "pay-id")));
+
+        GlobalTopologyPortalService service = service(queryService, emptyAlarmStore());
+        Map<String, Object> data = service.graph(Map.of("fromTime", 0L, "toTime", 3_600_000L));
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> services = (List<Map<String, Object>>) data.get("services");
+        String orderId = PortalServiceIdResolver.normalize("order-id");
+        Map<String, Object> orderNode = services.stream()
+                .filter(node -> orderId.equals(node.get("id")))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(orderNode).containsEntry("errRate", 0.1);
+        assertThat(orderNode).containsEntry("alarmCount", 0L).containsEntry("errType", 0);
+    }
 }

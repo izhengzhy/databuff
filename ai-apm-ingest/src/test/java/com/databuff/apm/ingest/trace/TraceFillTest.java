@@ -6,9 +6,14 @@ import com.databuff.apm.common.model.DcSpan;
 import com.databuff.apm.common.model.OptimizedMetric;
 import com.databuff.apm.common.serde.DCSpanJsonEncoder;
 import com.databuff.apm.common.serde.DcSpanUtil;
+import com.databuff.apm.common.storage.DorisBatchWriter;
+import com.databuff.apm.common.storage.DorisTableNames;
+import com.databuff.apm.ingest.meta.VirtualServiceInstanceRegistry;
+import com.databuff.apm.ingest.metric.MetricWriteRouter;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -315,13 +320,9 @@ class TraceFillTest {
         assertThat(OtelAttributeMaps.firstNonBlank(OtelAttributeMaps.parse(filledDb.meta), "entry.resource"))
                 .isEqualTo("/api/orders/10001");
 
-        OptimizedMetric exceptionMetric = DcSpanUtil.parseSpanData(filledDb).stream()
-                .filter(metric -> "service.exception".equals(metric.measurement()))
-                .findFirst()
-                .orElseThrow();
-        assertThat(tagValue(exceptionMetric, "resource")).isEqualTo("SELECT demo_inventory");
-        assertThat(tagValue(exceptionMetric, "resource")).isNotEqualTo("/api/orders/10001");
-        assertThat(tagValue(exceptionMetric, "rootResource")).isEqualTo("/api/orders/10001");
+        assertThat(DcSpanUtil.parseSpanData(filledDb).stream()
+                .map(OptimizedMetric::measurement))
+                .doesNotContain("service.exception");
     }
 
     @Test
@@ -350,13 +351,50 @@ class TraceFillTest {
         assertThat(OtelAttributeMaps.firstNonBlank(OtelAttributeMaps.parse(filledEs.meta), "entry.resource"))
                 .isEqualTo("/api/search");
 
-        OptimizedMetric exceptionMetric = DcSpanUtil.parseSpanData(filledEs).stream()
+        assertThat(DcSpanUtil.parseSpanData(filledEs).stream()
+                .map(OptimizedMetric::measurement))
+                .doesNotContain("service.exception");
+    }
+
+    @Test
+    void elasticsearchErrorDoesNotInflateWebServiceEntryMetrics() throws Exception {
+        DcSpan httpServer = span("trace-es-entry", "http-server", "", "service-g");
+        httpServer.type = "SPAN_KIND_SERVER";
+        httpServer.name = "POST /api/search";
+        httpServer.resource = httpServer.name;
+        httpServer.metaHttpMethod = "POST";
+        httpServer.metaHttpStatusCode = 200;
+        httpServer.metaHttpUrl = "/api/search";
+
+        DcSpan esClient = span("trace-es-entry", "es-client", "http-server", "service-g");
+        esClient.type = "SPAN_KIND_CLIENT";
+        esClient.resource = "/my_index_1/_doc/idTest";
+        esClient.name = "elasticsearch.rest.query";
+        esClient.error = 1;
+        esClient.metaErrorType = "ElasticsearchException";
+        esClient.meta = "{\"db.system\":\"elasticsearch\",\"db.elasticsearch.index\":\"my_index_1\","
+                + "\"server.address\":\"es\",\"server.port\":\"9200\"}";
+
+        TraceFillProcessor.FillResult result = new TraceFillProcessor(
+                new VirtualServiceExtractor(new VirtualServiceInstanceRegistry(
+                        new MetricWriteRouter(Map.of(
+                                DorisTableNames.METRIC_SERVICE_INSTANCE, new DorisBatchWriter(16))),
+                        60_000L)))
+                .processTrace(List.of(httpServer, esClient));
+
+        assertThat(result.metrics().stream()
+                .filter(metric -> "service".equals(metric.measurement()))
+                .filter(metric -> "service-g".equals(tagValue(metric, "service")))
+                .filter(metric -> tagValue(metric, "errorType").equals("error"))
+                .toList()).isEmpty();
+        assertThat(result.metrics().stream()
                 .filter(metric -> "service.exception".equals(metric.measurement()))
-                .findFirst()
-                .orElseThrow();
-        assertThat(tagValue(exceptionMetric, "resource")).isEqualTo("/my_index_1/_doc/idTest");
-        assertThat(tagValue(exceptionMetric, "rootResource")).isEqualTo("/api/search");
-        assertThat(tagValue(exceptionMetric, "rootResource")).isNotEqualTo("/my_index_1/_doc/idTest");
+                .filter(metric -> "service-g".equals(tagValue(metric, "service")))
+                .toList()).isEmpty();
+        assertThat(result.metrics().stream()
+                .filter(metric -> "service.db".equals(metric.measurement()))
+                .filter(metric -> metric.fieldValues()[1] > 0)
+                .toList()).isNotEmpty();
     }
 
     @Test
@@ -373,13 +411,9 @@ class TraceFillTest {
         List<DcSpan> filled = FillPathAndRelationUtil.fillBytes(List.of(DCSpanJsonEncoder.encode(esClient)));
         DcSpan filledEs = filled.get(0);
 
-        OptimizedMetric exceptionMetric = DcSpanUtil.parseSpanData(filledEs).stream()
-                .filter(metric -> "service.exception".equals(metric.measurement()))
-                .findFirst()
-                .orElseThrow();
-        assertThat(tagValue(exceptionMetric, "resource")).isEqualTo("/my_index_1/_doc/idTest");
-        assertThat(tagValue(exceptionMetric, "rootResource")).isNotEqualTo("/my_index_1/_doc/idTest");
-        assertThat(tagValue(exceptionMetric, "rootResource")).isEmpty();
+        assertThat(DcSpanUtil.parseSpanData(filledEs).stream()
+                .map(OptimizedMetric::measurement))
+                .doesNotContain("service.exception");
     }
 
     @Test

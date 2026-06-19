@@ -40,10 +40,6 @@ public final class DcSpanUtil {
         if (virtualEntry != null) {
             metrics.add(virtualEntry);
         }
-        OptimizedMetric virtualWebError = virtualInboundWebServiceErrorMetric(span);
-        if (virtualWebError != null) {
-            metrics.add(virtualWebError);
-        }
         OptimizedMetric trace = serviceTraceMetric(span);
         if (trace != null) {
             metrics.add(trace);
@@ -102,22 +98,12 @@ public final class DcSpanUtil {
             return null;
         }
         Map<String, String> tags = new LinkedHashMap<>();
-        tags.put("errorType", "ok");
+        tags.put("errorType", span.error > 0 ? "error" : "ok");
         tags.put("service", nullToEmpty(span.dstService));
         tags.put("service_id", normalizeMetricServiceId(span.dstServiceId, span.dstService));
         tags.put("service_instance", nullToEmpty(span.dstServiceInstance));
-        return minuteAggregatedMetric("service", span, tags, 1L, 0L, span.duration, span.duration);
-    }
-
-    /** 虚拟组件错误归属 Web 服务：当前 service 为 Web 则归当前服务，为虚拟服务则归 srcService。 */
-    static OptimizedMetric virtualInboundWebServiceErrorMetric(DcSpan span) {
-        if (!isVirtualInboundComponent(span) || span.error <= 0) {
-            return null;
-        }
-        Map<String, String> tags = new LinkedHashMap<>();
-        tags.put("errorType", "error");
-        applyErrorServiceTags(span, tags);
-        return minuteAggregatedMetric("service", span, tags, 1L, 1L, span.duration, span.duration);
+        long error = span.error > 0 ? 1L : 0L;
+        return minuteAggregatedMetric("service", span, tags, 1L, error, span.duration, span.duration);
     }
 
     static boolean isVirtualInboundComponent(DcSpan span) {
@@ -339,7 +325,7 @@ public final class DcSpanUtil {
     }
 
     static OptimizedMetric serviceExceptionMetric(DcSpan span) {
-        if (span.error <= 0) {
+        if (span.error <= 0 || !isServiceEntrySpan(span)) {
             return null;
         }
         Map<String, String> tags = exceptionMetricTags(span);
@@ -742,15 +728,8 @@ public final class DcSpanUtil {
         return metric.withTsId(TraceMetricMinuteBucket.aggregationTsId(metric, minuteBucketMs));
     }
 
-    /** 组件指标上的 error 字段不归虚拟服务，由 {@link #virtualInboundWebServiceErrorMetric} 归 Web 服务。 */
     private static long componentMetricError(DcSpan span) {
-        if (span.error <= 0) {
-            return 0L;
-        }
-        if (shouldUseDestinationService(span) && hasVirtualDestination(span)) {
-            return 0L;
-        }
-        return span.error;
+        return span.error <= 0 ? 0L : span.error;
     }
 
     private static String nullToEmpty(String value) {

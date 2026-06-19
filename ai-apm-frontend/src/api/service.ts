@@ -47,19 +47,6 @@ export default {
     })
   },
   /**
-   * 获取系统详情指标趋势图
-   * metric:1.响应时间 avgTime、总的请求数量 reqCount
-   * 2.不同错误类型的失败请求数量 typeErrCount、总的错误率 errRate
-   * 3.成功请求数 succReqCount、失败请求数 errReqCount
-   */
-  getSystemRequestMetric (data: any) {
-    return http.request({
-      url: '/service/businessDetailTrendChart',
-      method: 'post',
-      data
-    })
-  },
-  /**
    * 获取服务告警事件
    */
    getServiceRelate (params: any) {

@@ -90,24 +90,6 @@ public class ServicePortalService {
         return buildServiceSeries(body, serviceId, serviceInstance, 1, false);
     }
 
-    /** Open-source: aggregate all services when business tables are unavailable. */
-    public Map<String, Number> businessDetailTrendChart(Map<String, Object> body) {
-        long now = System.currentTimeMillis();
-        long from = PortalTimeParser.rangeFrom(body, now - 3_600_000L);
-        long to = PortalTimeParser.rangeTo(body, now);
-        int interval = intValue(body.get("interval"), 60);
-        String metric = stringValue(body.get("metric"), "reqCount");
-
-        List<ServiceTrendBucketPoint> buckets = loadServiceBuckets(from, to, interval, null, null);
-        Map<String, Number> data = new LinkedHashMap<>();
-        for (ServiceTrendBucketPoint bucket : buckets) {
-            String key = String.valueOf(bucket.bucketEpochSec() * 1000L);
-            double current = data.containsKey(key) ? data.get(key).doubleValue() : 0;
-            data.put(key, current + trendMetricValue(metric, bucket, interval));
-        }
-        return TimeSeriesFillUtil.fillStringKeyMap(data, from, to, interval);
-    }
-
     public Map<String, Object> graphStats(Map<String, Object> body) {
         String componentType = stringValue(body.get("componentType"), "service.http");
         ComponentPeerSpec spec = findComponentSpec(componentType);
