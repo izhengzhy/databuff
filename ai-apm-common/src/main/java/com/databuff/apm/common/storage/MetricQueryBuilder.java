@@ -37,6 +37,47 @@ public final class MetricQueryBuilder {
         return literal != null ? literal : spanTimeTo(toMillis);
     }
 
+    private static long resolveSpanTimeFromMillis(long fromMillis, String fromTimeText) {
+        String literal = normalizeSpanTimeText(fromTimeText);
+        if (literal != null) {
+            return ApmTimeZones.wallClockToEpochMilli(literal);
+        }
+        return fromMillis;
+    }
+
+    private static long resolveSpanTimeToMillis(long toMillis, String toTimeText) {
+        String literal = normalizeSpanTimeText(toTimeText);
+        if (literal != null) {
+            return ApmTimeZones.wallClockToEpochMilli(literal);
+        }
+        return toMillis;
+    }
+
+    /** Aligns with {@link com.databuff.apm.common.metric.TraceMetricMinuteBucket} / {@code metric_service_trace}. */
+    private static final String SPAN_END_MINUTE_BUCKET_MS_EXPR =
+            "(FLOOR(`end` / 1000000 / 60000) * 60000)";
+
+    /**
+     * Trace overview ({@code is_parent=1}) charts bucket by span end minute; drill-down list must match.
+     * Other span lists keep {@code startTime} wall-clock bounds.
+     */
+    private static String spanListTimeWhere(
+            long fromMillis,
+            long toMillis,
+            String fromTimeText,
+            String toTimeText,
+            Integer isParent) {
+        if (isParent != null && isParent == 1) {
+            long from = resolveSpanTimeFromMillis(fromMillis, fromTimeText);
+            long to = resolveSpanTimeToMillis(toMillis, toTimeText);
+            return SPAN_END_MINUTE_BUCKET_MS_EXPR + " >= " + from
+                    + " AND " + SPAN_END_MINUTE_BUCKET_MS_EXPR + " < " + to;
+        }
+        String from = resolveSpanTimeFrom(fromMillis, fromTimeText);
+        String to = resolveSpanTimeTo(toMillis, toTimeText);
+        return "`startTime` >= '" + from + "' AND `startTime` <= '" + to + "'";
+    }
+
     private static String normalizeSpanTimeText(String text) {
         if (text == null || text.isBlank()) {
             return null;
@@ -154,8 +195,7 @@ public final class MetricQueryBuilder {
             String resourceExact,
             Long minDurationNs,
             Integer error) {
-        String from = resolveSpanTimeFrom(fromMillis, fromTimeText);
-        String to = resolveSpanTimeTo(toMillis, toTimeText);
+        String timeWhere = spanListTimeWhere(fromMillis, toMillis, fromTimeText, toTimeText, isParent);
         String filters = buildTraceServiceKeyOrFilter(serviceKeys)
                 + appendTraceSpanListScopeFilters(isParent, parentId)
                 + appendSpanListDetailFilters(resourceExact, minDurationNs, error);
@@ -172,14 +212,13 @@ public final class MetricQueryBuilder {
                        `meta.error.type` AS meta_error_type,
                        COALESCE(`meta.http.url`, '') AS meta_http_url
                 FROM %s.`trace_dc_span`
-                WHERE `startTime` >= '%s' AND `startTime` <= '%s'
+                WHERE %s
                 %s
                 ORDER BY %s %s
                 LIMIT %d OFFSET %d
                 """.formatted(
                 database,
-                from,
-                to,
+                timeWhere,
                 filters,
                 spanListOrderColumn(sortField),
                 spanListOrderDirection(sortOrder),
@@ -222,17 +261,16 @@ public final class MetricQueryBuilder {
             String resourceExact,
             Long minDurationNs,
             Integer error) {
-        String from = resolveSpanTimeFrom(fromMillis, fromTimeText);
-        String to = resolveSpanTimeTo(toMillis, toTimeText);
+        String timeWhere = spanListTimeWhere(fromMillis, toMillis, fromTimeText, toTimeText, isParent);
         String filters = buildTraceServiceKeyOrFilter(serviceKeys)
                 + appendTraceSpanListScopeFilters(isParent, parentId)
                 + appendSpanListDetailFilters(resourceExact, minDurationNs, error);
         return """
                 SELECT COUNT(*) AS total_cnt
                 FROM %s.`trace_dc_span`
-                WHERE `startTime` >= '%s' AND `startTime` <= '%s'
+                WHERE %s
                 %s
-                """.formatted(database, from, to, filters);
+                """.formatted(database, timeWhere, filters);
     }
 
     /** Error span list ({@code POST /webapi/trace/errorSpanList}) — web apps match owned or caller service. */

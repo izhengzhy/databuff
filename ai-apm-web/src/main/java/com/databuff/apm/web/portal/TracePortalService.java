@@ -980,7 +980,10 @@ public class TracePortalService {
                 scope.isParent(),
                 scope.parentId(),
                 ServicePortalService.stringValue(body.get("sortField"), "start"),
-                ServicePortalService.stringValue(body.get("sortOrder"), "desc"));
+                ServicePortalService.stringValue(body.get("sortOrder"), "desc"),
+                ServicePortalService.decodeResourceValue(decodeQueryValue(body.get("resource"))),
+                parseSpanListMinDuration(body),
+                parseSpanListError(body));
     }
 
     /** Legacy portal: {@code parentId=0} means trace entry spans ({@code is_parent=1}). */

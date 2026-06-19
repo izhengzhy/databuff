@@ -61,6 +61,30 @@ class TracePortalServiceTest {
     }
 
     @Test
+    void listPushesErrorFilterToSpanListQuery() {
+        TraceQueryService traceQuery = mock(TraceQueryService.class);
+        when(traceQuery.spanList(any())).thenReturn(List.of());
+        when(traceQuery.spanListCount(any())).thenReturn(0L);
+
+        TracePortalService service = new TracePortalService(
+                traceQuery, mock(ServiceFlowService.class), mock(ApmReadRepository.class), TestStorageSupport.storage());
+        service.list(Map.of(
+                "parentId", "0",
+                "fromTime", "2026-06-20 07:02:00",
+                "toTime", "2026-06-20 07:03:00",
+                "error", 1,
+                "offset", 0,
+                "size", 50));
+
+        org.mockito.ArgumentCaptor<TraceQueryService.SpanListRequest> listCaptor =
+                org.mockito.ArgumentCaptor.forClass(TraceQueryService.SpanListRequest.class);
+        org.mockito.Mockito.verify(traceQuery).spanList(listCaptor.capture());
+        org.mockito.Mockito.verify(traceQuery).spanListCount(listCaptor.getValue());
+        assertThat(listCaptor.getValue().error()).isEqualTo(1);
+        assertThat(listCaptor.getValue().isParent()).isEqualTo(1);
+    }
+
+    @Test
     void buildsPortalSpanListEnvelope() {
         TraceQueryService traceQuery = mock(TraceQueryService.class);
         when(traceQuery.spanListCount(any())).thenReturn(1L);

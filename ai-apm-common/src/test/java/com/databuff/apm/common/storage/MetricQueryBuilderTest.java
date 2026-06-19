@@ -1,5 +1,6 @@
 package com.databuff.apm.common.storage;
 
+import com.databuff.apm.common.time.ApmTimeZones;
 import com.databuff.apm.common.util.PortalServiceIdResolver;
 import org.junit.jupiter.api.Test;
 
@@ -44,8 +45,9 @@ class MetricQueryBuilderTest {
                 "desc");
         assertThat(sql).contains("`is_parent` = 1");
         assertThat(sql).contains("`serviceId` = '9bf61532d56eb7b5'");
-        assertThat(sql).contains(">= '2026-06-05 22:40:00'");
-        assertThat(sql).contains("<= '2026-06-05 22:41:00'");
+        assertThat(sql).contains("(FLOOR(`end` / 1000000 / 60000) * 60000) >= ");
+        assertThat(sql).contains("(FLOOR(`end` / 1000000 / 60000) * 60000) < ");
+        assertThat(sql).doesNotContain("`startTime` >=");
         assertThat(sql).contains("ORDER BY `startTime` DESC");
         assertThat(sql).contains("LIMIT 50 OFFSET 0");
 
@@ -60,6 +62,32 @@ class MetricQueryBuilderTest {
                 null);
         assertThat(countSql).contains("COUNT(*) AS total_cnt");
         assertThat(countSql).contains("`is_parent` = 1");
+        assertThat(countSql).contains("(FLOOR(`end` / 1000000 / 60000) * 60000)");
+    }
+
+    @Test
+    void buildsEntrySpanListSqlWithErrorFilterOnEndMinuteBucket() {
+        long fromMs = ApmTimeZones.wallClockToEpochMilli("2026-06-20 07:01:00");
+        long toMs = ApmTimeZones.wallClockToEpochMilli("2026-06-20 07:02:00");
+        String sql = MetricQueryBuilder.spanListSql(
+                "databuff",
+                List.of(),
+                0L,
+                0L,
+                50,
+                0,
+                "2026-06-20 07:01:00",
+                "2026-06-20 07:02:00",
+                1,
+                null,
+                "start",
+                "desc",
+                null,
+                null,
+                1);
+        assertThat(sql).contains(" AND `error` = 1 ");
+        assertThat(sql).contains(">= " + fromMs);
+        assertThat(sql).contains("< " + toMs);
     }
 
     @Test
