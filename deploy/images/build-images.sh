@@ -32,8 +32,7 @@ for f in "$INGEST_JAR" "$WEB_JAR" "$DEMO_JAR"; do
   fi
 done
 
-publish_apm_images "$RELEASE_VERSION" "$INGEST_JAR" "$WEB_JAR"
-publish_demo_image "$RELEASE_VERSION" "$DEMO_JAR"
+publish_apm_images "$RELEASE_VERSION" "$INGEST_JAR" "$WEB_JAR" "$DEMO_JAR"
 publish_version_manifest "$RELEASE_VERSION"
 
 cat <<EOF
@@ -44,6 +43,6 @@ cat <<EOF
              $(web_image_ref "$RELEASE_VERSION")
              $(demo_image_ref "$RELEASE_VERSION")
   Arch     : $(image_platforms)
-  ImagePkg : $(version_images_pkg_base_url "$RELEASE_VERSION")
+  StackPkg : $(version_images_pkg_base_url "$RELEASE_VERSION")/ai-apm-stack-${RELEASE_VERSION}-<arch>.tar.gz
 
 EOF

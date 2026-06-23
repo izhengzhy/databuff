@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 拉取 Doris FE/BE、ZooKeeper 多架构镜像 → 导出 tar → 上传到 APM_IMAGES_PKG_BASE。
+# 拉取 Doris FE/BE、ZooKeeper 多架构镜像 → 合并/压缩导出 tar.gz → 上传到 infra 镜像包目录。
 #
 # Usage:
 #   ./deploy/images/upload-infra-images.sh

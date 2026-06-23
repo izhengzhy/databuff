@@ -42,7 +42,7 @@ infra_images_pkg_base_url() {
 
 is_infra_image_component() {
   case "$1" in
-    doris-fe | doris-be | zookeeper) return 0 ;;
+    doris-fe | doris-be | doris-stack | zookeeper) return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -60,7 +60,8 @@ image_tarball_name() {
   local component="$1"
   local version="$2"
   local arch="$3"
-  printf '%s-%s-%s.tar\n' "$component" "$version" "$arch"
+  local ext="${4:-${IMAGE_TARBALL_EXT:-.tar.gz}}"
+  printf '%s-%s-%s%s\n' "$component" "$version" "$arch" "$ext"
 }
 
 doris_image_version() {
@@ -366,6 +367,13 @@ validate_image_tarball() {
     echo "[image-pkg] downloaded file too small (${bytes} bytes): ${dest}" >&2
     return 1
   fi
+  if [[ "$dest" == *.gz ]]; then
+    if ! gzip -t "$dest" 2>/dev/null; then
+      echo "[image-pkg] invalid gzip tarball: ${dest}" >&2
+      return 1
+    fi
+    return 0
+  fi
   first="$(head -c 1 "$dest" 2>/dev/null || true)"
   if [[ "$first" == '<' ]]; then
     echo "[image-pkg] downloaded HTML instead of tarball (check URL / nginx): ${dest}" >&2
@@ -396,9 +404,10 @@ download_image_tarball() {
   local version="$2"
   local arch="$3"
   local dest_dir="$4"
+  local ext="${5:-${IMAGE_TARBALL_EXT:-.tar.gz}}"
 
   local name url dest base
-  name="$(image_tarball_name "$component" "$version" "$arch")"
+  name="$(image_tarball_name "$component" "$version" "$arch" "$ext")"
   base="$(image_pkg_base_for_component "$component")"
   url="${base%/}/${name}"
   dest="${dest_dir}/${name}"
@@ -408,9 +417,6 @@ download_image_tarball() {
     local expected=""
     expected="$(resolve_tarball_content_length "$base" "$name" 2>/dev/null || true)"
     if ! download_file_via_curl "$url" "$dest" "$name" "$expected"; then
-      echo "[image-pkg] failed to download: ${url}" >&2
-      echo "[image-pkg] hint: large downloads may fail over HTTP/2 (curl error 92); retry or check nginx" >&2
-      echo "[image-pkg] hint: run deploy/images/build-images.sh on build machine, or check nginx dir permissions (parent dirs must be 755)" >&2
       return 1
     fi
     if ! validate_image_tarball "$dest"; then
@@ -422,12 +428,38 @@ download_image_tarball() {
   fi
 
   if ! download_file_via_curl "$url" "$dest" "$name" ""; then
-    echo "[image-pkg] failed to download: ${url}" >&2
-    echo "[image-pkg] hint: large downloads may fail over HTTP/2 (curl error 92); retry or check nginx" >&2
-    echo "[image-pkg] hint: run deploy/images/build-images.sh on build machine, or check nginx dir permissions (parent dirs must be 755)" >&2
     return 1
   fi
   validate_image_tarball "$dest"
+}
+
+image_pkg_download_failed_hint() {
+  echo "[image-pkg] hint: large downloads may fail over HTTP/2 (curl error 92); retry or check nginx" >&2
+  echo "[image-pkg] hint: run deploy/images/build-images.sh on build machine, or check nginx dir permissions (parent dirs must be 755)" >&2
+}
+
+_import_tarball_to_containerd() {
+  local tarball="$1"
+  if [[ "$tarball" == *.gz ]]; then
+    gunzip -c "$tarball" | ctr -n k8s.io images import -
+  else
+    ctr -n k8s.io images import "$tarball"
+  fi
+}
+
+_import_tarball_to_docker() {
+  local tarball="$1"
+  if [[ "$tarball" == *.gz ]]; then
+    if command -v pv >/dev/null 2>&1; then
+      gunzip -c "$tarball" | pv | docker load
+    else
+      gunzip -c "$tarball" | docker load
+    fi
+  elif command -v pv >/dev/null 2>&1; then
+    pv "$tarball" | docker load
+  else
+    docker load -i "$tarball"
+  fi
 }
 
 load_image_tarball() {
@@ -438,23 +470,19 @@ load_image_tarball() {
   if [[ "${IMAGE_LOAD_CMD:-}" == "ctr" ]] && command -v ctr >/dev/null 2>&1; then
     if image_pkg_interactive; then
       echo "[pull-images]   导入 ${size} 到 containerd (请耐心等待) ..." >&2
-      run_with_wait_hint "containerd 导入中" ctr -n k8s.io images import "$tarball"
+      run_with_wait_hint "containerd 导入中" _import_tarball_to_containerd "$tarball"
     else
-      ctr -n k8s.io images import "$tarball" >/dev/null
+      _import_tarball_to_containerd "$tarball" >/dev/null
     fi
     return 0
   fi
 
   if image_pkg_interactive; then
     echo "[pull-images]   导入 ${size} 到 docker (请耐心等待) ..." >&2
-    if command -v pv >/dev/null 2>&1; then
-      pv "$tarball" | docker load
-    else
-      run_with_wait_hint "docker 导入中" docker load -i "$tarball"
-    fi
+    run_with_wait_hint "docker 导入中" _import_tarball_to_docker "$tarball"
     return 0
   fi
-  docker load -i "$tarball" >/dev/null
+  _import_tarball_to_docker "$tarball" >/dev/null
 }
 
 load_image_component() {
@@ -464,6 +492,7 @@ load_image_component() {
   local arch="$4"
   local tmpdir="$5"
   local image_ref="$6"
+  local ext="${7:-${IMAGE_TARBALL_EXT:-.tar.gz}}"
 
   if ! image_load_forced && docker_image_exists "$image_ref"; then
     echo "[pull-images] ${label} 已存在，跳过"
@@ -471,14 +500,106 @@ load_image_component() {
   fi
 
   echo "[pull-images] ${label}"
-  download_image_tarball "$component" "$version" "$arch" "$tmpdir"
-  load_image_tarball "${tmpdir}/$(image_tarball_name "$component" "$version" "$arch")"
+  if ! download_image_tarball "$component" "$version" "$arch" "$tmpdir" "$ext"; then
+    if [[ "$ext" == ".tar.gz" ]]; then
+      if ! download_image_tarball "$component" "$version" "$arch" "$tmpdir" .tar; then
+        echo "[image-pkg] failed to download: $(image_tarball_name "$component" "$version" "$arch")" >&2
+        image_pkg_download_failed_hint
+        return 1
+      fi
+      ext=".tar"
+    else
+      echo "[image-pkg] failed to download: $(image_tarball_name "$component" "$version" "$arch" "$ext")" >&2
+      image_pkg_download_failed_hint
+      return 1
+    fi
+  fi
+  load_image_tarball "${tmpdir}/$(image_tarball_name "$component" "$version" "$arch" "$ext")"
+  echo "[pull-images] ${label} 完成"
+}
+
+all_docker_images_exist() {
+  local ref
+  for ref in "$@"; do
+    if ! docker_image_exists "$ref"; then
+      return 1
+    fi
+  done
+  return 0
+}
+
+load_legacy_apm_components() {
+  local version="$1"
+  local arch="$2"
+  local tmpdir="$3"
+  local ingest_ref web_ref demo_ref
+
+  ingest_ref="$(resolve_apm_ingest_image_ref "$version")"
+  web_ref="$(resolve_apm_web_image_ref "$version")"
+  demo_ref="$(resolve_apm_demo_image_ref "$version")"
+
+  echo "[pull-images] fallback: 逐组件下载旧格式镜像包 (.tar)"
+  load_image_component "${ingest_ref}" ai-apm-ingest "$version" "$arch" "$tmpdir" "$ingest_ref" .tar
+  load_image_component "${web_ref}" ai-apm-web "$version" "$arch" "$tmpdir" "$web_ref" .tar
+  load_image_component "${demo_ref}" ai-apm-demo "$version" "$arch" "$tmpdir" "$demo_ref" .tar
+}
+
+load_legacy_doris_components() {
+  local doris_version="$1"
+  local arch="$2"
+  local tmpdir="$3"
+  local fe_ref be_ref
+
+  fe_ref="${DORIS_FE_IMAGE:-apache/doris:fe-${doris_version}}"
+  be_ref="${DORIS_BE_IMAGE:-apache/doris:be-${doris_version}}"
+
+  echo "[pull-images] fallback: 逐组件下载旧格式 Doris 镜像包 (.tar)"
+  load_image_component "${fe_ref}" doris-fe "$doris_version" "$arch" "$tmpdir" "$fe_ref" .tar
+  load_image_component "${be_ref}" doris-be "$doris_version" "$arch" "$tmpdir" "$be_ref" .tar
+}
+
+load_image_bundle() {
+  local label="$1"
+  local component="$2"
+  local version="$3"
+  local arch="$4"
+  local tmpdir="$5"
+  shift 5
+  local refs=("$@")
+  local ref tarball
+
+  if ! image_load_forced && all_docker_images_exist "${refs[@]}"; then
+    echo "[pull-images] ${label} 已存在，跳过"
+    return 0
+  fi
+
+  echo "[pull-images] ${label}"
+  if download_image_tarball "$component" "$version" "$arch" "$tmpdir"; then
+    tarball="${tmpdir}/$(image_tarball_name "$component" "$version" "$arch")"
+    load_image_tarball "$tarball"
+    echo "[pull-images] ${label} 完成"
+    return 0
+  fi
+
+  case "$component" in
+    ai-apm-stack)
+      load_legacy_apm_components "$version" "$arch" "$tmpdir"
+      ;;
+    doris-stack)
+      load_legacy_doris_components "$version" "$arch" "$tmpdir"
+      ;;
+    *)
+      echo "[image-pkg] failed to download bundle: $(image_tarball_name "$component" "$version" "$arch")" >&2
+      image_pkg_download_failed_hint
+      return 1
+      ;;
+  esac
   echo "[pull-images] ${label} 完成"
 }
 
 load_docker_stack_images() {
   local arch version doris_version tmpdir
-  local ingest_ref web_ref fe_ref be_ref
+  local ingest_ref web_ref demo_ref fe_ref be_ref
 
   ensure_image_pkg_command curl
   ensure_image_pkg_command docker
@@ -488,14 +609,12 @@ load_docker_stack_images() {
   doris_version="$(doris_image_version)"
   ingest_ref="$(resolve_apm_ingest_image_ref "$version")"
   web_ref="$(resolve_apm_web_image_ref "$version")"
+  demo_ref="$(resolve_apm_demo_image_ref "$version")"
   fe_ref="${DORIS_FE_IMAGE:-apache/doris:fe-${doris_version}}"
   be_ref="${DORIS_BE_IMAGE:-apache/doris:be-${doris_version}}"
 
   if ! image_load_forced \
-    && docker_image_exists "$ingest_ref" \
-    && docker_image_exists "$web_ref" \
-    && docker_image_exists "$fe_ref" \
-    && docker_image_exists "$be_ref"; then
+    && all_docker_images_exist "$ingest_ref" "$web_ref" "$demo_ref" "$fe_ref" "$be_ref"; then
     echo "[pull-images] 本地镜像已齐全，跳过下载"
     return 0
   fi
@@ -503,10 +622,10 @@ load_docker_stack_images() {
   tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/apm-image-pkg.XXXXXX")"
   echo "[pull-images] 加载离线镜像 (arch=${arch}, apm=${version}, doris=${doris_version})"
 
-  load_image_component "${ingest_ref}" ai-apm-ingest "$version" "$arch" "$tmpdir" "$ingest_ref"
-  load_image_component "${web_ref}" ai-apm-web "$version" "$arch" "$tmpdir" "$web_ref"
-  load_image_component "${fe_ref}" doris-fe "$doris_version" "$arch" "$tmpdir" "$fe_ref"
-  load_image_component "${be_ref}" doris-be "$doris_version" "$arch" "$tmpdir" "$be_ref"
+  load_image_bundle "APM stack (ingest+web+demo)" ai-apm-stack "$version" "$arch" "$tmpdir" \
+    "$ingest_ref" "$web_ref" "$demo_ref"
+  load_image_bundle "Doris stack (fe+be)" doris-stack "$doris_version" "$arch" "$tmpdir" \
+    "$fe_ref" "$be_ref"
 
   rm -rf "$tmpdir"
 }
@@ -529,12 +648,7 @@ load_k8s_stack_images() {
   zk_ref="${ZOOKEEPER_IMAGE:-bitnamilegacy/zookeeper:${zk_version}}"
 
   if ! image_load_forced \
-    && docker_image_exists "$ingest_ref" \
-    && docker_image_exists "$web_ref" \
-    && docker_image_exists "$demo_ref" \
-    && docker_image_exists "$fe_ref" \
-    && docker_image_exists "$be_ref" \
-    && docker_image_exists "$zk_ref"; then
+    && all_docker_images_exist "$ingest_ref" "$web_ref" "$demo_ref" "$fe_ref" "$be_ref" "$zk_ref"; then
     echo "[pull-images] 本地镜像已齐全，跳过下载"
     return 0
   fi
@@ -542,18 +656,18 @@ load_k8s_stack_images() {
   tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/apm-k8s-image-pkg.XXXXXX")"
   echo "[pull-images] 加载离线镜像 (arch=${arch}, apm=${version}, doris=${doris_version}, zk=${zk_version})"
 
-  load_image_component "${ingest_ref}" ai-apm-ingest "$version" "$arch" "$tmpdir" "$ingest_ref"
-  load_image_component "${web_ref}" ai-apm-web "$version" "$arch" "$tmpdir" "$web_ref"
-  load_image_component "${demo_ref}" ai-apm-demo "$version" "$arch" "$tmpdir" "$demo_ref"
-  load_image_component "${fe_ref}" doris-fe "$doris_version" "$arch" "$tmpdir" "$fe_ref"
-  load_image_component "${be_ref}" doris-be "$doris_version" "$arch" "$tmpdir" "$be_ref"
+  load_image_bundle "APM stack (ingest+web+demo)" ai-apm-stack "$version" "$arch" "$tmpdir" \
+    "$ingest_ref" "$web_ref" "$demo_ref"
+  load_image_bundle "Doris stack (fe+be)" doris-stack "$doris_version" "$arch" "$tmpdir" \
+    "$fe_ref" "$be_ref"
   load_image_component "${zk_ref}" zookeeper "$zk_version" "$arch" "$tmpdir" "$zk_ref"
 
   rm -rf "$tmpdir"
 }
 
 load_k8s_apm_images() {
-  local arch version tmpdir ingest_ref web_ref demo_ref
+  local arch version tmpdir
+  local ingest_ref web_ref demo_ref
 
   ensure_image_pkg_command curl
 
@@ -566,15 +680,15 @@ load_k8s_apm_images() {
   tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/apm-k8s-apm-image-pkg.XXXXXX")"
   echo "[pull-images] 强制更新 APM 镜像 (arch=${arch}, apm=${version})"
 
-  load_image_component "${ingest_ref}" ai-apm-ingest "$version" "$arch" "$tmpdir" "$ingest_ref"
-  load_image_component "${web_ref}" ai-apm-web "$version" "$arch" "$tmpdir" "$web_ref"
-  load_image_component "${demo_ref}" ai-apm-demo "$version" "$arch" "$tmpdir" "$demo_ref"
+  load_image_bundle "APM stack (ingest+web+demo)" ai-apm-stack "$version" "$arch" "$tmpdir" \
+    "$ingest_ref" "$web_ref" "$demo_ref"
 
   rm -rf "$tmpdir"
 }
 
 load_demo_image_from_pkg() {
   local arch version demo_ref tmpdir
+  local ingest_ref web_ref
 
   ensure_image_pkg_command curl
   ensure_image_pkg_command docker
@@ -582,6 +696,8 @@ load_demo_image_from_pkg() {
   arch="$(detect_host_arch)"
   version="$(resolve_apm_release_version)"
   demo_ref="$(resolve_apm_demo_image_ref "$version")"
+  ingest_ref="$(resolve_apm_ingest_image_ref "$version")"
+  web_ref="$(resolve_apm_web_image_ref "$version")"
 
   if ! image_load_forced && docker_image_exists "$demo_ref"; then
     echo "[pull-images] ${demo_ref} 已存在，跳过"
@@ -590,7 +706,8 @@ load_demo_image_from_pkg() {
 
   tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/apm-demo-image-pkg.XXXXXX")"
   echo "[pull-images] 加载 demo 镜像 (arch=${arch}, apm=${version})"
-  load_image_component "${demo_ref}" ai-apm-demo "$version" "$arch" "$tmpdir" "$demo_ref"
+  load_image_bundle "APM stack (ingest+web+demo)" ai-apm-stack "$version" "$arch" "$tmpdir" \
+    "$ingest_ref" "$web_ref" "$demo_ref"
   rm -rf "$tmpdir"
 }
 

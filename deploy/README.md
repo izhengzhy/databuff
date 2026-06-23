@@ -27,7 +27,7 @@ Demo 源码位于仓库根目录 [`ai-apm-demo/`](../ai-apm-demo/)。
 
 | 内容 | 地址 | 脚本 |
 |------|------|------|
-| 离线镜像包（`.tar`，databuffhub/*） | `https://databuff.ai/databuff/images/` | `build-images.sh` / `upload-infra-images.sh` |
+| 离线镜像包（`.tar.gz`，databuffhub/* + infra） | `https://databuff.ai/databuff/<ver>/images/` 与 `.../infra/images/` | `build-images.sh` / `upload-infra-images.sh` |
 | 部署包（tar.gz + install.sh） | `https://databuff.ai/databuff/` | `build-docker.sh` / `build-k8s.sh` |
 
 ### 发布流程

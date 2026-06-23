@@ -394,7 +394,16 @@ image_tarball_name() {
   local component="$1"
   local version="$2"
   local arch="$3"
-  printf '%s-%s-%s.tar\n' "$component" "$version" "$arch"
+  local ext="${4:-${IMAGE_TARBALL_EXT:-.tar.gz}}"
+  printf '%s-%s-%s%s\n' "$component" "$version" "$arch" "$ext"
+}
+
+compress_image_tarball() {
+  local raw="$1"
+  local gz="${raw}.gz"
+  gzip -1 -c "$raw" >"$gz"
+  rm -f "$raw"
+  printf '%s\n' "$gz"
 }
 
 doris_image_version() {
@@ -511,10 +520,10 @@ build_and_export_service_tarballs() {
 
   for arch in $(image_arch_list); do
     echo "[build] buildx ${image_ref} (linux/${arch}) ..."
-    tarball="${dist_dir}/$(image_tarball_name "$component" "$release_version" "$arch")"
+    tarball="${dist_dir}/$(image_tarball_name "$component" "$release_version" "$arch" .tar)"
     buildx_export_image_tarball "$image_ref" "$ctx" "linux/${arch}" "$tarball"
     verify_image_tarball_arch "$tarball" "$arch"
-    tarballs+=("$tarball")
+    tarballs+=("$(compress_image_tarball "$tarball")")
   done
 
   rm -rf "$ctx"
@@ -522,27 +531,77 @@ build_and_export_service_tarballs() {
   rm -rf "$dist_dir"
 }
 
+# ingest + web + demo 合并导出（Docker / K8s 共用同一离线包）
+export_apm_stack_tarballs() {
+  local release_version="$1"
+  local ingest_jar="$2"
+  local web_jar="$3"
+  local demo_jar="$4"
+  local ingest_ref web_ref demo_ref
+  local ingest_ctx web_ctx demo_ctx
+  local arch dist_dir tmp_load raw_tar gz_tar tarballs=()
+
+  ingest_ref="$(ingest_image_ref "$release_version")"
+  web_ref="$(web_image_ref "$release_version")"
+  demo_ref="$(demo_image_ref "$release_version")"
+  ingest_ctx="$(prepare_image_build_context ingest "$ingest_jar")"
+  web_ctx="$(prepare_image_build_context web "$web_jar")"
+  demo_ctx="$(prepare_demo_build_context "$demo_jar")"
+
+  dist_dir="$(mktemp -d "${TMPDIR:-/tmp}/apm-stack-export.XXXXXX")"
+  tmp_load="$(mktemp -d "${TMPDIR:-/tmp}/apm-stack-load.XXXXXX")"
+  ensure_buildx
+
+  for arch in $(image_arch_list); do
+    echo "[build] buildx ai-apm-stack (linux/${arch}): ingest + web + demo ..."
+    buildx_export_image_tarball "$ingest_ref" "$ingest_ctx" "linux/${arch}" "${tmp_load}/ingest.tar"
+    buildx_export_image_tarball "$web_ref" "$web_ctx" "linux/${arch}" "${tmp_load}/web.tar"
+    buildx_export_image_tarball "$demo_ref" "$demo_ctx" "linux/${arch}" "${tmp_load}/demo.tar"
+
+    docker load -i "${tmp_load}/ingest.tar"
+    docker load -i "${tmp_load}/web.tar"
+    docker load -i "${tmp_load}/demo.tar"
+    rm -f "${tmp_load}/"*.tar
+
+    raw_tar="${dist_dir}/$(image_tarball_name ai-apm-stack "$release_version" "$arch" .tar)"
+    docker save -o "$raw_tar" "$ingest_ref" "$web_ref" "$demo_ref"
+    verify_image_tarball_arch "$raw_tar" "$arch"
+    gz_tar="$(compress_image_tarball "$raw_tar")"
+    tarballs+=("$gz_tar")
+    echo "[build]   -> $(basename "$gz_tar")"
+  done
+
+  rm -rf "$ingest_ctx" "$web_ctx" "$demo_ctx" "$tmp_load"
+  publish_image_pkg "$release_version" "${tarballs[@]}"
+  rm -rf "$dist_dir"
+}
+
 export_infra_image_tarballs() {
-  local doris_version zk_version arch dist_dir tarballs=()
+  local doris_version zk_version arch dist_dir tmp_load raw_tar tarballs=()
 
   doris_version="$(doris_image_version)"
   zk_version="$(zookeeper_image_version)"
   dist_dir="$(mktemp -d "${TMPDIR:-/tmp}/apm-infra-image-tarballs.XXXXXX")"
+  tmp_load="$(mktemp -d "${TMPDIR:-/tmp}/apm-infra-load.XXXXXX")"
 
   for arch in $(image_arch_list); do
-    tarball="${dist_dir}/$(image_tarball_name doris-fe "$doris_version" "$arch")"
-    pull_and_save_public_image_tarball "${DORIS_FE_IMAGE}" "$arch" "$tarball"
-    tarballs+=("$tarball")
+    echo "[build] pull doris-stack (linux/${arch}): fe + be ..."
+    pull_and_save_public_image_tarball "${DORIS_FE_IMAGE}" "$arch" "${tmp_load}/doris-fe.tar"
+    pull_and_save_public_image_tarball "${DORIS_BE_IMAGE}" "$arch" "${tmp_load}/doris-be.tar"
+    docker load -i "${tmp_load}/doris-fe.tar"
+    docker load -i "${tmp_load}/doris-be.tar"
+    rm -f "${tmp_load}/"*.tar
 
-    tarball="${dist_dir}/$(image_tarball_name doris-be "$doris_version" "$arch")"
-    pull_and_save_public_image_tarball "${DORIS_BE_IMAGE}" "$arch" "$tarball"
-    tarballs+=("$tarball")
+    raw_tar="${dist_dir}/$(image_tarball_name doris-stack "$doris_version" "$arch" .tar)"
+    docker save -o "$raw_tar" "${DORIS_FE_IMAGE}" "${DORIS_BE_IMAGE}"
+    tarballs+=("$(compress_image_tarball "$raw_tar")")
 
-    tarball="${dist_dir}/$(image_tarball_name zookeeper "$zk_version" "$arch")"
-    pull_and_save_public_image_tarball "${ZOOKEEPER_IMAGE}" "$arch" "$tarball"
-    tarballs+=("$tarball")
+    raw_tar="${dist_dir}/$(image_tarball_name zookeeper "$zk_version" "$arch" .tar)"
+    pull_and_save_public_image_tarball "${ZOOKEEPER_IMAGE}" "$arch" "$raw_tar"
+    tarballs+=("$(compress_image_tarball "$raw_tar")")
   done
 
+  rm -rf "$tmp_load"
   publish_infra_image_pkg "${tarballs[@]}"
   rm -rf "$dist_dir"
 }
@@ -755,9 +814,9 @@ publish_apm_images() {
   local release_version="$1"
   local ingest_jar="$2"
   local web_jar="$3"
+  local demo_jar="$4"
 
-  build_and_export_service_tarballs ingest ai-apm-ingest "$ingest_jar" "$release_version"
-  build_and_export_service_tarballs web ai-apm-web "$web_jar" "$release_version"
+  export_apm_stack_tarballs "$release_version" "$ingest_jar" "$web_jar" "$demo_jar"
 }
 
 write_compose_env() {
