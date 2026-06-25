@@ -36,11 +36,9 @@
 - 🎯 **AI 应用监控** — LLM 调用链 · Token 分析 · Agent 拓扑 · 技能/工具/模型调用追踪 —— 智能体时代独有观测层（Roadmap）
 - ⚡ **eBPF APM** — 采用eBPF 实现内核级无侵入采集，零修改代码获取服务调用链与性能数据，降低 Agent 部署阻力，覆盖更多运行环境（Roadmap）
 - 📊 **OpenTelemetry APM 底座** — OTLP 标准接入，覆盖故障排查、链路追踪、服务指标、服务拓扑
-- 🚨 **告警闭环** — 阈值与突变检测、定时评估、告警事件记录与回看
 - 🔧 **Skill + Tool 可扩展** — 内置 Skill 可覆盖，支持自定义数字专家，无需改核心代码
 - 🔌 **MCP 双向开放** — 平台暴露 MCP 供 Cursor / Claude 等调用；也可接入外部 MCP（Prometheus、SkyWalking 等）
 - 🐳 **极简三组件架构** — Ingest + Doris + Web，Docker / K8s 一条命令跑起来
-- 🌐 **Bring your own model** — OpenAI 兼容 + Anthropic Messages，内置 Kimi / DeepSeek / 智谱 / 百炼 / 千帆 / Ollama 等
 ---
 
 <h2 align="center" id="效果展示">效果展示</h2>
