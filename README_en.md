@@ -17,7 +17,20 @@
   &nbsp;|&nbsp;
   <a href="#community">Community</a>
 </p>
+<p >
+## Features
 
+- 🤖 **AI-native, not a bolt-on chat box** — LLM queries traces, metrics, topology, and alerts directly from real data
+- 🧠 **Multi-agent collaboration** — AI Brain orchestrates query and inspection experts; complex tasks run in parallel
+- 🎯 **AI application observability** — LLM call chains · token analytics · agent topology · skill/tool/model invocation tracing — observability built for the agent era
+- ⚡ **eBPF APM** — kernel-level, non-intrusive collection — service traces and performance without code changes, lower agent deployment friction, broader runtime coverage
+- 📊 **OpenTelemetry APM foundation** — OTLP ingestion with troubleshooting, tracing, service metrics, and topology
+- 🚨 **Alerting loop** — threshold and change detection, scheduled evaluation, alert event history
+- 🔧 **Skill + Tool extensibility** — override built-in skills, add custom digital experts without touching core code
+- 🔌 **MCP both ways** — expose platform capabilities to Cursor / Claude; ingest external MCPs (Prometheus, SkyWalking, etc.)
+- 🐳 **Minimal 3-component stack** — Ingest + Doris + Web; one Docker / K8s command, no middleware sprawl
+- 🌐 **Bring your own model** — OpenAI-compatible + Anthropic Messages; Kimi, DeepSeek, GLM, Bailian, Qianfan, Ollama, and more
+</p>
 </div>
 
 <br/>
