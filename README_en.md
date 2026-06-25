@@ -18,7 +18,7 @@
   <a href="#community">Community</a>
 </p>
 <p >
-## Features
+<h2>Features</h2>
 
 - 🤖 **AI-native, not a bolt-on chat box** — LLM queries traces, metrics, topology, and alerts directly from real data
 - 🧠 **Multi-agent collaboration** — AI Brain orchestrates query and inspection experts; complex tasks run in parallel
