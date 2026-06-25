@@ -28,6 +28,19 @@
 
 ---
 
+
+## 功能特性
+
+- 🤖 **AI 原生，不是外挂聊天框** — LLM 直接查询 Trace、指标、拓扑、告警，回答基于真实数据
+- 🧠 **多智能体协同** — AI 大脑统一编排，智能问数 / 巡检专家各司其职，复杂问题并行协作
+- 📊 **OpenTelemetry APM 底座** — OTLP 标准接入，覆盖故障排查、链路追踪、服务指标、服务拓扑
+- 🚨 **告警闭环** — 阈值与突变检测、定时评估、告警事件记录与回看
+- 🔧 **Skill + Tool 可扩展** — 内置 Skill 可覆盖，支持自定义数字专家，无需改核心代码
+- 🔌 **MCP 双向开放** — 平台暴露 MCP 供 Cursor / Claude 等调用；也可接入外部 MCP（Prometheus、SkyWalking 等）
+- 🐳 **极简三组件架构** — Ingest + Doris + Web，Docker / K8s 一条命令跑起来
+- 🌐 **Bring your own model** — OpenAI 兼容 + Anthropic Messages，内置 Kimi / DeepSeek / 智谱 / 百炼 / 千帆 / Ollama 等
+---
+
 <h2 align="center" id="效果展示">效果展示</h2>
 
 <p align="center"><strong>AI 分析</strong></p>
