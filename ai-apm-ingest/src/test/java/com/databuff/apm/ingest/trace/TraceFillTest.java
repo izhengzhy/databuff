@@ -392,6 +392,10 @@ class TraceFillTest {
                 .filter(metric -> "service-g".equals(tagValue(metric, "service")))
                 .toList()).isEmpty();
         assertThat(result.metrics().stream()
+                .filter(metric -> "service.exception".equals(metric.measurement()))
+                .filter(metric -> tagValue(metric, "service").startsWith("[elasticsearch]"))
+                .toList()).isNotEmpty();
+        assertThat(result.metrics().stream()
                 .filter(metric -> "service.db".equals(metric.measurement()))
                 .filter(metric -> metric.fieldValues()[1] > 0)
                 .toList()).isNotEmpty();

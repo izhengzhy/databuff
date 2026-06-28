@@ -89,8 +89,38 @@ class DcSpanUtilTest {
         span.meta = "{\"db.system\":\"mysql\",\"db.name\":\"demo_apm\",\"db.operation\":\"select\","
                 + "\"entry.resource\":\"/api/orders/10001\"}";
 
+        assertThat(DcSpanUtil.serviceExceptionMetric(span)).isNull();
+    }
+
+    @Test
+    void virtualComponentExceptionMetricForInboundDbSpan() {
+        DcSpan span = baseSpan();
+        span.type = "SPAN_KIND_CLIENT";
+        span.parent_id = "parent-span";
+        span.srcService = "checkout";
+        span.srcServiceId = "svc";
+        span.srcServiceInstance = "inst-1";
+        span.isIn = 1;
+        span.isOut = 1;
+        span.error = 1;
+        span.metaErrorType = "SQLException";
+        span.dstService = "[mysql]demo_apm";
+        span.dstServiceId = "dad537de7e10e098";
+        span.dstServiceInstance = "10.0.0.8";
+        span.meta = "{\"db.system\":\"mysql\",\"db.name\":\"demo_apm\",\"db.operation\":\"select\","
+                + "\"root.resource\":\"/api/orders/10001\"}";
+
+        OptimizedMetric exceptionMetric = DcSpanUtil.virtualComponentExceptionMetric(span);
+        assertThat(exceptionMetric).isNotNull();
+        assertThat(exceptionMetric.measurement()).isEqualTo("service.exception");
+        assertThat(tagValue(exceptionMetric, "service")).isEqualTo("[mysql]demo_apm");
+        assertThat(tagValue(exceptionMetric, "service_id")).isEqualTo("dad537de7e10e098");
+        assertThat(tagValue(exceptionMetric, "exceptionName")).isEqualTo("SQLException");
+        assertThat(tagValue(exceptionMetric, "componentService")).isEqualTo("checkout");
+        assertThat(tagValue(exceptionMetric, "rootResource")).isEqualTo("/api/orders/10001");
+
         Assertions.assertThat(DcSpanUtil.parseSpanData(span).stream().map(OptimizedMetric::measurement))
-                .doesNotContain("service.exception");
+                .contains("service.exception");
     }
 
     @Test
@@ -147,6 +177,12 @@ class DcSpanUtilTest {
                 .findFirst()
                 .orElseThrow();
         assertThat(db.fieldValues()[1]).isEqualTo(1L);
+
+        OptimizedMetric exceptionMetric = DcSpanUtil.virtualComponentExceptionMetric(span);
+        assertThat(exceptionMetric).isNotNull();
+        assertThat(tagValue(exceptionMetric, "service")).isEqualTo("[mysql]demo_apm");
+        assertThat(tagValue(exceptionMetric, "componentService")).isEqualTo("checkout");
+        assertThat(DcSpanUtil.serviceExceptionMetric(span)).isNull();
     }
 
     @Test

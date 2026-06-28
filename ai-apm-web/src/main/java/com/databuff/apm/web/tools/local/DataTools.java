@@ -225,9 +225,9 @@ public class DataTools {
         return json(response);
     }
 
-    @Tool(converter = PlainTextToolResultConverter.class, description = "Execute metric queries with QueryRequest objects, similar to TSDBResultSet executeQuery. Each request has measurement, aggregations, wheres, groupBy, interval, intervalUnit, start, and end. Doris database is fixed by server config.")
+    @Tool(converter = PlainTextToolResultConverter.class, description = "Execute metric queries with QueryRequest objects, similar to TSDBResultSet executeQuery. Each request has measurement, aggregations, wheres, groupBy, interval, intervalUnit, start, and end. For time-series/trend queries use 1-minute buckets by default (interval=1, intervalUnit=m). Doris database is fixed by server config.")
     public String queryMetricData(
-            @ToolParam(name = "queryRequests", description = "Required list of QueryRequest objects. Use the Doris metric table name directly in measurement, for example metric_service or metric_service_db. Each item has measurement, aggregations (function/field/alias), wheres (field/operator/value), groupBy, interval, intervalUnit, start, and end.")
+            @ToolParam(name = "queryRequests", description = "Required list of QueryRequest objects. Use the Doris metric table name directly in measurement, for example metric_service or metric_service_db. Each item has measurement, aggregations (function/field/alias), wheres (field/operator/value), groupBy, interval, intervalUnit, start, and end. For trends set interval=1 and intervalUnit=m (1-minute buckets); use interval=0 for single aggregate only.")
             List<MetricQueryRequest> queryRequests,
             @ToolParam(name = "size", required = false, description = "Optional max rows per query, default 200")
             Integer size) {

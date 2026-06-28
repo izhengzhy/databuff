@@ -76,6 +76,10 @@ public final class DcSpanUtil {
         if (exception != null) {
             metrics.add(exception);
         }
+        OptimizedMetric virtualException = virtualComponentExceptionMetric(span);
+        if (virtualException != null) {
+            metrics.add(virtualException);
+        }
         return metrics;
     }
 
@@ -330,6 +334,15 @@ public final class DcSpanUtil {
         }
         Map<String, String> tags = exceptionMetricTags(span);
         return minuteAggregatedMetric("service.exception", span, tags, 1L);
+    }
+
+    /** 虚拟组件入口异常：归属组件服务本身，与 {@link #serviceExceptionMetric} 独立，不污染 Web 入口口径。 */
+    static OptimizedMetric virtualComponentExceptionMetric(DcSpan span) {
+        if (span.error <= 0 || !isVirtualInboundComponent(span)) {
+            return null;
+        }
+        return minuteAggregatedMetric(
+                "service.exception", span, virtualInboundComponentExceptionTags(span), 1L);
     }
 
     static OptimizedMetric serviceFlowMetric(DcSpan span) {
@@ -691,6 +704,27 @@ public final class DcSpanUtil {
         tags.put("componentService", "");
         tags.put("componentServiceId", "");
         tags.put("componentServiceInstance", "");
+        return tags;
+    }
+
+    /** 虚拟组件入口错误归属组件服务本身，调用方写入 componentService* 供下钻。 */
+    static Map<String, String> virtualInboundComponentExceptionTags(DcSpan span) {
+        Map<String, String> meta = OtelAttributeMaps.parse(span);
+        Map<String, String> tags = new LinkedHashMap<>();
+        applyComponentDirectionTags(span, tags);
+        tags.put("rootComponentType", rootComponentType(meta, span));
+        tags.put("rootResource", rootResource(meta, span));
+        String componentService = nullToEmpty(firstNonBlank(span.dstService, span.service));
+        tags.put("service", componentService);
+        tags.put("service_id", normalizeMetricServiceId(
+                firstNonBlank(span.dstServiceId, span.serviceId), componentService));
+        tags.put("service_instance", nullToEmpty(firstNonBlank(span.dstServiceInstance, span.serviceInstance)));
+        tags.put("resource", nullToEmpty(span.resource));
+        tags.put("exceptionName", resolveErrorType(span));
+        tags.put("exceptionCode", "");
+        tags.put("componentService", nullToEmpty(span.srcService));
+        tags.put("componentServiceId", normalizeMetricServiceId(span.srcServiceId, span.srcService));
+        tags.put("componentServiceInstance", nullToEmpty(span.srcServiceInstance));
         return tags;
     }
 
