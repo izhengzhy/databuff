@@ -45,6 +45,10 @@ compose_supports_wait() {
 }
 
 compose_up() {
+  compose_cmd up -d "$@"
+}
+
+compose_up_wait() {
   if compose_supports_wait; then
     compose_cmd up -d --wait "$@"
   else

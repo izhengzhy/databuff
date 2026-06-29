@@ -94,11 +94,22 @@ done
 
 if doris_has_data; then
   echo "[start] doris data exists, starting selected services"
-  compose_up "${UP_SERVICES[@]}"
+  _up_doris=()
+  for _svc in "${UP_SERVICES[@]}"; do
+    case "$_svc" in
+      "$DORIS_FE_SERVICE"|"$DORIS_BE_SERVICE") _up_doris+=("$_svc") ;;
+    esac
+  done
+  if [ ${#_up_doris[@]} -gt 0 ]; then
+    compose_up_wait "${_up_doris[@]}"
+  fi
+  if [ ${#_up_apps[@]} -gt 0 ]; then
+    compose_up "${_up_apps[@]}"
+  fi
 else
   echo "[start] initializing doris"
   mkdir -p "${ROOT}/data/fe-meta" "${ROOT}/data/be-storage"
-  compose_up "$DORIS_FE_SERVICE" "$DORIS_BE_SERVICE"
+  compose_up_wait "$DORIS_FE_SERVICE" "$DORIS_BE_SERVICE"
   "${ROOT}/scripts/init-doris.sh"
   if [ ${#_up_apps[@]} -gt 0 ]; then
     compose_up "${_up_apps[@]}"

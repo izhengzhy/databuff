@@ -98,6 +98,13 @@ prepare_compose_start() {
 }
 
 compose_up() {
+  compose_cmd up -d "$@"
+}
+
+# Doris FE/BE only: block until healthchecks pass. App services (ingest/web) are
+# started with compose_up and readiness is handled by wait_for_apm_services_ready
+# in start.sh — compose --wait would abort too early when Java is still warming up.
+compose_up_wait() {
   if compose_supports_wait; then
     compose_cmd up -d --wait "$@"
   else

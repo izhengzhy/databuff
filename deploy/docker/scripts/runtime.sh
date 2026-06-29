@@ -44,11 +44,16 @@ wait_for_http_ready() {
   timeout="${3:-300}"
   interval="${4:-3}"
   elapsed=0
+  next_log=0
 
   while [ "$elapsed" -lt "$timeout" ]; do
     if check_http_ready "$url"; then
       echo "[start] ${label} ready (${elapsed}s)"
       return 0
+    fi
+    if [ "$elapsed" -ge "$next_log" ]; then
+      echo "[start] waiting for ${label} (${elapsed}s/${timeout}s) ..."
+      next_log=$((elapsed + 30))
     fi
     sleep "$interval"
     elapsed=$((elapsed + interval))
