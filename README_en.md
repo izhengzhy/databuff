@@ -22,7 +22,7 @@
 <p align="center">
   <a href="https://demo.databuff.ai">https://demo.databuff.ai</a>，Account: Admin，Password: Databuff@123
 </p>
-<p >
+<p align="left">
 <h2>Features</h2>
 
 - 🤖 **AI-native, not a bolt-on chat box** — LLM queries traces, metrics, topology, and alerts directly from real data
