@@ -10,8 +10,9 @@ description: 服务健康巡检与异常诊断流程
 
 1. 用户要求巡检某个服务时，优先调用 `inspectService(serviceName)` 做初步异常检测；只需服务名称，不需要用户提供时间范围。
 2. `inspectService` 是无阈值初筛，会检查入口请求量、错误数/错误率、平均响应时间；Web 类型服务还会补充异常与 JVM/GC 指标检测。
-3. 发现可疑问题后，不要直接定论根因；根据异常方向继续调用数据工具补充证据，例如 `queryMetricData`、`queryServiceTopology`、`queryTraceListByCondition`、`queryTraceDetail`、`queryServiceAlarms`。
-4. 未发现明显异常时，也要说明这是初步结果，并结合用户问题决定是否继续查明细。
+3. 发现可疑问题后，不要直接定论根因；根据异常方向继续调用数据工具补充证据，例如 `queryMetricData`、`queryServiceTopology`、`queryTraceListByCondition`、`queryTraceDetail`、`queryServiceAlarms`、`queryLogDetail`、`queryLogsByTraceId`。
+4. 指标异常（错误率升高、请求失败）时，补充查 ERROR 日志：`queryLogDetail(services=[服务名], severities=["ERROR"], size=20)`；有 traceId 时用 `queryLogsByTraceId`。
+5. 未发现明显异常时，也要说明这是初步结果，并结合用户问题决定是否继续查明细。
 
 ## 时间范围
 

@@ -69,9 +69,11 @@ export default class LogsOverviewChart extends Vue {
   private chartSource2: any = [];
 
   private showEmpty1 = false;
-  private showEmpty2 = false;
+  private showEmpty2 = true;
 
   private volumeCounts: Record<string, number | null> = {};
+
+  private trendRequestSeq = 0;
 
   get parentLoading () {
     return this.queryLoading || this.searchInitLoading;
@@ -95,79 +97,105 @@ export default class LogsOverviewChart extends Vue {
       ...this.timeParams,
       ...this.query,
     };
-    await this.getLogVolumeGraph(params);
-    this.getSeverityGraph(params);
+    const requestSeq = ++this.trendRequestSeq;
+    this.barLoading1 = true;
+    this.barLoading2 = true;
+    const { result, error } = await toAsyncWait(LogApi.getLogTrend(params));
+    if (requestSeq !== this.trendRequestSeq) {
+      return this.volumeCounts;
+    }
+    this.barLoading1 = false;
+    this.barLoading2 = false;
+    if (error) {
+      this.volumeCounts = {};
+      this.chartSource1 = [];
+      this.chartSource2 = [];
+      this.showEmpty1 = true;
+      this.showEmpty2 = true;
+      return this.volumeCounts;
+    }
+    const trendData = result?.data || {};
+    this.applyLogVolumeGraph(trendData.logCnts || {});
+    this.applySeverityGraph(trendData.severityCnts || {});
     return this.volumeCounts;
   }
 
-  private async getLogVolumeGraph (params: any) {
-    this.barLoading1 = true;
-    const { result, error } = await toAsyncWait(LogApi.getLogTrend(params));
-    this.barLoading1 = false;
-    if (!error) {
-      const graphData = result?.data?.logCnts || {};
-      this.volumeCounts = graphData;
-      this.showEmpty1 = !Object.values(graphData).some((value) => value != null);
-      if (!this.showEmpty1) {
-        const hitsSource = Object.keys(graphData)
-          .sort((a: string, b: string) => Number(a) - Number(b))
-          .map((date) => ({
-            key: dayjs(Number(date)).format('YYYY-MM-DD HH:mm'),
-            value: graphData[date] ?? '-',
-          }));
-        this.chartSource1 = [
-          {
-            name: i18n.t('modules.views.appMonitor.relationMap.s_ae1e7b60') as string,
-            nameKey: 'modules.views.appMonitor.relationMap.s_ae1e7b60',
-            data: hitsSource,
-            type: 'bar',
-            stack: 'total',
-          },
-        ];
-      } else {
-        this.chartSource1 = [];
-      }
-    } else {
-      this.volumeCounts = {};
+  private applyLogVolumeGraph (graphData: Record<string, number | null>) {
+    this.volumeCounts = graphData;
+    this.showEmpty1 = !Object.values(graphData).some((value) => value != null);
+    if (this.showEmpty1) {
+      this.chartSource1 = [];
+      return;
     }
+    const hitsSource = Object.keys(graphData)
+      .sort((a: string, b: string) => Number(a) - Number(b))
+      .map((date) => ({
+        key: dayjs(Number(date)).format('YYYY-MM-DD HH:mm'),
+        value: graphData[date] ?? '-',
+      }));
+    this.chartSource1 = [
+      {
+        name: i18n.t('modules.views.appMonitor.relationMap.s_ae1e7b60') as string,
+        nameKey: 'modules.views.appMonitor.relationMap.s_ae1e7b60',
+        data: hitsSource,
+        type: 'bar',
+        stack: 'total',
+      },
+    ];
   }
 
-  private async getSeverityGraph (params: any) {
-    this.barLoading2 = true;
-    const { result, error } = await toAsyncWait(LogApi.getLogTrend(params));
-    this.barLoading2 = false;
-    if (!error) {
-      const graphData = result?.data?.severityCnts || {};
-      this.showEmpty2 = !Object.values(graphData).some(
-        (item: any) => item && typeof item === 'object' && Object.keys(item).length > 0,
-      );
-      if (!this.showEmpty2) {
-        let severityNames: string[] = [];
-        Object.values(graphData).forEach((item: any) => {
-          if (item && typeof item === 'object') {
-            severityNames.push(...Object.keys(item));
-          }
-        });
-        severityNames = sortSeverities(severityNames);
-        this.chartSource2 = severityNames.map((severity: string) => ({
-          name: severity,
-          color: getSeverityChartColor(severity),
-          data: Object.entries(graphData)
-            .map((item: any) => {
-              const bucket = item[1] && typeof item[1] === 'object' ? item[1] : null;
-              return {
-                key: dayjs(Number(item[0])).format('YYYY-MM-DD HH:mm'),
-                value: bucket && Object.prototype.hasOwnProperty.call(bucket, severity) ? bucket[severity] : '-',
-              };
-            })
-            .sort((a: any, b: any) => new Date(a.key).valueOf() - new Date(b.key).valueOf()),
-          type: 'bar',
-          stack: 'total',
-        }));
-      } else {
-        this.chartSource2 = [];
-      }
+  private applySeverityGraph (graphData: Record<string, Record<string, number> | null>) {
+    this.showEmpty2 = !Object.values(graphData).some(
+      (item) => item && typeof item === 'object' && Object.keys(item).length > 0,
+    );
+    if (this.showEmpty2) {
+      this.chartSource2 = [];
+      return;
     }
+    const severityKeyMap = new Map<string, string>();
+    Object.values(graphData).forEach((item) => {
+      if (!item || typeof item !== 'object') {
+        return;
+      }
+      Object.keys(item).forEach((key) => {
+        const normalized = key.toUpperCase();
+        if (!severityKeyMap.has(normalized)) {
+          severityKeyMap.set(normalized, key);
+        }
+      });
+    });
+    const severityNames = sortSeverities(Array.from(severityKeyMap.keys()));
+    if (!severityNames.length) {
+      this.showEmpty2 = true;
+      this.chartSource2 = [];
+      return;
+    }
+    this.chartSource2 = severityNames.map((severity) => {
+      const bucketKey = severityKeyMap.get(severity) || severity;
+      return {
+        name: severity,
+        color: getSeverityChartColor(severity),
+        data: Object.entries(graphData)
+          .map(([timestamp, bucket]) => ({
+            key: dayjs(Number(timestamp)).format('YYYY-MM-DD HH:mm'),
+            value: this.readSeverityBucketValue(bucket, bucketKey),
+          }))
+          .sort((a, b) => new Date(a.key).valueOf() - new Date(b.key).valueOf()),
+        type: 'bar',
+        stack: 'total',
+      };
+    });
+  }
+
+  private readSeverityBucketValue (bucket: Record<string, number> | null, severityKey: string) {
+    if (!bucket || typeof bucket !== 'object') {
+      return '-';
+    }
+    if (Object.prototype.hasOwnProperty.call(bucket, severityKey)) {
+      return bucket[severityKey];
+    }
+    const matchedKey = Object.keys(bucket).find((key) => key.toUpperCase() === severityKey.toUpperCase());
+    return matchedKey ? bucket[matchedKey] : '-';
   }
 
   private chartClickHandle (params: { xAxisName: string }, type?: string) {

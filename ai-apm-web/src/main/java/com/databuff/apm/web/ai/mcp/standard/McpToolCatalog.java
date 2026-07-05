@@ -72,6 +72,35 @@ public class McpToolCatalog {
                         schema(Map.of(
                                 "queryRequests", arrayProp("Metric query request list"),
                                 "size", integerProp("Maximum number of results per query")))),
+                tool("queryLogTrend",
+                        "Query log volume trend by service, service instance, severity, or keyword",
+                        schema(logTrendSchema(), List.of("fromTime", "toTime"))),
+                tool("queryLogDetail",
+                        "Query paginated log detail lines; do not pass traceId or spanId",
+                        schema(logDetailSchema(), List.of("fromTime", "toTime"))),
+                tool("queryLogsByTraceId",
+                        "Query paginated log lines for one traceId",
+                        schema(Map.of(
+                                "traceId", stringProp("Trace ID"),
+                                "severities", stringArrayProp("Optional severity filters"),
+                                "query", stringProp("Optional body keyword"),
+                                "fromTime", stringProp("Optional start time, defaults to last 24 hours"),
+                                "toTime", stringProp("Optional end time, defaults to now"),
+                                "offset", integerProp("Pagination offset"),
+                                "size", integerProp("Page size, max 200")),
+                        List.of("traceId"))),
+                tool("queryLogsBySpanId",
+                        "Query paginated log lines for one spanId; pass traceId when known",
+                        schema(Map.of(
+                                "spanId", stringProp("Span ID"),
+                                "traceId", stringProp("Optional but recommended trace ID"),
+                                "severities", stringArrayProp("Optional severity filters"),
+                                "query", stringProp("Optional body keyword"),
+                                "fromTime", stringProp("Optional start time, defaults to last 24 hours"),
+                                "toTime", stringProp("Optional end time, defaults to now"),
+                                "offset", integerProp("Pagination offset"),
+                                "size", integerProp("Page size, max 200")),
+                        List.of("spanId"))),
                 tool("inspectService",
                         "Run threshold-free preliminary anomaly inspection for one service",
                         schema(Map.of("serviceName", stringProp("Service name to inspect")),
@@ -90,6 +119,31 @@ public class McpToolCatalog {
         return new McpToolDefinition(name, description, inputSchema, implementationFor(name));
     }
 
+    private static Map<String, Object> logTrendSchema() {
+        Map<String, Object> props = new LinkedHashMap<>(logFilterSchema());
+        props.put("interval", integerProp("Optional bucket interval in seconds, default 60"));
+        return props;
+    }
+
+    private static Map<String, Object> logDetailSchema() {
+        Map<String, Object> props = new LinkedHashMap<>(logFilterSchema());
+        props.put("offset", integerProp("Pagination offset, default 0"));
+        props.put("size", integerProp("Page size, default 50, max 200"));
+        return props;
+    }
+
+    private static Map<String, Object> logFilterSchema() {
+        Map<String, Object> props = new LinkedHashMap<>();
+        props.put("fromTime", stringProp("Query start time in yyyy-MM-dd HH:mm:ss"));
+        props.put("toTime", stringProp("Query end time in yyyy-MM-dd HH:mm:ss"));
+        props.put("services", stringArrayProp("Optional service names"));
+        props.put("serviceIds", stringArrayProp("Optional service IDs"));
+        props.put("serviceInstances", stringArrayProp("Optional service instance IDs (OTel service.instance.id)"));
+        props.put("severities", stringArrayProp("Optional severity filters such as ERROR, WARN, INFO"));
+        props.put("query", stringProp("Optional body keyword"));
+        return props;
+    }
+
     private static String implementationFor(String name) {
         return switch (name) {
             case "getCurrentTimeRange" -> "commonTools.getCurrentTimeRange";
@@ -102,6 +156,10 @@ public class McpToolCatalog {
             case "queryTraceDetail" -> "dataTools.queryTraceDetail";
             case "queryServiceAlarms" -> "dataTools.queryServiceAlarms";
             case "queryMetricData" -> "dataTools.queryMetricData";
+            case "queryLogTrend" -> "logTools.queryLogTrend";
+            case "queryLogDetail" -> "logTools.queryLogDetail";
+            case "queryLogsByTraceId" -> "logTools.queryLogsByTraceId";
+            case "queryLogsBySpanId" -> "logTools.queryLogsBySpanId";
             case "inspectService" -> "inspectTools.inspectService";
             default -> throw new IllegalArgumentException("unknown MCP tool: " + name);
         };
@@ -131,6 +189,13 @@ public class McpToolCatalog {
 
     private static Map<String, Object> arrayProp(String description) {
         return Map.of("type", "array", "description", description);
+    }
+
+    private static Map<String, Object> stringArrayProp(String description) {
+        return Map.of(
+                "type", "array",
+                "description", description,
+                "items", Map.of("type", "string"));
     }
 
     public record McpToolDefinition(

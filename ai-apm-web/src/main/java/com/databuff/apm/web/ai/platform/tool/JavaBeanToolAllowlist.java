@@ -17,6 +17,10 @@ public final class JavaBeanToolAllowlist {
             "dataTools.queryTraceDetail",
             "dataTools.queryServiceAlarms",
             "dataTools.queryMetricData",
+            "logTools.queryLogTrend",
+            "logTools.queryLogDetail",
+            "logTools.queryLogsByTraceId",
+            "logTools.queryLogsBySpanId",
             "inspectTools.inspectService",
             "expertDispatchTool.dispatchExpertTask");
 

@@ -16,6 +16,10 @@ DEMO_ENTRY_PATH_ID = "-4605470139737123236"
 DEMO_CHECKOUT_RESOURCE = "GET /demo/checkout"
 DEMO_MYSQL_DEMO_APM_ID = "c72cc83a8831e407"
 DEMO_EXCEPTION_INSUFFICIENT_STOCK = "InsufficientStockException"
+DEMO_HOST_A = "demo-host-a"
+DEMO_HOST_B = "demo-host-b"
+DEMO_INSTANCE_A = "service-a-1"
+DEMO_INSTANCE_B = "service-b-1"
 
 
 @dataclass
@@ -157,3 +161,21 @@ def metric_chart_body(
         "start": frm_ms // 1000,
         "end": to_ms // 1000,
     }
+
+
+def log_body(frm_ms: int, to_ms: int, **extra: Any) -> dict[str, Any]:
+    """POST /webapi/log/* — matches logs/index.vue fromTimeNs/toTimeNs."""
+    body = {
+        "fromTimeNs": str(frm_ms * 1_000_000),
+        "toTimeNs": str(to_ms * 1_000_000),
+    }
+    body.update(extra)
+    return body
+
+
+def log_trend_body(frm_ms: int, to_ms: int, interval: int = 60, **extra: Any) -> dict[str, Any]:
+    return log_body(frm_ms, to_ms, interval=interval, **extra)
+
+
+def log_search_body(frm_ms: int, to_ms: int, **extra: Any) -> dict[str, Any]:
+    return log_body(frm_ms, to_ms, size=1000, offset=0, **extra)

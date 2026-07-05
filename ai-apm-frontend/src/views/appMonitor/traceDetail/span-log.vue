@@ -4,6 +4,8 @@
       <el-timeline-item v-for='item in logList' :key='item.id'
         :timestamp="item._timestamp" placement="top" type='primary'>
         <div class="span-log-item">
+          <div v-if="item.serviceInstance" class="font-12">
+            <span class="describe">{{ $t('modules.views.alarmCenter.alarm.s_71673bab') }}</span>{{ item.serviceInstance }}</div>
           <div class="font-12">
             <span class="describe">{{ $t('modules.views.appMonitor.traceDetail.s_dbe2c06e') }}</span>{{ item.hostname }}</div>
           <div class="font-12">

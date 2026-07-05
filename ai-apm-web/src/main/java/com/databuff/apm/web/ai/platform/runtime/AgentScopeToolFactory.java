@@ -7,6 +7,7 @@ import com.databuff.apm.web.ai.platform.task.ExpertDispatchTool;
 import com.databuff.apm.web.tools.local.CommonTools;
 import com.databuff.apm.web.tools.local.DataTools;
 import com.databuff.apm.web.tools.local.InspectTools;
+import com.databuff.apm.web.tools.local.LogTools;
 import com.databuff.apm.web.tools.local.TimeTool;
 import io.agentscope.core.tool.Toolkit;
 import io.agentscope.core.tool.mcp.McpClientWrapper;
@@ -33,6 +34,8 @@ public class AgentScopeToolFactory {
     private CommonTools commonTools;
     @Autowired
     private InspectTools inspectTools;
+    @Autowired
+    private LogTools logTools;
     @Autowired
     private ExpertDispatchTool expertDispatchTool;
     @Autowired
@@ -82,6 +85,8 @@ public class AgentScopeToolFactory {
             toolkit.registerTool(dataTools);
         } else if ("inspectTools".equals(beanName) && inspectTools != null) {
             toolkit.registerTool(inspectTools);
+        } else if ("logTools".equals(beanName) && logTools != null) {
+            toolkit.registerTool(logTools);
         } else if ("timeTool".equals(beanName) && timeTool != null) {
             toolkit.registerTool(timeTool);
         } else if ("expertDispatchTool".equals(beanName) && expertDispatchTool != null) {

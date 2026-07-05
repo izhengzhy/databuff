@@ -15,6 +15,7 @@ class LogQueryBuilderTest {
                 "trace-1",
                 null,
                 List.of("svc-1"),
+                List.of("inst-1"),
                 List.of("host-a"),
                 "timeout",
                 0L,
@@ -23,6 +24,7 @@ class LogQueryBuilderTest {
         assertThat(sql).contains("SELECT DISTINCT severity");
         assertThat(sql).contains("trace_id = 'trace-1'");
         assertThat(sql).contains("service_id IN ('svc-1')");
+        assertThat(sql).contains("service_instance IN ('inst-1')");
         assertThat(sql).contains("hostname IN ('host-a')");
         assertThat(sql).contains("body LIKE '%timeout%'");
         assertThat(sql).doesNotContain("severity IN");
@@ -37,7 +39,9 @@ class LogQueryBuilderTest {
                 null,
                 List.of("svc-1"),
                 List.of(),
+                List.of("inst-1"),
                 List.of("host-a"),
+                List.of(),
                 "timeout",
                 0L,
                 3_600_000L,
@@ -48,8 +52,53 @@ class LogQueryBuilderTest {
         assertThat(sql).contains("GROUP BY bucket_epoch_sec, severity");
         assertThat(sql).contains("trace_id = 'trace-1'");
         assertThat(sql).contains("service_id IN ('svc-1')");
+        assertThat(sql).contains("service_instance IN ('inst-1')");
         assertThat(sql).contains("hostname IN ('host-a')");
         assertThat(sql).contains("body LIKE '%timeout%'");
         assertThat(sql).doesNotContain("severity IN");
+    }
+
+    @Test
+    void trendBucketsSqlAppliesSeverityFilterWhenProvided() {
+        String sql = LogQueryBuilder.trendBucketsSql(
+                "databuff",
+                null,
+                null,
+                null,
+                List.of(),
+                List.of("order-api"),
+                List.of(),
+                List.of(),
+                List.of("ERROR"),
+                null,
+                0L,
+                3_600_000L,
+                60);
+
+        assertThat(sql).contains("service IN ('order-api')");
+        assertThat(sql).contains("severity IN ('ERROR')");
+    }
+
+    @Test
+    void searchSqlSelectsServiceInstance() {
+        String sql = LogQueryBuilder.searchSql(
+                "databuff",
+                null,
+                null,
+                null,
+                List.of(),
+                List.of("order-api"),
+                List.of("pod-1"),
+                List.of(),
+                List.of("ERROR"),
+                "timeout",
+                0L,
+                3_600_000L,
+                0,
+                50);
+
+        assertThat(sql).contains("service_instance");
+        assertThat(sql).contains("service_instance IN ('pod-1')");
+        assertThat(sql).contains("severity IN ('ERROR')");
     }
 }

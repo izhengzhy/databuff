@@ -1,0 +1,12 @@
+{
+  "status": 200,
+  "message": "success",
+  "data": {
+    "hosts": ["demo-host-b"],
+    "services": [
+      {"id": "5457a0119281bb98", "name": "service-b"}
+    ],
+    "serviceInstances": ["service-b-1"],
+    "severities": ["ERROR", "INFO", "WARN"]
+  }
+}

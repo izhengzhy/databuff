@@ -9,10 +9,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 class McpToolCatalogTest {
 
     @Test
-    void exposesElevenToolsWithSchemas() {
+    void exposesFifteenToolsWithSchemas() {
         McpToolCatalog catalog = new McpToolCatalog();
 
-        assertThat(catalog.listTools()).hasSize(11);
+        assertThat(catalog.listTools()).hasSize(15);
         assertThat(catalog.listTools())
                 .extracting(McpToolCatalog.McpToolDefinition::name)
                 .containsExactly(
@@ -26,6 +26,10 @@ class McpToolCatalogTest {
                         "queryTraceDetail",
                         "queryServiceAlarms",
                         "queryMetricData",
+                        "queryLogTrend",
+                        "queryLogDetail",
+                        "queryLogsByTraceId",
+                        "queryLogsBySpanId",
                         "inspectService");
         assertThat(catalog.listTools()).allSatisfy(tool -> {
             assertThat(tool.description()).isNotBlank();
@@ -45,6 +49,11 @@ class McpToolCatalogTest {
                 .get()
                 .extracting(McpToolCatalog.McpToolDefinition::implementation)
                 .isEqualTo("dataTools.queryServicesAll");
+        assertThat(catalog.findByName("queryLogDetail"))
+                .isPresent()
+                .get()
+                .extracting(McpToolCatalog.McpToolDefinition::implementation)
+                .isEqualTo("logTools.queryLogDetail");
         assertThat(catalog.findByName("inspectService"))
                 .isPresent()
                 .get()

@@ -13,6 +13,7 @@ public record OtlLogLine(
         String logTime,
         String serviceId,
         String service,
+        String serviceInstance,
         String hostname,
         String traceId,
         String spanId,
@@ -31,6 +32,7 @@ public record OtlLogLine(
         row.put("service", service);
         row.put("trace_id", traceId == null ? "" : traceId);
         row.put("span_id", spanId == null ? "" : spanId);
+        row.put("service_instance", serviceInstance == null ? "" : serviceInstance);
         row.put("hostname", hostname == null ? "" : hostname);
         row.put("severity", severity == null ? "UNSPECIFIED" : severity);
         row.put("severity_number", severityNumber);

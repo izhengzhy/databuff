@@ -258,6 +258,7 @@ class MetricQueryBuilderTest {
         assertThat(sql).contains("metric_service");
         assertThat(sql).contains("9bf61532d56eb7b5");
         assertThat(sql).contains("inst-a");
+        assertThat(sql).contains("inst.`service_instance` = 'inst-a'");
         assertThat(sql).contains("call_cnt");
         assertThat(sql).contains("k8sPodName");
     }

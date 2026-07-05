@@ -20,6 +20,7 @@ from .应用性能.外部服务.cases import build_cases as apm_external_cases
 from .应用性能.接口分析.cases import build_cases as apm_service_analysis_cases
 from .应用性能.错误分析.cases import build_cases as apm_errors_cases
 from .应用性能.链路追踪.cases import build_cases as apm_trace_cases
+from .应用性能.日志分析.cases import build_cases as apm_log_analysis_cases
 
 CaseBuilder = Callable[[int, int], list[ApiCase]]
 
@@ -36,6 +37,7 @@ APM_MENU_BUILDERS: list[CaseBuilder] = [
     apm_service_analysis_cases,
     apm_errors_cases,
     apm_trace_cases,
+    apm_log_analysis_cases,
 ]
 
 APM_MENU_DIRS = [
@@ -50,6 +52,7 @@ APM_MENU_DIRS = [
     "接口分析",
     "错误分析",
     "链路追踪",
+    "日志分析",
 ]
 
 PAGE_BUILDERS: list[CaseBuilder] = APM_MENU_BUILDERS

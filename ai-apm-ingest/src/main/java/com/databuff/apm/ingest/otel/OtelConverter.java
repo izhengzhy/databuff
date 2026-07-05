@@ -228,14 +228,22 @@ public final class OtelConverter {
                 continue;
             }
             String serviceKey = ServiceKeyUtil.of(serviceName);
-            String hostName = attribute(resourceLogs.getResource().getAttributesList(), "host.name");
+            List<KeyValue> resourceAttributes = resourceLogs.getResource().getAttributesList();
+            String serviceInstance = firstNonBlank(
+                    attribute(resourceAttributes, "service.instance.id"),
+                    attribute(resourceAttributes, "k8s.pod.name"));
+            String hostName = attribute(resourceAttributes, "host.name");
             if (hostName == null) {
                 hostName = "";
             }
-            String resourceJson = encodeAttributes(resourceLogs.getResource().getAttributesList());
+            if (serviceInstance == null) {
+                serviceInstance = "";
+            }
+            String resourceJson = encodeAttributes(resourceAttributes);
             for (ScopeLogs scopeLogs : resourceLogs.getScopeLogsList()) {
                 for (LogRecord logRecord : scopeLogs.getLogRecordsList()) {
-                    OtlLogLine line = buildLogLine(serviceName, serviceKey, hostName, resourceJson, logRecord);
+                    OtlLogLine line = buildLogLine(
+                            serviceName, serviceKey, serviceInstance, hostName, resourceJson, logRecord);
                     if (line != null) {
                         out.add(new ConvertedLog(serviceKey, line));
                     }
@@ -248,6 +256,7 @@ public final class OtelConverter {
     private OtlLogLine buildLogLine(
             String serviceName,
             String serviceKey,
+            String serviceInstance,
             String hostName,
             String resourceJson,
             LogRecord logRecord) {
@@ -274,6 +283,7 @@ public final class OtelConverter {
                 DATETIME.format(Instant.ofEpochSecond(0, timeNs)),
                 serviceKey,
                 serviceName,
+                serviceInstance,
                 hostName,
                 hex(logRecord.getTraceId()),
                 hex(logRecord.getSpanId()),

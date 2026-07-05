@@ -48,3 +48,33 @@ def jvm_metric_batch_bounds(window_ms: int = QUERY_WINDOW_MS) -> tuple[int, int]
 def scaled_range(per_trace: int, window_ms: int = QUERY_WINDOW_MS) -> dict[str, list[int]]:
     low, high = trace_batch_bounds(window_ms)
     return {"$range": [per_trace * low, per_trace * high]}
+
+
+# Demo seeder emits 12 correlated log lines per trace batch (OtlpLogFixture).
+LOGS_PER_SEED_BATCH = 12
+SERVICE_A_LOGS_PER_SEED_BATCH = 6
+ERROR_LOGS_PER_SEED_BATCH = 1
+
+
+def scaled_log_total(window_ms: int = QUERY_WINDOW_MS) -> dict[str, list[int]]:
+    return scaled_range(LOGS_PER_SEED_BATCH, window_ms)
+
+
+def scaled_service_a_log_total(window_ms: int = QUERY_WINDOW_MS) -> dict[str, list[int]]:
+    return scaled_range(SERVICE_A_LOGS_PER_SEED_BATCH, window_ms)
+
+
+def scaled_error_log_total(window_ms: int = QUERY_WINDOW_MS) -> dict[str, list[int]]:
+    return scaled_range(ERROR_LOGS_PER_SEED_BATCH, window_ms)
+
+
+def log_trend_bucket_count(window_ms: int = QUERY_WINDOW_MS, interval_sec: int = 60) -> int:
+    window_sec = max(1, window_ms // 1000)
+    bucket_sec = max(60, interval_sec)
+    return max(1, window_sec // bucket_sec)
+
+
+def logs_per_minute_bucket() -> dict[str, list[int]]:
+    """Two 30s seed batches land in each 60s portal chart bucket."""
+    per_bucket = 2 * LOGS_PER_SEED_BATCH
+    return {"$range": [per_bucket - 4, per_bucket + 4]}

@@ -499,14 +499,21 @@ public final class MetricQueryBuilder {
             long toMillis,
             String serviceInstance,
             int limit) {
-        StringBuilder filters = new StringBuilder();
-        filters.append(buildServiceIdFilter(service));
+        StringBuilder innerFilters = new StringBuilder();
+        innerFilters.append(buildServiceIdFilter(service));
+        StringBuilder outerFilters = new StringBuilder();
+        outerFilters.append(buildServiceIdFilter(service));
         if (serviceInstance != null && !serviceInstance.isBlank()) {
-            filters.append(" AND `service_instance` = '")
-                    .append(escapeLiteral(serviceInstance)).append("' ");
+            String escapedInstance = escapeLiteral(serviceInstance);
+            innerFilters.append(" AND `service_instance` = '")
+                    .append(escapedInstance).append("' ");
+            // Outer query joins inst + calls(subquery); qualify instance column to avoid Doris ambiguity.
+            outerFilters.append(" AND inst.`service_instance` = '")
+                    .append(escapedInstance).append("' ");
         }
         String tsWhere = metricTsWhere(fromMillis, toMillis);
-        String filterClause = filters.toString();
+        String innerFilterClause = innerFilters.toString();
+        String outerFilterClause = outerFilters.toString();
         return """
                 SELECT inst.`service_instance`,
                        MAX(inst.`hostname`) AS host_name,
@@ -538,9 +545,9 @@ public final class MetricQueryBuilder {
                 database,
                 DorisTableNames.METRIC_SERVICE,
                 tsWhere,
-                filterClause,
+                innerFilterClause,
                 tsWhere,
-                filterClause,
+                outerFilterClause,
                 Math.max(1, Math.min(limit, 200)));
     }
 

@@ -41,12 +41,13 @@ In **Cursor → Settings → MCP**, `databuff-apm` should appear connected; conf
 
 Merge `integrations/agent/mcp/claude-desktop-config.example.json` into `claude_desktop_config.json` under `mcpServers`, same `/mcp` URL. In Claude Desktop **Settings → Developer**, confirm `databuff-apm` appears in the MCP server list.
 
-### Exposed tools (11)
+### Exposed tools (15)
 
 | Category | MCP tool names |
 |----------|----------------|
 | Common | `getCurrentTimeRange`, `getTimeRangeAroundTime`, `drawTrendCharts` |
 | Query | `queryServicesAll`, `queryServicesByServiceType`, `queryServiceTopology`, `queryTraceListByCondition`, `queryTraceDetail`, `queryServiceAlarms`, `queryMetricData` |
+| Logs | `queryLogTrend`, `queryLogDetail`, `queryLogsByTraceId`, `queryLogsBySpanId` |
 | Inspection | `inspectService` |
 
 Clients that only support legacy HTTP+SSE handshake may try `http://<host>:<port>/sse` (optional, not the primary documented path).

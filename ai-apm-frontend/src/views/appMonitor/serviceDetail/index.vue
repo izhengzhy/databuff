@@ -19,6 +19,9 @@
             type="primary" size="small" @click="viewFlowHandle">
             <i class="db-icon db-icon-layout-horizontal font-12"></i>
             {{ $t('modules.views.appMonitor.response.s_54c1cb4b') }}</el-button>
+          <el-button type="primary" size="small" @click="viewLogsAnalysisHandle">
+            <i class="db-icon db-icon-log font-12"></i>
+            日志分析</el-button>
         </div>
       </div>
 
@@ -326,6 +329,20 @@ export default class ServiceDetail extends Vue {
         sid: encodeURIComponent(serviceId),
         ...(serviceName ? { service: encodeURIComponent(serviceName) } : {}),
       }
+    })
+  }
+
+  // 查看日志分析
+  private viewLogsAnalysisHandle () {
+    if (!this.serviceDetail?.serviceId) {
+      return
+    }
+    this.$router.push({
+      path: '/appMonitor/logs',
+      query: {
+        ...this.getRouteTimeOrRange,
+        serviceIds: encodeURIComponent(this.serviceDetail.serviceId),
+      },
     })
   }
 

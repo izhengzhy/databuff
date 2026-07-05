@@ -45,7 +45,7 @@ public class LogPortalService {
 
     public Map<String, Object> trend(Map<String, Object> body) {
         int interval = ServicePortalService.intValue(body.get("interval"), 60);
-        LogQueryService.LogSearchCriteria criteria = toTrendCriteria(body);
+        LogQueryService.LogSearchCriteria criteria = toCriteria(body, 0, 1);
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("status", 200);
@@ -73,27 +73,11 @@ public class LogPortalService {
             Map<String, Object> data = new LinkedHashMap<>();
             data.put("hosts", List.of());
             data.put("services", List.of());
+            data.put("serviceInstances", List.of());
             data.put("severities", List.of());
             response.put("data", data);
         }
         return response;
-    }
-
-    private static LogQueryService.LogSearchCriteria toTrendCriteria(Map<String, Object> body) {
-        LogQueryService.LogSearchCriteria criteria = toCriteria(body, 0, 1);
-        return new LogQueryService.LogSearchCriteria(
-                criteria.traceId(),
-                criteria.spanId(),
-                criteria.serviceId(),
-                criteria.serviceIds(),
-                criteria.serviceNames(),
-                criteria.hosts(),
-                List.of(),
-                criteria.query(),
-                criteria.fromMillis(),
-                criteria.toMillis(),
-                0,
-                1);
     }
 
     private static LogQueryService.LogSearchCriteria toCriteria(Map<String, Object> body, int offset, int size) {
@@ -112,6 +96,7 @@ public class LogPortalService {
                 ServicePortalService.stringValue(request.get("serviceId"), null),
                 stringList(request.get("serviceIds")),
                 stringList(request.get("services")),
+                stringList(request.get("serviceInstances")),
                 stringList(request.get("hosts")),
                 stringList(request.get("severities")),
                 ServicePortalService.stringValue(request.get("query"), null),

@@ -414,7 +414,8 @@ class OtelConverterTest {
                 .addResourceLogs(io.opentelemetry.proto.logs.v1.ResourceLogs.newBuilder()
                         .setResource(Resource.newBuilder()
                                 .addAttributes(kv("service.name", "checkout"))
-                                .addAttributes(kv("host.name", "host-1")))
+                                .addAttributes(kv("host.name", "host-1"))
+                                .addAttributes(kv("service.instance.id", "inst-1")))
                         .addScopeLogs(io.opentelemetry.proto.logs.v1.ScopeLogs.newBuilder()
                                 .addLogRecords(io.opentelemetry.proto.logs.v1.LogRecord.newBuilder()
                                         .setTimeUnixNano(1_700_000_000_000_000_000L)
@@ -429,6 +430,8 @@ class OtelConverterTest {
         assertThat(converted).hasSize(1);
         OtlLogLine line = converted.get(0).line();
         assertThat(line.service()).isEqualTo("checkout");
+        assertThat(line.serviceInstance()).isEqualTo("inst-1");
+        assertThat(line.hostname()).isEqualTo("host-1");
         assertThat(line.body()).isEqualTo("order created");
         assertThat(line.traceId()).isEqualTo("0102030405060708090a0b0c0d0e0f10");
         assertThat(line.spanId()).isEqualTo("0102030405060708");

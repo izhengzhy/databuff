@@ -1,6 +1,6 @@
 ---
 name: skill.data.metrics
-description: APM 指标、Trace 与告警查询规则
+description: APM 指标、Trace、日志与告警查询规则
 ---
 # 智能问数规则
 
@@ -32,6 +32,10 @@ description: APM 指标、Trace 与告警查询规则
 | Trace 详情 | `queryTraceDetail(traceId)` |
 | 服务告警 | `queryServiceAlarms(serviceId, status, fromTime, toTime)` |
 | 指标明细/聚合/趋势 | `queryMetricData(queryRequests, size)` |
+| 日志量趋势 | `queryLogTrend(fromTime, toTime, services, serviceIds, serviceInstances, severities, query, interval)` |
+| 日志明细检索 | `queryLogDetail(...)`，**禁止**传 traceId/spanId |
+| 某 trace 的日志 | `queryLogsByTraceId(traceId, ...)` |
+| 某 span 的日志 | `queryLogsBySpanId(spanId, traceId, ...)` |
 | 趋势图 | 拿到趋势数据后调用 `drawTrendCharts(charts)`，再输出文字结论 |
 
 ## queryMetricData 参数
@@ -63,6 +67,17 @@ description: APM 指标、Trace 与告警查询规则
 - 调用链表（http/rpc/db/redis/mq 等）支持 `isIn`、`isOut`、`srcService*`。
 - 自身/JVM/系统表没有 `srcService*`、`isIn`/`isOut`。
 - 不要编造 tag 或 field 名。
+
+## 日志查询
+
+- 服务实例参数名：`serviceInstances`（对应 Doris `service_instance`、OTel `service.instance.id`）。
+- **禁止**用 `hostname` 代替服务实例；`hostname` 是主机（如 K8s Node），不是 Pod/进程实例。
+- 与 `queryMetricData` 的 `service_instance`、`queryTraceDetail` 返回的 `serviceInstance` 同一口径。
+- 用户问 trace/调用链日志 → `queryLogsByTraceId`；问 span 日志 → `queryLogsBySpanId`（尽量同时传 traceId）。
+- 搜日志、按服务/实例/级别查 → `queryLogDetail`；看日志量趋势 → `queryLogTrend`。
+- 日志明细默认 `size=50`，最大 200；需要翻页时增大 `offset`。
+- `queryLogTrend` / `queryLogDetail` 需先确定 `fromTime`/`toTime`；trace/span 专用工具默认最近 24 小时。
+- 日志趋势可接 `drawTrendCharts` 画图。
 
 ## 关键指标（默认口径）
 
@@ -121,6 +136,8 @@ description: APM 指标、Trace 与告警查询规则
 - 「对比 A/B/C 请求量」：一次查询，`INLIST` + groupBy service，不要分别查三次
 - 「7 个服务的关键指标概览」：按上表选 measurement，每条 QueryRequest 仅含 `total_cnt`/`error_cnt`/`sum_duration` 三个 SUM 聚合，一次 `queryMetricData` 提交多条 queryRequests
 - 「各实例请求量趋势」：`metric_service`，groupBy service_instance，设 interval
+- 「order-api 最近 ERROR 日志」：`getCurrentTimeRange` → `queryLogDetail(services=["order-api"], severities=["ERROR"])`
+- 「trace abc 的日志」：`queryLogsByTraceId(traceId="abc")`，可选再 `queryTraceDetail`
 
 ## 回答要求
 

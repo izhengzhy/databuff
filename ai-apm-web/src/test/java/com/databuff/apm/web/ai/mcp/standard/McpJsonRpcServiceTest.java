@@ -56,7 +56,7 @@ class McpJsonRpcServiceTest {
         Map<String, Object> result = (Map<String, Object>) response.get("result");
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> tools = (List<Map<String, Object>>) result.get("tools");
-        assertThat(tools).hasSize(11);
+        assertThat(tools).hasSize(15);
         assertThat(tools.get(0)).containsKeys("name", "description", "inputSchema");
     }
 

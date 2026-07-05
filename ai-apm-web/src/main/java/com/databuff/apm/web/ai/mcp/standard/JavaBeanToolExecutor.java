@@ -4,6 +4,7 @@ import com.databuff.apm.web.ai.platform.AiPlatformApiException;
 import com.databuff.apm.web.tools.local.CommonTools;
 import com.databuff.apm.web.tools.local.DataTools;
 import com.databuff.apm.web.tools.local.InspectTools;
+import com.databuff.apm.web.tools.local.LogTools;
 import com.databuff.apm.web.tools.local.MetricQueryRequest;
 import com.databuff.apm.web.tools.local.TimeTool;
 import com.databuff.apm.web.tools.local.TrendChartSpec;
@@ -20,6 +21,7 @@ public class JavaBeanToolExecutor {
     private final CommonTools commonTools;
     private final DataTools dataTools;
     private final InspectTools inspectTools;
+    private final LogTools logTools;
     private final TimeTool timeTool;
     private final ObjectMapper objectMapper;
 
@@ -27,11 +29,13 @@ public class JavaBeanToolExecutor {
             CommonTools commonTools,
             DataTools dataTools,
             InspectTools inspectTools,
+            LogTools logTools,
             TimeTool timeTool,
             ObjectMapper objectMapper) {
         this.commonTools = commonTools;
         this.dataTools = dataTools;
         this.inspectTools = inspectTools;
+        this.logTools = logTools;
         this.timeTool = timeTool;
         this.objectMapper = objectMapper;
     }
@@ -75,6 +79,42 @@ public class JavaBeanToolExecutor {
             case "dataTools.queryMetricData" -> dataTools.queryMetricData(
                     safeRequest.queryRequests(),
                     safeRequest.size());
+            case "logTools.queryLogTrend" -> logTools.queryLogTrend(
+                    safeRequest.fromTime(),
+                    safeRequest.toTime(),
+                    safeRequest.services(),
+                    safeRequest.serviceIds(),
+                    safeRequest.serviceInstances(),
+                    safeRequest.severities(),
+                    safeRequest.query(),
+                    safeRequest.interval());
+            case "logTools.queryLogDetail" -> logTools.queryLogDetail(
+                    safeRequest.fromTime(),
+                    safeRequest.toTime(),
+                    safeRequest.services(),
+                    safeRequest.serviceIds(),
+                    safeRequest.serviceInstances(),
+                    safeRequest.severities(),
+                    safeRequest.query(),
+                    safeRequest.offset(),
+                    safeRequest.size());
+            case "logTools.queryLogsByTraceId" -> logTools.queryLogsByTraceId(
+                    safeRequest.traceId(),
+                    safeRequest.severities(),
+                    safeRequest.query(),
+                    safeRequest.fromTime(),
+                    safeRequest.toTime(),
+                    safeRequest.offset(),
+                    safeRequest.size());
+            case "logTools.queryLogsBySpanId" -> logTools.queryLogsBySpanId(
+                    safeRequest.spanId(),
+                    safeRequest.traceId(),
+                    safeRequest.severities(),
+                    safeRequest.query(),
+                    safeRequest.fromTime(),
+                    safeRequest.toTime(),
+                    safeRequest.offset(),
+                    safeRequest.size());
             case "inspectTools.inspectService" -> inspectTools.inspectService(
                     firstNonBlank(safeRequest.serviceName(), safeRequest.service()));
             default -> throw AiPlatformApiException.badRequest("unsupported implementation: " + implementation);
@@ -111,7 +151,9 @@ public class JavaBeanToolExecutor {
             String serviceInstance,
             String srcServiceId,
             String traceId,
+            String spanId,
             String keyword,
+            String query,
             String componentType,
             String resource,
             String direction,
@@ -120,6 +162,10 @@ public class JavaBeanToolExecutor {
             String field,
             String tagsJson,
             List<MetricQueryRequest> queryRequests,
+            List<String> services,
+            List<String> serviceIds,
+            List<String> serviceInstances,
+            List<String> severities,
             String fromTime,
             String toTime,
             String queryType,
@@ -127,15 +173,17 @@ public class JavaBeanToolExecutor {
             String targetTime,
             Integer interval,
             Integer size,
+            Integer offset,
             Integer status,
             Integer rangeMinutes,
             List<TrendChartSpec> charts) {
 
         public static TestToolRequest empty() {
             return new TestToolRequest(
+                    null, null, null, null, null, null, null, null, null, null,
                     null, null, null, null, null, null, null, null,
-                    null, null, null, null, null, null, null, null,
-                    null, null, null, null, null, null, null, null, null, null);
+                    null, null, null, null,
+                    null, null, null, null, null, null, null, null, null, null, null);
         }
     }
 }

@@ -34,6 +34,7 @@ public class LogQueryService {
                 criteria.serviceId(),
                 criteria.serviceIds(),
                 criteria.serviceNames(),
+                criteria.serviceInstances(),
                 criteria.hosts(),
                 criteria.severities(),
                 criteria.query(),
@@ -57,6 +58,7 @@ public class LogQueryService {
                 criteria.serviceId(),
                 criteria.serviceIds(),
                 criteria.serviceNames(),
+                criteria.serviceInstances(),
                 criteria.hosts(),
                 criteria.severities(),
                 criteria.query(),
@@ -73,7 +75,9 @@ public class LogQueryService {
                 criteria.serviceId(),
                 criteria.serviceIds(),
                 criteria.serviceNames(),
+                criteria.serviceInstances(),
                 criteria.hosts(),
+                criteria.severities(),
                 criteria.query(),
                 criteria.fromMillis(),
                 criteria.toMillis(),
@@ -115,6 +119,19 @@ public class LogQueryService {
                         logDatabase,
                         criteria.traceId(),
                         criteria.spanId(),
+                        criteria.serviceInstances(),
+                        criteria.hosts(),
+                        criteria.severities(),
+                        criteria.query(),
+                        criteria.fromMillis(),
+                        criteria.toMillis()),
+                500);
+        List<Map<String, Object>> serviceInstanceRows = readRepository.queryRows(
+                LogQueryBuilder.distinctServiceInstancesSql(
+                        logDatabase,
+                        criteria.traceId(),
+                        criteria.spanId(),
+                        criteria.serviceIds(),
                         criteria.hosts(),
                         criteria.severities(),
                         criteria.query(),
@@ -127,6 +144,7 @@ public class LogQueryService {
                         criteria.traceId(),
                         criteria.spanId(),
                         criteria.serviceIds(),
+                        criteria.serviceInstances(),
                         criteria.severities(),
                         criteria.query(),
                         criteria.fromMillis(),
@@ -138,6 +156,7 @@ public class LogQueryService {
                         criteria.traceId(),
                         criteria.spanId(),
                         criteria.serviceIds(),
+                        criteria.serviceInstances(),
                         criteria.hosts(),
                         criteria.query(),
                         criteria.fromMillis(),
@@ -155,6 +174,14 @@ public class LogQueryService {
             item.put("id", serviceId);
             item.put("name", service);
             services.add(item);
+        }
+
+        List<String> serviceInstances = new ArrayList<>();
+        for (Map<String, Object> row : serviceInstanceRows) {
+            String serviceInstance = stringValue(row.get("service_instance"));
+            if (!serviceInstance.isEmpty()) {
+                serviceInstances.add(serviceInstance);
+            }
         }
 
         List<String> hosts = new ArrayList<>();
@@ -176,6 +203,7 @@ public class LogQueryService {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("hosts", hosts);
         data.put("services", services);
+        data.put("serviceInstances", serviceInstances);
         data.put("severities", severities);
         return data;
     }
@@ -186,6 +214,7 @@ public class LogQueryService {
         Object timeNs = row.get("time_ns");
         out.put("timestamp", formatTimestamp(logTime, timeNs));
         out.put("hostname", stringValue(row.get("hostname")));
+        out.put("serviceInstance", stringValue(row.get("service_instance")));
         out.put("service", stringValue(row.get("service")));
         out.put("serviceId", stringValue(row.get("service_id")));
         out.put("traceId", stringValue(row.get("trace_id")));
@@ -261,6 +290,7 @@ public class LogQueryService {
             String serviceId,
             List<String> serviceIds,
             List<String> serviceNames,
+            List<String> serviceInstances,
             List<String> hosts,
             List<String> severities,
             String query,

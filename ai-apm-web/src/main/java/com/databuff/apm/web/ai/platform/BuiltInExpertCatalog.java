@@ -43,6 +43,14 @@ public final class BuiltInExpertCatalog {
                         "dataTools.queryServiceAlarms", now),
                 tool("data.queryMetricData", "指标明细查询", "Query Doris metric tables by metric_core measurement, field, and tags",
                         "dataTools.queryMetricData", now),
+                tool("log.queryLogTrend", "日志量趋势", "Query log volume trend by service, service instance, severity, or keyword",
+                        "logTools.queryLogTrend", now),
+                tool("log.queryLogDetail", "日志明细查询", "Query paginated log detail lines by service, service instance, severity, or keyword",
+                        "logTools.queryLogDetail", now),
+                tool("log.queryLogsByTraceId", "Trace 日志查询", "Query paginated log lines for one traceId",
+                        "logTools.queryLogsByTraceId", now),
+                tool("log.queryLogsBySpanId", "Span 日志查询", "Query paginated log lines for one spanId",
+                        "logTools.queryLogsBySpanId", now),
                 tool("inspect.inspectService", "服务巡检", "Run threshold-free preliminary anomaly inspection for one service",
                         "inspectTools.inspectService", now),
                 tool("brain.dispatchExpertTask", "专家路由派发", "Dispatch a subtask to another digital expert asynchronously; task must faithfully restate the user's request without expanding scope",
@@ -53,7 +61,7 @@ public final class BuiltInExpertCatalog {
         Instant now = Instant.now();
         return List.of(
                 skill("skill.brain.routing", "大脑路由", "AI 大脑路由与专家派发规则", now),
-                skill("skill.data.metrics", "问数口径", "APM 指标、Trace 与告警查询规则", now),
+                skill("skill.data.metrics", "问数口径", "APM 指标、Trace、日志与告警查询规则", now),
                 skill("skill.inspection.health", "巡检流程", "服务健康巡检与异常诊断流程", now));
     }
 
@@ -74,7 +82,11 @@ public final class BuiltInExpertCatalog {
                                 "data.queryTraceListByCondition",
                                 "data.queryTraceDetail",
                                 "data.queryServiceAlarms",
-                                "data.queryMetricData"),
+                                "data.queryMetricData",
+                                "log.queryLogTrend",
+                                "log.queryLogDetail",
+                                "log.queryLogsByTraceId",
+                                "log.queryLogsBySpanId"),
                         List.of("skill.data.metrics"), now),
                 expert("inspection", "巡检", "服务健康巡检与异常诊断", ExpertType.SPECIALIST,
                         List.of(
@@ -86,6 +98,8 @@ public final class BuiltInExpertCatalog {
                                 "data.queryServiceTopology",
                                 "data.queryServiceAlarms",
                                 "data.queryMetricData",
+                                "log.queryLogDetail",
+                                "log.queryLogsByTraceId",
                                 "inspect.inspectService"),
                         List.of("skill.inspection.health"), now));
     }

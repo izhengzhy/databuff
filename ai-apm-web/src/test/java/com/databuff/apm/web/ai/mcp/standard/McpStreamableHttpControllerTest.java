@@ -59,7 +59,7 @@ class McpStreamableHttpControllerTest {
         Map<String, Object> result = (Map<String, Object>) response.get("result");
         @SuppressWarnings("unchecked")
         List<?> tools = (List<?>) result.get("tools");
-        assertThat(tools).hasSize(11);
+        assertThat(tools).hasSize(15);
     }
 
     @Test

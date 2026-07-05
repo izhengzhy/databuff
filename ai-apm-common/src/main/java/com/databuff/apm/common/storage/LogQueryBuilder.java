@@ -16,6 +16,7 @@ public final class LogQueryBuilder {
             String serviceId,
             java.util.List<String> serviceIds,
             java.util.List<String> serviceNames,
+            java.util.List<String> serviceInstances,
             java.util.List<String> hosts,
             java.util.List<String> severities,
             String query,
@@ -23,11 +24,23 @@ public final class LogQueryBuilder {
             long toMillis,
             int offset,
             int limit) {
-        StringBuilder sql = new StringBuilder(320);
-        sql.append("SELECT log_time, hostname, service, service_id, trace_id, span_id, ");
+        StringBuilder sql = new StringBuilder(384);
+        sql.append("SELECT log_time, hostname, service_instance, service, service_id, trace_id, span_id, ");
         sql.append("severity AS status, body AS message, time_ns ");
         sql.append("FROM ").append(database).append('.').append(DorisTableNames.LOG_DC_RECORD);
-        appendWhere(sql, traceId, spanId, serviceId, serviceIds, serviceNames, hosts, severities, query, fromMillis, toMillis);
+        appendWhere(
+                sql,
+                traceId,
+                spanId,
+                serviceId,
+                serviceIds,
+                serviceNames,
+                serviceInstances,
+                hosts,
+                severities,
+                query,
+                fromMillis,
+                toMillis);
         sql.append(" ORDER BY time_ns ASC");
         sql.append(" LIMIT ").append(Math.max(1, limit));
         sql.append(" OFFSET ").append(Math.max(0, offset));
@@ -41,6 +54,7 @@ public final class LogQueryBuilder {
             String serviceId,
             java.util.List<String> serviceIds,
             java.util.List<String> serviceNames,
+            java.util.List<String> serviceInstances,
             java.util.List<String> hosts,
             java.util.List<String> severities,
             String query,
@@ -48,7 +62,19 @@ public final class LogQueryBuilder {
             long toMillis) {
         StringBuilder sql = new StringBuilder(192);
         sql.append("SELECT COUNT(*) AS total_cnt FROM ").append(database).append('.').append(DorisTableNames.LOG_DC_RECORD);
-        appendWhere(sql, traceId, spanId, serviceId, serviceIds, serviceNames, hosts, severities, query, fromMillis, toMillis);
+        appendWhere(
+                sql,
+                traceId,
+                spanId,
+                serviceId,
+                serviceIds,
+                serviceNames,
+                serviceInstances,
+                hosts,
+                severities,
+                query,
+                fromMillis,
+                toMillis);
         return sql.toString();
     }
 
@@ -56,6 +82,7 @@ public final class LogQueryBuilder {
             String database,
             String traceId,
             String spanId,
+            java.util.List<String> serviceInstances,
             java.util.List<String> hosts,
             java.util.List<String> severities,
             String query,
@@ -63,9 +90,52 @@ public final class LogQueryBuilder {
             long toMillis) {
         StringBuilder sql = new StringBuilder(256);
         sql.append("SELECT DISTINCT service_id, service FROM ").append(database).append('.').append(DorisTableNames.LOG_DC_RECORD);
-        appendWhere(sql, traceId, spanId, null, java.util.List.of(), java.util.List.of(), hosts, severities, query, fromMillis, toMillis);
+        appendWhere(
+                sql,
+                traceId,
+                spanId,
+                null,
+                java.util.List.of(),
+                java.util.List.of(),
+                serviceInstances,
+                hosts,
+                severities,
+                query,
+                fromMillis,
+                toMillis);
         sql.append(" AND service_id != ''");
         sql.append(" ORDER BY service");
+        sql.append(" LIMIT 500");
+        return sql.toString();
+    }
+
+    public static String distinctServiceInstancesSql(
+            String database,
+            String traceId,
+            String spanId,
+            java.util.List<String> serviceIds,
+            java.util.List<String> hosts,
+            java.util.List<String> severities,
+            String query,
+            long fromMillis,
+            long toMillis) {
+        StringBuilder sql = new StringBuilder(256);
+        sql.append("SELECT DISTINCT service_instance FROM ").append(database).append('.').append(DorisTableNames.LOG_DC_RECORD);
+        appendWhere(
+                sql,
+                traceId,
+                spanId,
+                null,
+                serviceIds,
+                java.util.List.of(),
+                java.util.List.of(),
+                hosts,
+                severities,
+                query,
+                fromMillis,
+                toMillis);
+        sql.append(" AND service_instance != ''");
+        sql.append(" ORDER BY service_instance");
         sql.append(" LIMIT 500");
         return sql.toString();
     }
@@ -75,13 +145,26 @@ public final class LogQueryBuilder {
             String traceId,
             String spanId,
             java.util.List<String> serviceIds,
+            java.util.List<String> serviceInstances,
             java.util.List<String> severities,
             String query,
             long fromMillis,
             long toMillis) {
         StringBuilder sql = new StringBuilder(256);
         sql.append("SELECT DISTINCT hostname FROM ").append(database).append('.').append(DorisTableNames.LOG_DC_RECORD);
-        appendWhere(sql, traceId, spanId, null, serviceIds, java.util.List.of(), java.util.List.of(), severities, query, fromMillis, toMillis);
+        appendWhere(
+                sql,
+                traceId,
+                spanId,
+                null,
+                serviceIds,
+                java.util.List.of(),
+                serviceInstances,
+                java.util.List.of(),
+                severities,
+                query,
+                fromMillis,
+                toMillis);
         sql.append(" AND hostname != ''");
         sql.append(" ORDER BY hostname");
         sql.append(" LIMIT 500");
@@ -93,13 +176,26 @@ public final class LogQueryBuilder {
             String traceId,
             String spanId,
             java.util.List<String> serviceIds,
+            java.util.List<String> serviceInstances,
             java.util.List<String> hosts,
             String query,
             long fromMillis,
             long toMillis) {
         StringBuilder sql = new StringBuilder(256);
         sql.append("SELECT DISTINCT severity FROM ").append(database).append('.').append(DorisTableNames.LOG_DC_RECORD);
-        appendWhere(sql, traceId, spanId, null, serviceIds, java.util.List.of(), hosts, java.util.List.of(), query, fromMillis, toMillis);
+        appendWhere(
+                sql,
+                traceId,
+                spanId,
+                null,
+                serviceIds,
+                java.util.List.of(),
+                serviceInstances,
+                hosts,
+                java.util.List.of(),
+                query,
+                fromMillis,
+                toMillis);
         sql.append(" AND severity != ''");
         sql.append(" ORDER BY severity");
         sql.append(" LIMIT 50");
@@ -107,8 +203,8 @@ public final class LogQueryBuilder {
     }
 
     /**
-     * Time-bucket log counts grouped by severity (severity filter intentionally omitted so the
-     * portal can render a full severity breakdown chart).
+     * Time-bucket log counts grouped by severity. When {@code severities} is empty, all severities
+     * are included so the portal can render a full severity breakdown chart.
      */
     public static String trendBucketsSql(
             String database,
@@ -117,7 +213,9 @@ public final class LogQueryBuilder {
             String serviceId,
             java.util.List<String> serviceIds,
             java.util.List<String> serviceNames,
+            java.util.List<String> serviceInstances,
             java.util.List<String> hosts,
+            java.util.List<String> severities,
             String query,
             long fromMillis,
             long toMillis,
@@ -134,8 +232,9 @@ public final class LogQueryBuilder {
                 serviceId,
                 serviceIds,
                 serviceNames,
+                serviceInstances,
                 hosts,
-                java.util.List.of(),
+                severities,
                 query,
                 fromMillis,
                 toMillis);
@@ -161,6 +260,7 @@ public final class LogQueryBuilder {
             String serviceId,
             java.util.List<String> serviceIds,
             java.util.List<String> serviceNames,
+            java.util.List<String> serviceInstances,
             java.util.List<String> hosts,
             java.util.List<String> severities,
             String query,
@@ -180,6 +280,9 @@ public final class LogQueryBuilder {
             appendIn(sql, "service_id", serviceIds);
         } else if (serviceNames != null && !serviceNames.isEmpty()) {
             appendIn(sql, "service", serviceNames);
+        }
+        if (serviceInstances != null && !serviceInstances.isEmpty()) {
+            appendIn(sql, "service_instance", serviceInstances);
         }
         if (hosts != null && !hosts.isEmpty()) {
             appendIn(sql, "hostname", hosts);

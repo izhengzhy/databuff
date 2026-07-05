@@ -26,7 +26,14 @@ export default class TabAlarm extends Vue {
 
   @Watch('current', { immediate: true })
   private onCurrentChange (val: any, oldVal: any) {
-    if (val && val?.serviceId !== oldVal?.serviceId && this.isMounted) {
+    if (
+      val
+      && (
+        val?.serviceInstance !== oldVal?.serviceInstance
+        || val?.serviceId !== oldVal?.serviceId
+      )
+      && this.isMounted
+    ) {
       this.fetchAllData();
     }
   }
@@ -43,15 +50,22 @@ export default class TabAlarm extends Vue {
   }
 
   get tableQueryParams () {
-    return {
+    const serviceId = this.current.serviceId || decodeURIComponent(String(this.$route.query.sid));
+    const serviceInstance = this.current.serviceInstance || decodeURIComponent(String(this.$route.query.si));
+    const params: Record<string, any> = {
       ...this.timeParams,
       searchType: 'service',
-      serviceIds: [this.current.serviceId || decodeURIComponent(String(this.$route.query.sid))],
+      serviceIds: [serviceId],
+    };
+    if (serviceInstance) {
+      params.serviceInstances = [serviceInstance];
     }
+    return params;
   }
 
   private columnConfig: any = [
     { field: '_timestamp', prop: '_timestamp', label: i18n.t('modules.views.appMonitor.errorDetail.s_13f7745f') as string, labelKey: 'modules.views.appMonitor.errorDetail.s_13f7745f', unit: 'time', minWidth: 120 },
+    { field: 'serviceInstance', prop: 'serviceInstance', label: i18n.t('modules.views.alarmCenter.alarm.s_71673bab') as string, labelKey: 'modules.utils.filters.s_71673bab', minWidth: 120, showOverflowTooltip: true },
     { field: 'hostname', prop: 'hostname', label: i18n.t('modules.views.alarmCenter.alarm.s_65227369') as string, labelKey: 'modules.views.alarmCenter.alarm.s_65227369', minWidth: 80 },
     { field: 'status', prop: 'status', label: i18n.t('modules.views.alarmCenter.eventDetail.s_3fea7ca7') as string, labelKey: 'modules.views.aiPlatform.experts.s_3fea7ca7', minWidth: 80 },
     { field: 'message', prop: 'message', label: i18n.t('modules.views.alarmCenter.eventDetail.s_2d711b09') as string, labelKey: 'modules.views.alarmCenter.eventDetail.s_2d711b09', minWidth: 400 },

@@ -36,7 +36,6 @@
             placeholder="Span ID"
             class="mr-10 trace-input" />
         </div>
-        <el-button type="text" size="small" @click="openLogConfig">采集配置</el-button>
       </div>
 
       <chart-group
@@ -82,6 +81,28 @@
                         :key="item.id"
                         :label="item.id"
                         class="filter-checkbox">{{ item.name }}</el-checkbox>
+                    </el-checkbox-group>
+                  </simplebar>
+                  <div v-else class="describe filter-empty">{{ $t('modules.components.charts.s_21efd88b') }}</div>
+                </el-collapse-item>
+
+                <el-collapse-item name="serviceInstance" :title="$t('modules.views.alarmCenter.alarm.s_71673bab')">
+                  <template slot="title">
+                    <div class="flex-h-jc">
+                      <span>{{ $t('modules.views.alarmCenter.alarm.s_71673bab') }}</span>
+                      <span
+                        v-show="selectedServiceInstances.length"
+                        @click.stop="clearFilter('serviceInstance')"
+                        class="filter-clear-btn db-icon-close cp" />
+                    </div>
+                  </template>
+                  <simplebar v-if="serviceInstanceOptions.length" style="max-height: 200px;">
+                    <el-checkbox-group v-model="selectedServiceInstances" @change="onFilterChange">
+                      <el-checkbox
+                        v-for="instance in serviceInstanceOptions"
+                        :key="instance"
+                        :label="instance"
+                        class="filter-checkbox">{{ instance }}</el-checkbox>
                     </el-checkbox-group>
                   </simplebar>
                   <div v-else class="describe filter-empty">{{ $t('modules.components.charts.s_21efd88b') }}</div>
@@ -213,9 +234,11 @@ export default class LogsAnalysis extends Vue {
   private spanIdText = '';
   private showSpanInput = false;
   private selectedServiceIds: string[] = [];
+  private selectedServiceInstances: string[] = [];
   private selectedHosts: string[] = [];
   private selectedSeverities: string[] = [];
   private serviceOptions: Array<{ id: string; name: string }> = [];
+  private serviceInstanceOptions: string[] = [];
   private hostOptions: string[] = [];
   private severityOptions: string[] = [];
   private timeParams = { fromTime: '', toTime: '', interval: 3600 };
@@ -226,9 +249,10 @@ export default class LogsAnalysis extends Vue {
   private chartQueryLoading = false;
   private tableReady = false;
   private collapsed = false;
-  private activeFilterNames = ['service', 'host', 'severity'];
+  private activeFilterNames = ['service', 'serviceInstance', 'host', 'severity'];
   private refreshToken = 0;
   private refreshRetryTimer: number | null = null;
+  private syncReloadSeq = 0;
 
   private static readonly ROUTE_PRESERVE_KEYS = ['__ps', 'durationRange', 'sf', 'st', 'fromTime', 'toTime'];
 
@@ -236,6 +260,7 @@ export default class LogsAnalysis extends Vue {
     { field: '_timestamp', prop: '_timestamp', label: i18n.t('modules.views.appMonitor.errorDetail.s_13f7745f') as string, labelKey: 'modules.views.appMonitor.errorDetail.s_13f7745f', unit: 'time', minWidth: 150 },
     { field: 'status', prop: 'status', label: i18n.t('modules.views.alarmCenter.eventDetail.s_3fea7ca7') as string, labelKey: 'modules.views.alarmCenter.eventDetail.s_3fea7ca7', slot: 'status', minWidth: 88 },
     { field: 'service', prop: 'service', label: i18n.t('modules.views.alarmCenter.alarm.s_47d68cd0') as string, labelKey: 'modules.views.alarmCenter.alarm.s_47d68cd0', minWidth: 120 },
+    { field: 'serviceInstance', prop: 'serviceInstance', label: i18n.t('modules.views.alarmCenter.alarm.s_71673bab') as string, labelKey: 'modules.utils.filters.s_71673bab', minWidth: 140, showOverflowTooltip: true },
     { field: 'hostname', prop: 'hostname', label: i18n.t('modules.views.alarmCenter.alarm.s_65227369') as string, labelKey: 'modules.views.alarmCenter.alarm.s_65227369', minWidth: 100 },
     { field: 'message', prop: 'message', label: i18n.t('modules.views.alarmCenter.eventDetail.s_2d711b09') as string, labelKey: 'modules.views.alarmCenter.eventDetail.s_2d711b09', minWidth: 320, showOverflowTooltip: true },
   ];
@@ -263,6 +288,7 @@ export default class LogsAnalysis extends Vue {
       traceId: this.normalizeInputValue(this.traceIdText),
       spanId: this.normalizeInputValue(this.spanIdText),
       serviceIds: [...this.selectedServiceIds],
+      serviceInstances: [...this.selectedServiceInstances],
       hosts: [...this.selectedHosts],
       severities: [...this.selectedSeverities],
     };
@@ -285,7 +311,7 @@ export default class LogsAnalysis extends Vue {
     this.syncTimeAndReload();
   }
 
-  @Watch('globalTimeInited')
+  @Watch('globalTimeInited', { immediate: true })
   private watchGlobalTimeInited (val: boolean) {
     if (val) {
       this.syncTimeAndReload();
@@ -405,9 +431,6 @@ export default class LogsAnalysis extends Vue {
 
   private mounted () {
     this.$eventBus.$on('GlobalRefresh', this, this.syncTimeAndReload);
-    if (this.globalTimeInited) {
-      this.syncTimeAndReload();
-    }
   }
 
   private beforeDestroy () {
@@ -435,6 +458,9 @@ export default class LogsAnalysis extends Vue {
     }
     if (routeQuery.serviceIds) {
       this.selectedServiceIds = String(routeQuery.serviceIds).split(',').map((s) => decodeURIComponent(s)).filter(Boolean);
+    }
+    if (routeQuery.serviceInstances) {
+      this.selectedServiceInstances = String(routeQuery.serviceInstances).split(',').map((s) => decodeURIComponent(s)).filter(Boolean);
     }
     if (routeQuery.hosts) {
       this.selectedHosts = String(routeQuery.hosts).split(',').map((s) => decodeURIComponent(s)).filter(Boolean);
@@ -468,6 +494,7 @@ export default class LogsAnalysis extends Vue {
       traceId: this.normalizeInputValue(this.traceIdText),
       spanId: this.normalizeInputValue(this.spanIdText),
       serviceIds: [...this.selectedServiceIds],
+      serviceInstances: [...this.selectedServiceInstances],
       hosts: [...this.selectedHosts],
       severities: [...this.selectedSeverities],
     };
@@ -508,6 +535,9 @@ export default class LogsAnalysis extends Vue {
     if (this.selectedServiceIds.length) {
       nextQuery.serviceIds = this.selectedServiceIds.map(encodeURIComponent).join(',');
     }
+    if (this.selectedServiceInstances.length) {
+      nextQuery.serviceInstances = this.selectedServiceInstances.map(encodeURIComponent).join(',');
+    }
     if (this.selectedHosts.length) {
       nextQuery.hosts = this.selectedHosts.map(encodeURIComponent).join(',');
     }
@@ -526,15 +556,30 @@ export default class LogsAnalysis extends Vue {
     if (!this.globalTimeInited) {
       return;
     }
+    const seq = ++this.syncReloadSeq;
     this.listScope = 'default';
     this.showList = false;
     this.resetTimeParams();
     this.chartInitLoading = true;
-    await this.loadConditions();
-    await this.$nextTick();
-    await this.$refs.chartGroup?.getData();
-    this.chartInitLoading = false;
-    await this.restoreChartSelectionFromRoute();
+    try {
+      await this.loadConditions();
+      if (seq !== this.syncReloadSeq) {
+        return;
+      }
+      await this.$nextTick();
+      if (seq !== this.syncReloadSeq) {
+        return;
+      }
+      await this.$refs.chartGroup?.getData();
+      if (seq !== this.syncReloadSeq) {
+        return;
+      }
+      await this.restoreChartSelectionFromRoute();
+    } finally {
+      if (seq === this.syncReloadSeq) {
+        this.chartInitLoading = false;
+      }
+    }
   }
 
   private async reloadChartAndList () {
@@ -566,6 +611,7 @@ export default class LogsAnalysis extends Vue {
       id: item.id || item.serviceId || item.name,
       name: item.name || item.service || item.id,
     }));
+    this.serviceInstanceOptions = data.serviceInstances || [];
     this.hostOptions = data.hosts || [];
     this.severityOptions = sortSeverities(data.severities || []);
     this.pruneSelectedFilters();
@@ -574,6 +620,8 @@ export default class LogsAnalysis extends Vue {
   private pruneSelectedFilters () {
     const serviceIdSet = new Set(this.serviceOptions.map((item) => item.id));
     this.selectedServiceIds = this.selectedServiceIds.filter((id) => serviceIdSet.has(id));
+    const serviceInstanceSet = new Set(this.serviceInstanceOptions);
+    this.selectedServiceInstances = this.selectedServiceInstances.filter((instance) => serviceInstanceSet.has(instance));
     const hostSet = new Set(this.hostOptions);
     this.selectedHosts = this.selectedHosts.filter((host) => hostSet.has(host));
     const severitySet = new Set(this.severityOptions);
@@ -604,6 +652,9 @@ export default class LogsAnalysis extends Vue {
   private async onFilterChange () {
     await this.loadConditions();
     if (this.listScope === 'minute' && this.showList) {
+      this.writeRoute();
+      await this.$nextTick();
+      await this.$refs.chartGroup?.getData();
       this.requestTableRefresh();
       return;
     }
@@ -614,6 +665,8 @@ export default class LogsAnalysis extends Vue {
   private clearFilter (type: string) {
     if (type === 'service') {
       this.selectedServiceIds = [];
+    } else if (type === 'serviceInstance') {
+      this.selectedServiceInstances = [];
     } else if (type === 'host') {
       this.selectedHosts = [];
     } else if (type === 'severity') {
@@ -746,10 +799,6 @@ export default class LogsAnalysis extends Vue {
         spid: row.spanId || undefined,
       },
     });
-  }
-
-  private openLogConfig () {
-    this.$router.push({ path: '/config/install', query: { type: 'log' } });
   }
 }
 </script>

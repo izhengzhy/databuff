@@ -1,0 +1,14 @@
+{
+  "status": 200,
+  "message": "success",
+  "data": {
+    "$minLength": 1,
+    "$eachNonNullItem": {
+      "service": "service-a",
+      "hostname": "demo-host-a",
+      "status": "INFO"
+    }
+  },
+  "total": {"$range": [54, 66]},
+  "offset": 0
+}

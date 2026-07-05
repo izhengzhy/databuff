@@ -41,12 +41,13 @@ http://<your-databuff-host>:<port>/mcp
 
 将 `integrations/agent/mcp/claude-desktop-config.example.json` 合并进 `claude_desktop_config.json` 的 `mcpServers` 段，同样使用 `/mcp` URL。在 Claude Desktop **Settings → Developer** 中确认 `databuff-apm` 出现在 MCP 服务列表。
 
-### 暴露的工具（11 个）
+### 暴露的工具（15 个）
 
 | 类别 | MCP 工具名 |
 |------|------------|
 | 通用 | `getCurrentTimeRange`、`getTimeRangeAroundTime`、`drawTrendCharts` |
 | 问数 | `queryServicesAll`、`queryServicesByServiceType`、`queryServiceTopology`、`queryTraceListByCondition`、`queryTraceDetail`、`queryServiceAlarms`、`queryMetricData` |
+| 日志 | `queryLogTrend`、`queryLogDetail`、`queryLogsByTraceId`、`queryLogsBySpanId` |
 | 巡检 | `inspectService` |
 
 旧版仅支持 HTTP+SSE 握手的客户端可尝试 `http://<host>:<port>/sse`（可选实现，非文档主推路径）。
