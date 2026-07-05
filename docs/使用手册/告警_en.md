@@ -6,19 +6,36 @@
 
 # User Guide · Alerting
 
-## What It Is
-
-**Proactive problem detection** — don't wait for user complaints; record anomalies when metrics go wrong.
+Automatically record and fire alerts when metrics go wrong.
 
 ---
 
-## What Alerting Does
+## Capabilities
 
-| Capability | Value |
-|------------|-------|
-| **Threshold alerts** | Trigger when error rate or latency crosses the line |
+| Capability | Description |
+|------------|-------------|
+| **Threshold alerts** | Fire when error rate, latency, throughput, etc. cross the line |
 | **Change detection** | Catch sudden metric shifts |
-| **Event records** | Keep trigger, recovery, and handling context |
+| **Scheduled evaluation** | Runs every minute, looking back 5 minutes |
+| **Event records** | Track trigger, recovery, handling (auto-resolved when metrics recover) |
+| **AI analysis** | Ask for root cause directly from alert details |
+
+Evaluation mechanics: [Architecture · Alerting](../架构设计/告警_en.md).
+
+---
+
+## Menu Paths
+
+| Feature | Path |
+|---------|------|
+| Detection rules | Configuration → Alert Config → Detection Rules |
+| Preset rules | Detection Rules → Preset Rules (one-click copy) |
+| Convergence policy | Configuration → Alert Config → Convergence |
+| Silence schedule | Configuration → Alert Config → Silence |
+| Alert list | Alert Center → Alert List |
+| Problem list | Alert Center → Problems (converged incident view) |
+
+> External notifications (Webhook, email, etc.) are not supported yet. See [Roadmap](../Roadmap_en.md) — *Stronger alerting → notification integrations*.
 
 ---
 
@@ -26,32 +43,67 @@
 
 ```mermaid
 flowchart LR
-  A["Create rule"] --> B["Auto evaluation"]
+  A["Create rule"] --> B["Scheduled eval"]
   B --> C["Alert fires"]
-  C --> D["View events"]
-  D --> E["AI-assisted analysis"]
+  C --> D["Alert Center"]
+  D --> E["AI analysis"]
 ```
 
-### 1. Create Rules
+### 1. Create a Detection Rule
 
-Alerts → Rule Management → pick metric, set threshold, define service scope.
+**Configuration → Alert Config → Detection Rules → New Rule**
 
-### 2. View Events
+Or copy a template from **Preset Rules** and adjust.
 
-Alerts → Event List — see trigger time, service, metric, and current status.
+Configurable fields:
 
-### 3. Analyze Alerts
+- **Scope**: service or instance
+- **Metrics**: error rate, avg latency, P99 latency, request count, etc.
+- **Condition**: threshold (above/below) or change detection
+- **Severity**: Info / Warning / Critical
+- **Evaluation**: follows platform default (every minute)
 
-- View alert details in the platform
-- Jump to AI Platform and ask: "What caused this alert?"
-- Alert auto-recovers after the issue is resolved
+### 2. View and Handle Alerts
+
+**Alert Center → Alert List**
+
+Filter by service, severity, status. Click an alert for details:
+
+- Abnormal metric trends
+- Related traces and logs
+- (Optional) AI root cause analysis, or **Alert Center → Manual Root Cause Analysis** for a time-range investigation
+- Handling log
+
+Alerts auto-resolve when metrics recover.
+
+### 3. Alert List vs Problem List
+
+- **Alert List**: individual rule-triggered events — handle one by one
+- **Problem List**: converged incident view — see blast radius and recovery efficiency
+
+### 4. Advanced Config
+
+| Setting | Purpose |
+|---------|---------|
+| **Convergence** | Merge similar alerts to reduce list noise |
+| **Silence** | Suppress alert evaluation during maintenance windows |
 
 ---
 
 ## Working with AI
 
-An alert is not just a log line — after it fires you can ask AI directly:
+From alert details or AI Platform:
 
 > "order-service error rate alert — help me analyze the cause"
 
-AI queries metrics, traces, and topology automatically and delivers a diagnosis — **from alert to root cause in one step**.
+AI queries metrics, traces, and topology automatically. For Agent integration, use MCP tool `queryServiceAlarms` — see [Agent Integration](Agent集成_en.md).
+
+---
+
+## FAQ
+
+| Symptom | Action |
+|---------|--------|
+| No alerts after creating rules | Ensure services have metrics; evaluation runs every minute; verify rule scope (see [Docker](../运维参考/Docker运维_en.md#common-issues) / [K8s](../运维参考/K8s运维_en.md#common-issues) ops troubleshooting) |
+| No alerts after Demo install | Manually enable a rule in Preset Rules first; install demo app for traffic; wait 1–2 evaluation cycles |
+| Too many alerts | Tune thresholds; add convergence or silence policies |

@@ -6,22 +6,45 @@
 
 # Offline Installation
 
-Deploy the full Docker stack in air-gapped or restricted networks using the all-in-one offline bundle.
+When the image registry is unreachable, download the offline bundle for your architecture and install on the target machine — **no network required**.
 
-## Obtain the Bundle
+## Prerequisites
 
-Download the bundle for your architecture from [GitHub Releases](https://github.com/databufflabs/databuff/releases) or an internal mirror:
+- Docker
+- Docker Compose
+- root privileges (default install path `/opt/databuff-ai-apm`)
 
-- `databuff-ai-apm-offline-<version>-amd64.tar.gz`
-- `databuff-ai-apm-offline-<version>-arm64.tar.gz`
+## Download the Bundle
 
-Each bundle includes deployment scripts, `ai-apm-stack` app images, and `doris-stack` infra images. Verify checksum files before use.
+Download the all-in-one offline bundle matching your CPU architecture. Latest version:
+
+```bash
+curl -fsSL https://openocta.com/pkg/databuff/VERSION
+```
+
+| Architecture | Bundle filename |
+|--------------|-----------------|
+| amd64 | `databuff-ai-apm-offline-<version>-amd64.tar.gz` |
+| arm64 | `databuff-ai-apm-offline-<version>-arm64.tar.gz` |
+
+Download URLs (replace `<version>` with the release, e.g. `0.1.1`):
+
+- amd64: `https://openocta.com/pkg/databuff/<version>/offline/databuff-ai-apm-offline-<version>-amd64.tar.gz`
+- arm64: `https://openocta.com/pkg/databuff/<version>/offline/databuff-ai-apm-offline-<version>-arm64.tar.gz`
+
+You can also pick a version and copy the download link on the [install page](https://databuff.ai/#install) under **Docker → Offline Install**.
+
+Each bundle includes deployment scripts, `ai-apm-stack` app images, and `doris-stack` infra images.
 
 ## Install
 
+Example for `0.1.1` / `amd64` (download on a connected machine, then copy the bundle to the target):
+
 ```bash
-tar -xzf databuff-ai-apm-offline-0.1.1-amd64.tar.gz
+tar -zxvf databuff-ai-apm-offline-0.1.1-amd64.tar.gz
 cd databuff-ai-apm-offline-0.1.1-amd64
+
+# Install platform
 sudo ./install.sh
 ```
 
@@ -32,6 +55,12 @@ sudo ./install.sh
 3. Run `start.sh` (set `SKIP_START=1` to install without starting)
 
 The terminal prints Web UI URL, default credentials, and OTLP endpoints when done.
+
+### Install Demo (Optional)
+
+```bash
+sudo ./install_demo.sh
+```
 
 ## Environment Variables
 

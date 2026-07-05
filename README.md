@@ -18,7 +18,7 @@
   <a href="#交流群">交流群</a>
 </p>
 <p align="center">
-  在线演示 Demo，需要加入下方交流群获取账号密码
+  在线演示 <a href="https://demo.databuff.ai">demo.databuff.ai</a> · 账号 <code>admin</code> / <code>Databuff@123</code> · 亦可扫码加群交流
 </p>
 
 </div>
@@ -32,18 +32,20 @@
 <br/>
 
 ---
-DataBuff 是一款面向AI智能体、微服务、云原生场景的** AI原生开源 APM 软件**，以 Opentelemetry 标准接入，提供**全链路监控**、服务拓扑、RED 指标、智能体监控 与 AI 工作台。
+DataBuff 是一款面向 AI 智能体、微服务、云原生场景的 **AI 原生开源 APM 软件**，以 OpenTelemetry 标准接入，提供**全链路监控**、服务拓扑、RED 指标、智能体监控与 AI 工作台。
 
 ## 功能特性
 
 - 🤖 **AI 原生，不是外挂聊天框** — LLM 直接查询 Trace、指标、拓扑、告警，回答基于真实数据
 - 🧠 **多智能体协同** — AI 大脑统一编排，智能问数 / 巡检专家各司其职，复杂问题并行协作
-- 🎯 **AI 应用监控** — LLM 调用链 · Token 分析 · Agent 拓扑 · 技能/工具/模型调用追踪 —— 智能体时代独有观测层（Roadmap）
-- ⚡ **eBPF APM** — 采用eBPF 实现内核级无侵入采集，零修改代码获取服务调用链与性能数据，降低 Agent 部署阻力，覆盖更多运行环境（Roadmap）
+- 🎯 **AI 应用监控**（Roadmap）— LLM 调用链 · Token 分析 · Agent 拓扑 · 技能/工具/模型调用追踪
+- ⚡ **eBPF APM**（Roadmap）— 内核级无侵入采集，零修改代码获取调用链与性能数据
 - 📊 **OpenTelemetry APM 底座** — OTLP 标准接入，覆盖故障排查、链路追踪、服务指标、服务拓扑
+- 🚨 **告警闭环** — 阈值与突变检测、定时评估、告警事件记录
 - 🔧 **Skill + Tool 可扩展** — 内置 Skill 可覆盖，支持自定义数字专家，无需改核心代码
 - 🔌 **MCP 双向开放** — 平台暴露 MCP 供 Cursor / Claude 等调用；也可接入外部 MCP（Prometheus、SkyWalking 等）
 - 🐳 **极简三组件架构** — Ingest + Doris + Web，Docker / K8s 一条命令跑起来
+- 🌐 **自带模型** — OpenAI 兼容 + Anthropic；支持 Kimi、DeepSeek、GLM、Ollama 等
 ---
 
 <h2 align="center" id="效果展示">效果展示</h2>
@@ -121,6 +123,23 @@ curl -fsSL https://databuff.ai/databuff/ai-apm-demo-install.sh | bash
 ```
 
 <details>
+<summary><b>离线安装</b></summary>
+
+无法访问镜像仓库时，按架构下载离线包后在目标机器安装。版本与下载链接见 [官网安装页](https://databuff.ai/#install) **Docker → 离线安装**，或：
+
+`https://openocta.com/pkg/databuff/<version>/offline/databuff-ai-apm-offline-<version>-<arch>.tar.gz`
+
+```bash
+tar -zxvf databuff-ai-apm-offline-<version>-<arch>.tar.gz
+cd databuff-ai-apm-offline-<version>-<arch>
+
+# 安装平台
+sudo ./install.sh
+```
+
+</details>
+
+<details>
 <summary><b>Kubernetes 安装</b></summary>
 
 依赖 **kubectl** 与可用 K8s 集群；脚本通过 K8s manifest 直装平台。
@@ -148,7 +167,7 @@ curl -fsSL https://databuff.ai/databuff/ai-apm-k8s-download-images.sh | bash
 </details>
 
 <p align="center">
-  访问 <code>http://YOUR_HOST:27403</code> · 模型配置填入 API Key 启用 AI
+  访问 <code>http://YOUR_HOST:27403</code> · 默认登录 <code>admin</code> / <code>Databuff@123</code> · 模型配置填入 API Key 启用 AI
   <br/>
 </p>
 

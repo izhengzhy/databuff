@@ -20,22 +20,20 @@
   <a href="#community">Community</a>
 </p>
 <p align="center">
-  <a href="https://demo.databuff.ai">https://demo.databuff.ai</a>，Account: Admin，Password: Databuff@123
+  <a href="https://demo.databuff.ai">https://demo.databuff.ai</a> · Account: <code>admin</code> / <code>Databuff@123</code>
 </p>
-<p >
 <h2>Features</h2>
 
 - 🤖 **AI-native, not a bolt-on chat box** — LLM queries traces, metrics, topology, and alerts directly from real data
 - 🧠 **Multi-agent collaboration** — AI Brain orchestrates query and inspection experts; complex tasks run in parallel
-- 🎯 **AI application observability** — LLM call chains · token analytics · agent topology · skill/tool/model invocation tracing — observability built for the agent era
-- ⚡ **eBPF APM** — kernel-level, non-intrusive collection — service traces and performance without code changes, lower agent deployment friction, broader runtime coverage
+- 🎯 **AI application observability** (Roadmap) — LLM call chains · token analytics · agent topology · skill/tool/model tracing
+- ⚡ **eBPF APM** (Roadmap) — kernel-level, non-intrusive collection without code changes
 - 📊 **OpenTelemetry APM foundation** — OTLP ingestion with troubleshooting, tracing, service metrics, and topology
 - 🚨 **Alerting loop** — threshold and change detection, scheduled evaluation, alert event history
 - 🔧 **Skill + Tool extensibility** — override built-in skills, add custom digital experts without touching core code
 - 🔌 **MCP both ways** — expose platform capabilities to Cursor / Claude; ingest external MCPs (Prometheus, SkyWalking, etc.)
 - 🐳 **Minimal 3-component stack** — Ingest + Doris + Web; one Docker / K8s command, no middleware sprawl
 - 🌐 **Bring your own model** — OpenAI-compatible + Anthropic Messages; Kimi, DeepSeek, GLM, Bailian, Qianfan, Ollama, and more
-</p>
 </div>
 
 <br/>
@@ -140,6 +138,23 @@ curl -fsSL https://databuff.ai/databuff/ai-apm-install.sh | bash
 ```bash
 curl -fsSL https://databuff.ai/databuff/ai-apm-demo-install.sh | bash
 ```
+
+<details>
+<summary><b>Offline Install</b></summary>
+
+When the registry is unreachable, download the bundle for your architecture and install on the target machine. Pick a version on the [install page](https://databuff.ai/#install) under **Docker → Offline Install**, or use:
+
+`https://openocta.com/pkg/databuff/<version>/offline/databuff-ai-apm-offline-<version>-<arch>.tar.gz`
+
+```bash
+tar -zxvf databuff-ai-apm-offline-<version>-<arch>.tar.gz
+cd databuff-ai-apm-offline-<version>-<arch>
+
+# Install platform
+sudo ./install.sh
+```
+
+</details>
 
 <details>
 <summary><b>Kubernetes</b></summary>

@@ -35,12 +35,12 @@ Online docs: [databuff.ai/docs](https://databuff.ai/docs/en/)
 
 ### User Guide
 
+- [Alerting](使用手册/告警_en.md) (recommended after install)
+- [Application Performance](使用手册/应用性能_en.md)
 - [AI Platform](使用手册/AI平台_en.md)
+- [Agent Integration](使用手册/Agent集成_en.md)
 - [Custom Digital Experts](使用手册/自定义数字专家_en.md)
 - [External MCP Integration](使用手册/外部MCP集成_en.md)
-- [Application Performance](使用手册/应用性能_en.md)
-- [Alerting](使用手册/告警_en.md)
-- [Agent Integration](使用手册/Agent集成_en.md)
 
 ### Operations
 

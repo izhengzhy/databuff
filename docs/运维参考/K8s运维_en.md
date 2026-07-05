@@ -40,9 +40,10 @@ cd databuff-ai-apm-k8s-<version>
 | Service | In-cluster port | NodePort (node access) |
 |---------|-----------------|-------------------------|
 | Web | 27403 | **32703** |
+| Ingest (OTLP gRPC) | 4317 | **30417** |
 | Ingest (OTLP HTTP) | 4318 | **30418** |
 
-Example: Web UI at `http://<node-ip>:32703`; OTLP HTTP at `http://<node-ip>:30418`.
+Example: Web UI at `http://<node-ip>:32703`; external OTLP HTTP at `http://<node-ip>:30418` (gRPC at `30417`). In-cluster Service `ai-apm-ingest`: `http://ai-apm-ingest:4318`.
 
 Default login (same as Docker install):
 
@@ -82,6 +83,26 @@ A single replica runs in standalone mode. With multiple replicas and cluster coo
 kubectl scale deploy/ai-apm-ingest -n databuff --replicas=4
 kubectl rollout status deploy/ai-apm-ingest -n databuff
 ```
+
+## Health Checks and Logs
+
+| Service | Probe |
+|---------|-------|
+| Web | `kubectl exec -n databuff deploy/ai-apm-web -- wget -qO- http://127.0.0.1:27403/health` |
+| Ingest | `kubectl exec -n databuff deploy/ai-apm-ingest -- wget -qO- http://127.0.0.1:4318/health` |
+
+```bash
+kubectl logs -n databuff deploy/ai-apm-ingest -f
+kubectl logs -n databuff deploy/ai-apm-web -f
+```
+
+## Common Issues
+
+| Symptom | Action |
+|---------|--------|
+| Empty service list | Point Agent to `http://ai-apm-ingest:4318` (NodePort outside cluster); see [OTLP Ingestion](../opentelemetry-otlp-ingestion_en.md) |
+| No alerts after creating rules | Ensure services have metrics; evaluation runs every minute; verify rule scope |
+| Pod fails to start | `kubectl describe pod -n databuff <pod>` for Events; check node memory |
 
 ## Notes
 

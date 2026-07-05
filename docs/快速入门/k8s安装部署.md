@@ -19,7 +19,26 @@
 curl -fsSL https://databuff.ai/databuff/ai-apm-k8s-install.sh | bash
 ```
 
-安装完成后，终端会输出 Web UI、命名空间和访问方式。
+安装完成后，终端会输出 Web UI、命名空间和访问方式。默认命名空间 `databuff`：
+
+| 用途 | 地址 |
+|------|------|
+| Web UI | `http://<节点IP>:32703` |
+| 默认账号 | `admin` / `Databuff@123` |
+| OTLP gRPC | `<节点IP>:30417` |
+| OTLP HTTP | `http://<节点IP>:30418` |
+
+集群内 Agent 上报：`http://ai-apm-ingest:4318`（gRPC `ai-apm-ingest:4317`）。NodePort 供集群外使用。自有应用接入见 [OpenTelemetry OTLP 接入](../opentelemetry-otlp-ingestion.md)。
+
+### 离线镜像（可选）
+
+节点无法拉取镜像时：
+
+```bash
+curl -fsSL https://databuff.ai/databuff/ai-apm-k8s-download-images.sh | bash
+```
+
+详见 [K8s 运维参考](../运维参考/K8s运维.md) 离线镜像一节。
 
 指定版本安装：
 
@@ -39,12 +58,14 @@ APM_VERSION=0.1.1 curl -fsSL https://databuff.ai/databuff/ai-apm-k8s-install.sh 
 curl -fsSL https://databuff.ai/databuff/ai-apm-demo-k8s-install.sh | bash
 ```
 
-## 4. 启用 AI
+## 4. 安装后验证
 
-配置管理 → 模型配置，输入 API Key 即可：
+1. 打开 `http://<节点IP>:32703`，用默认账号登录
+2. **应用性能 → 服务列表**，确认 Demo 服务有数据
+3. **配置管理 → 告警配置 → 检测规则 → 推荐规则**，为 Demo 服务开启一条规则；等待 1–2 分钟后在 **告警中心 → 告警列表** 确认事件
+4. **配置管理 → 告警配置 → 检测规则**，为关键服务新建自定义规则（详见 [告警使用手册](../使用手册/告警.md)）
+5. （可选）**配置管理 → 模型配置**，输入 API Key 启用 AI：
 
 ![配置 API Key](../images/set-api-key.png)
 
-现在可以直接问：
-
-> 哪些服务错误率最高？
+AI 示例问句：「查询最近1小时的服务列表」

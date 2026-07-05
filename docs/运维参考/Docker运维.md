@@ -32,13 +32,6 @@ cd /opt/databuff-ai-apm
 ./stop.sh     # 停止全部容器
 ```
 
-等价的 Compose 命令：
-
-```bash
-docker compose up -d
-docker compose down
-```
-
 重启单服务示例：
 
 ```bash
@@ -86,6 +79,8 @@ docker compose logs ai-apm-doris-fe ai-apm-doris-be
 | Doris 启动失败 / BE OOM | 确认宿主机内存；FE 已在 compose 中将 `-Xmx` patch 为 1200m |
 | `vm.max_map_count` 过低 | `start.sh` 会尝试调至 2000000；Linux 可写入 `sysctl.conf` 持久化 |
 | 端口被占用 | 修改 `docker-compose.yml` 中 ports 映射或释放 27403 / 4317 / 4318 |
+| 服务列表为空 | 确认 Agent/SDK 指向 `4317`/`4318`；见 [OTLP 接入](../opentelemetry-otlp-ingestion.md) |
+| 规则创建后无告警 | 确认服务已有指标；评估每分钟执行一次；检查规则监控对象是否匹配 |
 | 需重置表结构 | 安装目录执行 `./reset-table.sh`（会清空 Doris 业务表，慎用） |
 
 数据持久化在 `data/`。停止服务不会删除数据；彻底清理见 [升级与卸载](升级与卸载.md)。

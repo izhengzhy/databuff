@@ -32,13 +32,6 @@ cd /opt/databuff-ai-apm
 ./stop.sh     # Stops all containers
 ```
 
-Equivalent Compose commands:
-
-```bash
-docker compose up -d
-docker compose down
-```
-
 Restart a single service:
 
 ```bash
@@ -86,6 +79,8 @@ If readiness times out, `start.sh` suggests checking ingest / web logs.
 | Doris fails / BE OOM | Ensure enough host memory; FE `-Xmx` is patched to 1200m in compose |
 | Low `vm.max_map_count` | `start.sh` tries 2000000; persist via `sysctl` on Linux |
 | Port in use | Change `ports` in `docker-compose.yml` or free 27403 / 4317 / 4318 |
+| Empty service list | Point Agent/SDK to `4317`/`4318`; see [OTLP Ingestion](../opentelemetry-otlp-ingestion_en.md) |
+| No alerts after creating rules | Ensure services have metrics; evaluation runs every minute; verify rule scope matches services |
 | Reset schema | Run `./reset-table.sh` in the install dir (drops business tables — use with care) |
 
 Data lives under `data/`. Stopping services does not remove data; see [Upgrade and Uninstall](升级与卸载_en.md) for full removal.

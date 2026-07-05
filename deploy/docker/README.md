@@ -31,15 +31,18 @@ curl -fsSL https://databuff.ai/databuff/ai-apm-install.sh | bash
 
 ## 离线安装（一体化大包）
 
-下载对应架构的离线包，解压后执行 `install.sh`，**全程无需联网**：
+无法访问镜像仓库时，按架构从 `${APM_PKG_BASE}/<version>/offline/` 下载离线包（对外地址示例：`https://openocta.com/pkg/databuff/0.1.1/offline/`），解压后执行 `install.sh`，**全程无需联网**：
 
 ```bash
-tar -xzf databuff-ai-apm-offline-0.1.1-amd64.tar.gz
+tar -zxvf databuff-ai-apm-offline-0.1.1-amd64.tar.gz
 cd databuff-ai-apm-offline-0.1.1-amd64
+
+# 安装平台
 sudo ./install.sh
+sudo ./install_demo.sh    # 可选：离线安装 demo 造数
 ```
 
-离线包由 `build-docker-offline.sh` 生成，内含：部署脚本包、`ai-apm-stack` 镜像、`doris-stack` 镜像。
+离线包由 `build-docker-offline.sh` 生成，内含：部署脚本包、`ai-apm-stack` 镜像、`doris-stack` 镜像。用户侧步骤与 [官网安装页](https://databuff.ai/#install) **Docker → 离线安装** 一致。
 
 ## 构建与发布
 
@@ -62,15 +65,9 @@ sudo ./install.sh
 **本地开发**（离线包 load 或本地 build 后的镜像）：
 
 ```bash
-cd deploy/docker && ./start.sh
-```
-
-也可以直接使用 Compose：
-
-```bash
 cd deploy/docker
-docker-compose up -d
-docker-compose down
+./start.sh
+./stop.sh
 ```
 
 固定容器名：

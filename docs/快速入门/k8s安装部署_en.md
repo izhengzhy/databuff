@@ -19,7 +19,26 @@ Run DataBuff on a Kubernetes cluster — Doris, Ingest, and Web are deployed aut
 curl -fsSL https://databuff.ai/databuff/ai-apm-k8s-install.sh | bash
 ```
 
-After installation, the terminal prints the Web UI URL, namespace, and access details.
+After installation, the terminal prints the Web UI URL, namespace, and access details. Default namespace: `databuff`.
+
+| Purpose | Address |
+|---------|---------|
+| Web UI | `http://<node-ip>:32703` |
+| Default login | `admin` / `Databuff@123` |
+| OTLP gRPC | `<node-ip>:30417` |
+| OTLP HTTP | `http://<node-ip>:30418` |
+
+In-cluster agents: `http://ai-apm-ingest:4318` (gRPC `ai-apm-ingest:4317`). NodePorts are for external access. To connect your own apps, see [OpenTelemetry OTLP Ingestion](../opentelemetry-otlp-ingestion_en.md).
+
+### Offline Images (Optional)
+
+When nodes cannot pull images:
+
+```bash
+curl -fsSL https://databuff.ai/databuff/ai-apm-k8s-download-images.sh | bash
+```
+
+See [Kubernetes Operations](../运维参考/K8s运维_en.md) — Offline Images.
 
 Install a specific version:
 
@@ -39,12 +58,14 @@ Let the demo app report traces to the platform and quickly see call chains and t
 curl -fsSL https://databuff.ai/databuff/ai-apm-demo-k8s-install.sh | bash
 ```
 
-## 4. Enable AI
+## 4. Post-Install Verification
 
-Go to **Configuration → Model Settings** and enter your API key:
+1. Open `http://<node-ip>:32703` and sign in with the default account
+2. **APM → Service List** — confirm demo services have data
+3. **Configuration → Alert Config → Detection Rules → Preset Rules** — enable a rule for a demo service; after 1–2 minutes check **Alert Center → Alert List**
+4. **Configuration → Alert Config → Detection Rules** — create a custom rule for key services (see [Alerting User Guide](../使用手册/告警_en.md))
+5. (Optional) **Configuration → Model Settings** — enter your API key to enable AI:
 
 ![Configure API key](../images/set-api-key.png)
 
-You can now ask questions like:
-
-> Which services have the highest error rates?
+Example AI query: "Query service list for the last hour"

@@ -1,6 +1,6 @@
 # DataBuff APM Docker 本地部署
-# 启动: ./start.sh（首次会初始化 Doris）或 docker compose up -d
-# 停止: ./stop.sh 或 docker compose down
+# 启动: ./start.sh（首次会初始化 Doris）
+# 停止: ./stop.sh
 
 services:
   ai-apm-doris-fe:

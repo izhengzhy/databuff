@@ -40,9 +40,10 @@ cd databuff-ai-apm-k8s-<version>
 | 服务 | 集群内端口 | NodePort（节点访问） |
 |------|------------|----------------------|
 | Web | 27403 | **32703** |
+| Ingest (OTLP gRPC) | 4317 | **30417** |
 | Ingest (OTLP HTTP) | 4318 | **30418** |
 
-示例：`http://<node-ip>:32703` 打开 Web UI；OTLP HTTP 上报 `http://<node-ip>:30418`。
+示例：`http://<node-ip>:32703` 打开 Web UI；集群外 OTLP 上报 `http://<node-ip>:30418`（gRPC 用 `30417`）。集群内 Service `ai-apm-ingest`：`http://ai-apm-ingest:4318`。
 
 默认登录账号（与 Docker 安装一致）：
 
@@ -82,6 +83,26 @@ curl -fsSL https://databuff.ai/databuff/ai-apm-k8s-download-apm-images.sh | bash
 kubectl scale deploy/ai-apm-ingest -n databuff --replicas=4
 kubectl rollout status deploy/ai-apm-ingest -n databuff
 ```
+
+## 健康检查与日志
+
+| 服务 | 探活 |
+|------|------|
+| Web | `kubectl exec -n databuff deploy/ai-apm-web -- wget -qO- http://127.0.0.1:27403/health` |
+| Ingest | `kubectl exec -n databuff deploy/ai-apm-ingest -- wget -qO- http://127.0.0.1:4318/health` |
+
+```bash
+kubectl logs -n databuff deploy/ai-apm-ingest -f
+kubectl logs -n databuff deploy/ai-apm-web -f
+```
+
+## 常见故障
+
+| 现象 | 处理 |
+|------|------|
+| 服务列表为空 | 确认 Agent 指向 `http://ai-apm-ingest:4318`（集群外用 NodePort）；见 [OTLP 接入](../opentelemetry-otlp-ingestion.md) |
+| 规则创建后无告警 | 确认服务已有指标；评估每分钟执行；检查规则监控对象是否匹配 |
+| Pod 启动失败 | `kubectl describe pod -n databuff <pod>` 查看 Events；检查节点内存 |
 
 ## 注意事项
 
