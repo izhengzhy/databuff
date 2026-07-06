@@ -6,68 +6,61 @@
 
 # Upgrade and Uninstall
 
-Version upgrades, data retention, and full removal on Docker and Kubernetes.
+Upgrade and remove DataBuff on Docker.
 
-## Docker: Upgrade
+## Upgrade
 
-Re-install with a specific version (extracts a new bundle into `APM_INSTALL_DIR`, replacing scripts and compose by default):
+On an existing deployment, use the **upgrade** command. Do not re-run `install.sh` — a fresh install wipes telemetry data under `data/`.
+
+### Platform · online
+
+When your machine can reach the CDN, upgrade to the latest release in one command:
 
 ```bash
-curl -fsSL https://databuff.ai/databuff/ai-apm-install.sh | bash -s -- --version 0.1.2
-# or
-APM_VERSION=0.1.2 curl -fsSL https://databuff.ai/databuff/ai-apm-install.sh | bash
+curl -fsSL https://databuff.ai/databuff/ai-apm-update.sh | bash
 ```
 
-Force re-download of image bundles:
+### Platform · offline
+
+When the CDN is unreachable, download the target offline bundle, extract it, and run:
 
 ```bash
-curl -fsSL https://databuff.ai/databuff/ai-apm-install.sh | bash -s -- --pull-images
-# or
-FORCE_PULL_IMAGES=1 curl -fsSL https://databuff.ai/databuff/ai-apm-install.sh | bash
+tar -zxvf databuff-ai-apm-offline-<version>-<arch>.tar.gz
+cd databuff-ai-apm-offline-<version>-<arch>
+sudo ./update.sh
 ```
 
-Then run `./start.sh` in the install directory. Doris data under `data/` is kept by default; back up `data/` before major upgrades.
+See [Offline Installation](离线安装_en.md) for download URLs.
 
-Download only without starting:
+### Demo · online
+
+If you installed the demo app, run on a connected machine:
 
 ```bash
-SKIP_START=1 curl -fsSL https://databuff.ai/databuff/ai-apm-install.sh | bash
+curl -fsSL https://databuff.ai/databuff/ai-apm-demo-update.sh | bash
 ```
 
-## Docker: Uninstall
+### Demo · offline
+
+From the extracted offline bundle directory (stops the old demo, then replaces it):
 
 ```bash
-cd /opt/databuff-ai-apm   # or your APM_INSTALL_DIR
+sudo ./install_demo.sh
+```
+
+## Uninstall
+
+```bash
+cd /opt/databuff-ai-apm
 ./stop.sh
 cd ..
 sudo rm -rf /opt/databuff-ai-apm
 ```
 
-Back up `data/fe-meta` and `data/be-storage` first if you need to keep telemetry data.
-
-## Kubernetes: Upgrade ingest / web
-
-Without replacing Doris / ZooKeeper, re-import app images on each node and roll out:
-
-```bash
-curl -fsSL https://databuff.ai/databuff/ai-apm-k8s-download-apm-images.sh | bash
-kubectl rollout restart deploy/ai-apm-ingest deploy/ai-apm-web -n databuff
-```
-
-Full stack upgrade: run the target version's `install.sh` (recreates resources per bundle logic).
-
-## Kubernetes: Uninstall
-
-Follow the bundle's uninstall/cleanup before `install.sh`, or manually:
-
-```bash
-kubectl delete namespace databuff
-```
-
-With Doris on `emptyDir`, deleting Pods removes stored data.
+Back up `data/` first if you need to keep telemetry data.
 
 ## See Also
 
+- [Docker Installation](../快速入门/docker安装部署_en.md)
 - [Docker Operations Reference](Docker运维_en.md)
-- [Kubernetes Operations Reference](K8s运维_en.md)
 - [Offline Installation](离线安装_en.md)

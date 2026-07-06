@@ -1023,5 +1023,5 @@ create_tarball() {
   base_name="$(basename "$stage_dir")"
   mkdir -p "$(dirname "$archive_path")"
   COPYFILE_DISABLE=1 tar --no-xattrs -czf "$archive_path" -C "$(dirname "$stage_dir")" "$base_name"
-  echo "[build] package: ${archive_path}"
+  echo "[build] package: ${archive_path}" >&2
 }

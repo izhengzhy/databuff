@@ -96,7 +96,7 @@ curl -fsSL https://databuff.ai/databuff/ai-apm-install.sh | bash
 |-------|------------|
 | `docker load` fails | Check disk space; retry with `FORCE_LOAD_IMAGES=1` |
 | Start timeout | See logs in [Docker Operations Reference](Docker运维_en.md) |
-| Change version | Stop services, extract the target offline bundle, run `install.sh` |
+| Upgrade version | Download the target offline bundle, extract, run `update.sh` (keeps `data/`); use `install.sh` only for fresh install |
 
 ## See Also
 

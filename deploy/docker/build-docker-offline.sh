@@ -14,7 +14,7 @@
 #
 # Optional:
 #   AUTO_BUILD_DEPS=1     缺少依赖时自动执行上述构建脚本
-#   OFFLINE_ARCHES=amd64  仅打指定架构（逗号分隔，默认 amd64,arm64）
+#   OFFLINE_ARCHES=amd64,arm64  指定架构（逗号分隔，默认 amd64）
 #   SKIP_PKG_UPLOAD=1     跳过上传
 
 set -euo pipefail
@@ -97,7 +97,7 @@ offline_arch_list() {
     done
     return 0
   fi
-  image_arch_list
+  printf '%s\n' amd64
 }
 
 ensure_offline_dependency() {
