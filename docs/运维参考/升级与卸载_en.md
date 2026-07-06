@@ -13,9 +13,9 @@ Version upgrades, data retention, and full removal on Docker and Kubernetes.
 Re-install with a specific version (extracts a new bundle into `APM_INSTALL_DIR`, replacing scripts and compose by default):
 
 ```bash
-curl -fsSL https://databuff.ai/databuff/ai-apm-install.sh | bash -s -- --version 0.1.1
+curl -fsSL https://databuff.ai/databuff/ai-apm-install.sh | bash -s -- --version 0.1.2
 # or
-APM_VERSION=0.1.1 curl -fsSL https://databuff.ai/databuff/ai-apm-install.sh | bash
+APM_VERSION=0.1.2 curl -fsSL https://databuff.ai/databuff/ai-apm-install.sh | bash
 ```
 
 Force re-download of image bundles:

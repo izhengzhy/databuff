@@ -37,9 +37,9 @@ To connect your own apps, see [OpenTelemetry OTLP Ingestion](../opentelemetry-ot
 Install a specific version:
 
 ```bash
-curl -fsSL https://databuff.ai/databuff/ai-apm-install.sh | bash -s -- --version 0.1.1
+curl -fsSL https://databuff.ai/databuff/ai-apm-install.sh | bash -s -- --version 0.1.2
 # or
-APM_VERSION=0.1.1 curl -fsSL https://databuff.ai/databuff/ai-apm-install.sh | bash
+APM_VERSION=0.1.2 curl -fsSL https://databuff.ai/databuff/ai-apm-install.sh | bash
 ```
 
 ### Offline Install
