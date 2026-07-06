@@ -1,4 +1,5 @@
 ### Java / Maven
+**/dependency-reduced-pom.xml
 **/target/
 *.class
 hs_err_pid*
