@@ -57,6 +57,8 @@ fi
 INGEST_HOST="${INGEST_HOST:-$(detect_local_ip)}"
 INGEST_PORT="${INGEST_PORT:-4318}"
 export OTEL_EXPORTER_OTLP_ENDPOINT="${OTEL_EXPORTER_OTLP_ENDPOINT:-http://${INGEST_HOST}:${INGEST_PORT}}"
+export SKYWALKING_GRPC_TARGET="${SKYWALKING_GRPC_TARGET:-${INGEST_HOST}:31800}"
+export SEED_PROTOCOL="${SEED_PROTOCOL:-otlp}"
 export SEED_INTERVAL_SECONDS="${SEED_INTERVAL_SECONDS:-30}"
 
 if declare -F apm_refresh_image_refs >/dev/null 2>&1; then
@@ -81,6 +83,7 @@ elif ! docker image inspect "$APM_DEMO_IMAGE" >/dev/null 2>&1; then
 fi
 
 echo "[start] OTLP endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT} (interval ${SEED_INTERVAL_SECONDS}s)"
+echo "[start] SkyWalking gRPC: ${SKYWALKING_GRPC_TARGET} (protocol ${SEED_PROTOCOL})"
 compose_cmd up -d
 
 if [ "${START_SKIP_READY:-0}" != "1" ]; then

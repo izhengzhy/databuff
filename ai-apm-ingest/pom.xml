@@ -126,6 +126,9 @@
                         <exclude>**/OtlpReceiverConfiguration.class</exclude>
                         <exclude>**/OtlpGrpcServer.class</exclude>
                         <exclude>**/OtlpGrpcServer$*.class</exclude>
+                        <exclude>**/SkyWalkingGrpcServer.class</exclude>
+                        <exclude>**/SkyWalkingGrpcServer$*.class</exclude>
+                        <exclude>**/SkyWalkingReceiverConfiguration.class</exclude>
                         <exclude>**/ClusterCoordinationConfiguration.class</exclude>
                         <exclude>**/ClusterCoordinationGrpcServer.class</exclude>
                         <exclude>**/GrpcClusterPartialForwarder.class</exclude>

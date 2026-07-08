@@ -33,6 +33,9 @@ ingest:
     connect-string: ${ZK_CONNECT_STRING:}
   otlp:
     grpc-port: 4317
+  skywalking:
+    enabled: true
+    grpc-port: 31800
   meta-service:
     sync-interval-ms: 60000
   remote:
