@@ -4,9 +4,9 @@
 # Flow: install (FROM_VERSION) → seed demo → update (TO_VERSION) → verify
 #
 # Usage:
-#   FROM_VERSION=0.1.1 TO_VERSION=0.1.2 ./test-upgrade-e2e.sh
-#   INSTALL_DIR=/tmp/databuff-upgrade-test FROM_VERSION=0.1.1 TO_VERSION=0.1.2 ./test-upgrade-e2e.sh
-#   RUN_API_TESTS=1 FROM_VERSION=0.1.1 TO_VERSION=0.1.2 ./test-upgrade-e2e.sh
+#   FROM_VERSION=0.1.2 TO_VERSION=0.1.3 ./test-upgrade-e2e.sh
+#   INSTALL_DIR=/tmp/databuff-upgrade-test FROM_VERSION=0.1.2 TO_VERSION=0.1.3 ./test-upgrade-e2e.sh
+#   RUN_API_TESTS=1 FROM_VERSION=0.1.2 TO_VERSION=0.1.3 ./test-upgrade-e2e.sh
 #
 # Environment:
 #   FROM_VERSION       Source release to install (required)

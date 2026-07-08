@@ -12,8 +12,8 @@
 #   SKIP_START       1=仅下载解压不启动
 #
 # 指定版本:
-#   curl -fsSL .../ai-apm-demo-install.sh | bash -s -- --version 0.1.2
-#   APM_VERSION=0.1.2 curl -fsSL .../ai-apm-demo-install.sh | bash
+#   curl -fsSL .../ai-apm-demo-install.sh | bash -s -- --version 0.1.3
+#   APM_VERSION=0.1.3 curl -fsSL .../ai-apm-demo-install.sh | bash
 
 set -e
 

@@ -62,7 +62,7 @@ Optional API regression: from the repo, `deploy/test/run-tests.sh` (requires dem
 Use when you want to refresh bundle/images first, then start and migrate manually:
 
 ```bash
-SKIP_START=1 ./update.sh --version 0.1.2
+SKIP_START=1 ./update.sh --version 0.1.3
 cd /opt/databuff-ai-apm
 # shellcheck source=scripts/compose-env.sh
 . scripts/compose-env.sh

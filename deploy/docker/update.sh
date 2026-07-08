@@ -3,7 +3,7 @@
 #
 # 在安装目录执行:
 #   cd /opt/databuff-ai-apm && ./update.sh
-#   ./update.sh --version 0.1.2
+#   ./update.sh --version 0.1.3
 #   ./update.sh --pull-images
 #
 # 环境变量:
