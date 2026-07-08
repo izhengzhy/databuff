@@ -610,6 +610,30 @@ class DcSpanUtilTest {
                 .doesNotContain("service.db");
     }
 
+    @Test
+    void resolvePortalSpanDisplayForComponentSpans() {
+        DcSpan http = baseSpan();
+        http.metaHttpMethod = "GET";
+        http.metaHttpUrl = "/demo/checkout";
+        assertThat(DcSpanUtil.resolvePortalSpanDisplay(http))
+                .isEqualTo(new DcSpanUtil.PortalSpanDisplay("web", "web"));
+
+        DcSpan db = baseSpan();
+        db.meta = "{\"db.system\":\"mysql\",\"db.operation\":\"select\"}";
+        assertThat(DcSpanUtil.resolvePortalSpanDisplay(db))
+                .isEqualTo(new DcSpanUtil.PortalSpanDisplay("db", "mysql"));
+
+        DcSpan cache = baseSpan();
+        cache.meta = "{\"db.system\":\"redis\",\"db.statement\":\"SET order:10001\"}";
+        assertThat(DcSpanUtil.resolvePortalSpanDisplay(cache))
+                .isEqualTo(new DcSpanUtil.PortalSpanDisplay("cache", "redis"));
+
+        DcSpan mq = baseSpan();
+        mq.meta = "{\"messaging.system\":\"kafka\",\"messaging.destination.name\":\"orders\"}";
+        assertThat(DcSpanUtil.resolvePortalSpanDisplay(mq))
+                .isEqualTo(new DcSpanUtil.PortalSpanDisplay("mq", "kafka"));
+    }
+
     private static DcSpan baseSpan() {
         DcSpan span = new DcSpan();
         span.service = "checkout";

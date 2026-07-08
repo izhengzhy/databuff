@@ -1,0 +1,37 @@
+{
+  "status": 200,
+  "message": "success",
+  "data": {
+    "$minLength": 10,
+    "$containsSpanServiceTypes": {
+      "GET /demo/checkout": {
+        "service_type": "web",
+        "type": "web"
+      },
+      "SELECT demo_order": {
+        "service_type": "db",
+        "type": "mysql"
+      },
+      "SET order:10001": {
+        "service_type": "cache",
+        "type": "redis"
+      },
+      "SELECT demo_inventory": {
+        "service_type": "db",
+        "type": "mysql",
+        "error": 1
+      },
+      "order-events publish": {
+        "service_type": "mq",
+        "type": "kafka"
+      },
+      "Dubbo DemoOrderService.findInventory": {
+        "service_type": "custom",
+        "type": "dubbo"
+      }
+    }
+  },
+  "total": {
+    "$range": [10, 20]
+  }
+}

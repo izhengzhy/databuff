@@ -11,6 +11,7 @@ import com.databuff.apm.common.query.ApmQueryModels.ServiceFlowEdge;
 import com.databuff.apm.common.query.ApmQueryModels.ServiceFlowEntryPoint;
 import com.databuff.apm.common.query.ApmQueryModels.ServiceFlowTreeRow;
 import com.databuff.apm.common.query.ApmQueryModels.ComponentTrendBucketPoint;
+import com.databuff.apm.common.model.DcSpan;
 import com.databuff.apm.common.query.ApmQueryModels.SpanDetail;
 import com.databuff.apm.common.query.ApmQueryModels.SpanSummary;
 import com.databuff.apm.common.query.TimeSeriesFillUtil;
@@ -1080,7 +1081,9 @@ public class TracePortalService {
         row.put("end", startMs + (long) Math.ceil(durationNs / 1_000_000.0));
         row.put("duration", durationNs);
         row.put("error", span.error());
-        row.put("type", "web");
+        DcSpanUtil.PortalSpanDisplay portalDisplay = DcSpanUtil.resolvePortalSpanDisplay(toClassificationSpan(span, meta));
+        row.put("service_type", portalDisplay.serviceType());
+        row.put("type", portalDisplay.typeIcon());
         row.put("hostName", !hostName.isBlank() ? hostName : instance);
         String parentId = span.parentId();
         row.put("parent_id", parentId == null || parentId.isBlank() ? "0" : parentId);
@@ -1159,8 +1162,9 @@ public class TracePortalService {
         row.put("service", span.service());
         row.put("serviceId", PortalServiceIdResolver.resolve(span.serviceId(), span.service()));
         row.put("serviceInstance", serviceInstance);
-        row.put("service_type", "web");
-        row.put("type", "web");
+        DcSpanUtil.PortalSpanDisplay portalDisplay = DcSpanUtil.resolvePortalSpanDisplay(toClassificationSpan(span, meta));
+        row.put("service_type", portalDisplay.serviceType());
+        row.put("type", portalDisplay.typeIcon());
         row.put("start", String.valueOf(startMs));
         row.put("startNs", startNs);
         row.put("end", String.valueOf(startMs + (long) Math.ceil(durationNs / 1_000_000.0)));
@@ -1192,6 +1196,48 @@ public class TracePortalService {
         if (value != null && !value.isBlank()) {
             target.putIfAbsent(key, value.trim());
         }
+    }
+
+    private static DcSpan toClassificationSpan(SpanDetail span, Map<String, String> meta) {
+        DcSpan dcSpan = new DcSpan();
+        dcSpan.meta = span.meta() != null && !span.meta().isBlank()
+                ? span.meta()
+                : meta.isEmpty() ? null : OtelAttributeMaps.encode(meta);
+        dcSpan.metaHttpMethod = span.metaHttpMethod();
+        dcSpan.metaHttpUrl = span.metaHttpUrl();
+        dcSpan.metaHttpStatusCode = span.metaHttpStatusCode();
+        dcSpan.resource = span.resource();
+        dcSpan.name = span.name();
+        dcSpan.type = span.type();
+        dcSpan.isIn = span.isIn();
+        dcSpan.isOut = span.isOut();
+        dcSpan.serviceId = span.serviceId();
+        dcSpan.dstServiceId = span.serviceId();
+        return dcSpan;
+    }
+
+    private static DcSpan toClassificationSpan(SpanSummary span, Map<String, Object> meta) {
+        DcSpan dcSpan = new DcSpan();
+        dcSpan.metaHttpUrl = span.metaHttpUrl();
+        dcSpan.metaHttpStatusCode = span.metaHttpStatusCode();
+        dcSpan.resource = span.resource();
+        dcSpan.name = span.name();
+        dcSpan.serviceId = span.serviceId();
+        dcSpan.dstServiceId = span.serviceId();
+        String httpMethod = resolveHttpMethod(span.resource(), span.name());
+        if (httpMethod != null) {
+            dcSpan.metaHttpMethod = httpMethod;
+        }
+        if (!meta.isEmpty()) {
+            Map<String, String> stringMeta = new LinkedHashMap<>();
+            meta.forEach((key, value) -> {
+                if (value != null) {
+                    stringMeta.put(key, String.valueOf(value));
+                }
+            });
+            dcSpan.meta = OtelAttributeMaps.encode(stringMeta);
+        }
+        return dcSpan;
     }
 
     private static String displayTraceResource(SpanDetail span, Map<String, String> meta) {

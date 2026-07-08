@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ...common import ApiCase, service_body
+from ...common import ApiCase, service_body, trace_spans_body
 
 
 CASE_DIR = Path(__file__).resolve().parent
@@ -22,7 +22,15 @@ def build_cases(frm_ms: int, to_ms: int) -> list[ApiCase]:
         ApiCase(page, "响应时间图", "POST", "/webapi/trace/graph_stats", sb, CASE_DIR),
         ApiCase(page, "页签状态", "POST", "/webapi/trace/tabnavStatus", sb, CASE_DIR),
         ApiCase(page, "v1 span 列表", "POST", "/webapi/api/v1/apm/trace/spanList", sb_limit, CASE_DIR),
-        ApiCase(page, "调用链 spans", "POST", "/webapi/trace/spans", sb_limit, CASE_DIR),
+        ApiCase(
+            page,
+            "调用链 span 类型",
+            "POST",
+            "/webapi/trace/spans",
+            trace_spans_body(),
+            CASE_DIR,
+            needs_checkout_trace_id=True,
+        ),
         ApiCase(
             page,
             "v1 调用链详情",

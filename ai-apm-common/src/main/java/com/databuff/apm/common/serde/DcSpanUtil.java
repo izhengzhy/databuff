@@ -403,6 +403,100 @@ public final class DcSpanUtil {
         return analyze(span).hasDbSystem;
     }
 
+    /** Portal trace tree legend categories: web, db, cache, mq, custom. */
+    public record PortalSpanDisplay(String serviceType, String typeIcon) {
+    }
+
+    public static PortalSpanDisplay resolvePortalSpanDisplay(DcSpan span) {
+        String serviceType = resolvePortalServiceType(span);
+        return new PortalSpanDisplay(serviceType, resolvePortalTypeIcon(span, serviceType));
+    }
+
+    public static String resolvePortalServiceType(DcSpan span) {
+        if (isRedisSpan(span)) {
+            return "cache";
+        }
+        if (isDbSpan(span) || isEsSpan(span)) {
+            return "db";
+        }
+        if (isMqSpan(span)) {
+            return "mq";
+        }
+        if (isRpcSpan(span) || isConfigSpan(span)) {
+            return "custom";
+        }
+        return "web";
+    }
+
+    private static String resolvePortalTypeIcon(DcSpan span, String serviceType) {
+        Map<String, String> meta = OtelAttributeMaps.parse(span);
+        return switch (serviceType) {
+            case "cache" -> "redis";
+            case "db" -> resolveDbTypeIcon(meta);
+            case "mq" -> resolveMqTypeIcon(meta);
+            case "custom" -> resolveCustomTypeIcon(meta, span);
+            default -> "web";
+        };
+    }
+
+    private static String resolveDbTypeIcon(Map<String, String> meta) {
+        String dbSystem = OtelAttributeMaps.firstNonBlank(meta, "db.system", "db.type");
+        if (dbSystem == null || dbSystem.isBlank()) {
+            return "mysql";
+        }
+        String lower = dbSystem.toLowerCase(Locale.ROOT);
+        if (lower.contains("elastic")) {
+            return "elasticsearch";
+        }
+        if (lower.contains("postgres")) {
+            return "postgres";
+        }
+        if (lower.contains("mongo")) {
+            return "mongo";
+        }
+        if (lower.contains("redis")) {
+            return "redis";
+        }
+        if (lower.contains("mysql") || lower.contains("mariadb")) {
+            return "mysql";
+        }
+        return lower;
+    }
+
+    private static String resolveMqTypeIcon(Map<String, String> meta) {
+        String messagingSystem = OtelAttributeMaps.firstNonBlank(meta, "messaging.system");
+        if (messagingSystem == null || messagingSystem.isBlank()) {
+            return "kafka";
+        }
+        String lower = messagingSystem.toLowerCase(Locale.ROOT);
+        if (lower.contains("kafka")) {
+            return "kafka";
+        }
+        if (lower.contains("rabbit")) {
+            return "rabbitmq";
+        }
+        if (lower.contains("rocket")) {
+            return "rocketmq";
+        }
+        return lower;
+    }
+
+    private static String resolveCustomTypeIcon(Map<String, String> meta, DcSpan span) {
+        String rpcSystem = OtelAttributeMaps.firstNonBlank(meta, "rpc.system");
+        if (rpcSystem != null && !rpcSystem.isBlank()) {
+            return rpcSystem.toLowerCase(Locale.ROOT);
+        }
+        String configType = resolveConfigType(meta);
+        if (configType != null && !configType.isBlank()) {
+            return configType.toLowerCase(Locale.ROOT);
+        }
+        String serviceId = firstNonBlank(span.dstServiceId, span.serviceId);
+        if (serviceId != null && !serviceId.isBlank()) {
+            return ServiceTypeClassifier.classify(serviceId).type();
+        }
+        return "custom";
+    }
+
     private static boolean isMqConsume(Map<String, String> meta) {
         String operation = OtelAttributeMaps.firstNonBlank(meta, "messaging.operation");
         if (operation == null) {

@@ -50,6 +50,9 @@ def snapshot_cases(
     frm_ms, to_ms = aligned_query_window()
     wait_for_demo_data_in_window(base, token, service, frm_ms, to_ms, max(min(warmup, 120), 60))
     cases = build_cases(frm_ms, to_ms)
+    from run_tests import inject_checkout_trace_ids  # noqa: E402
+
+    inject_checkout_trace_ids(base, token, cases, frm_ms, to_ms, timeout)
     print(f"[snapshot] recording {len(cases)} cases, window last {QUERY_WINDOW_MS // 1000}s ...")
     ok, failed = run_snapshot(base, token, cases, timeout)
     print(f"[snapshot] done {ok} written, {failed} skipped")

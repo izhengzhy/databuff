@@ -32,6 +32,7 @@ class ApiCase:
     case_dir: Path
     module: str = "应用性能"
     expect_status: int = 200
+    needs_checkout_trace_id: bool = False
 
     @property
     def expected_path(self) -> Path:
@@ -75,6 +76,13 @@ def interface_level_flow_body(frm_ms: int, to_ms: int, **extra: Any) -> dict[str
         resource=DEMO_CHECKOUT_RESOURCE,
         **extra,
     )
+
+
+def trace_spans_body(**extra: Any) -> dict[str, Any]:
+    """POST /webapi/trace/spans — trace detail flame tree (requires traceId)."""
+    body: dict[str, Any] = {"size": 100}
+    body.update(extra)
+    return body
 
 
 def error_span_list_body(frm_ms: int, to_ms: int, **extra: Any) -> dict[str, Any]:

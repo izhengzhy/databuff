@@ -20,6 +20,7 @@ LIB_ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(LIB_ROOT))
 
 from cases import ApiCase, build_cases  # noqa: E402
+from cases.common import DEMO_CHECKOUT_RESOURCE, DEMO_SERVICE_A, trace_spans_body  # noqa: E402
 from snapshot_expected import snapshot_cases  # noqa: E402
 from ai_chat_integration import (  # noqa: E402
     AI_CHAT_QUESTIONS,
@@ -172,6 +173,65 @@ def login(base: str, username: str, password: str, timeout: float) -> str:
     if not token:
         raise RuntimeError(f"login response missing token: {payload}")
     return str(token)
+
+
+def fetch_latest_checkout_trace_id(
+    base: str,
+    token: str,
+    frm_ms: int,
+    to_ms: int,
+    timeout: float,
+) -> str:
+    body = {
+        "service": DEMO_SERVICE_A,
+        "serviceId": DEMO_SERVICE_A,
+        "from": frm_ms,
+        "to": to_ms,
+        "limit": 20,
+    }
+    code, _, payload = http_json(
+        "POST",
+        f"{base.rstrip('/')}/webapi/trace/list",
+        body=body,
+        token=token,
+        timeout=timeout,
+    )
+    if code != 200:
+        raise RuntimeError(f"trace list failed HTTP {code}: {payload}")
+    data = payload.get("data") if isinstance(payload, dict) else None
+    items = data.get("list") if isinstance(data, dict) else None
+    if not isinstance(items, list) or not items:
+        raise RuntimeError(f"trace list empty in query window: {payload}")
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        if item.get("resource") == DEMO_CHECKOUT_RESOURCE and item.get("trace_id"):
+            return str(item["trace_id"])
+    for item in items:
+        if isinstance(item, dict) and item.get("trace_id"):
+            return str(item["trace_id"])
+    raise RuntimeError(f"no trace_id found in trace list: {payload}")
+
+
+def inject_checkout_trace_ids(
+    base: str,
+    token: str,
+    cases: list[ApiCase],
+    frm_ms: int,
+    to_ms: int,
+    timeout: float,
+) -> None:
+    needs_trace_id = any(case.needs_checkout_trace_id for case in cases)
+    if not needs_trace_id:
+        return
+    trace_id = fetch_latest_checkout_trace_id(base, token, frm_ms, to_ms, timeout)
+    print(f"[test] checkout traceId={trace_id}")
+    for case in cases:
+        if not case.needs_checkout_trace_id:
+            continue
+        body = dict(case.body or trace_spans_body())
+        body["traceId"] = trace_id
+        case.body = body
 
 
 def wait_for_demo_data_in_window(base: str, token: str, service: str, frm_ms: int, to_ms: int, timeout_sec: int) -> None:
@@ -420,6 +480,7 @@ def main() -> int:
     wait_for_demo_data_in_window(base, token, args.service, frm_ms, to_ms, max(min(warmup, 120), 60))
 
     cases = build_cases(frm_ms, to_ms)
+    inject_checkout_trace_ids(base, token, cases, frm_ms, to_ms, args.timeout)
     print(f"[test] running {len(cases)} cases on last {QUERY_WINDOW_MS // 1000}s window ...")
     report = run_cases(base, token, cases, args.timeout)
     report.min_warmup_seconds = warmup

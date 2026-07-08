@@ -496,6 +496,37 @@ class TracePortalServiceTest {
     }
 
     @Test
+    void traceDetailSpansResolveComponentServiceTypes() {
+        TraceQueryService traceQuery = mock(TraceQueryService.class);
+        long rootStartNs = 1_000_000_000_000_000_000L;
+        when(traceQuery.traceDetail(any())).thenReturn(List.of(
+                new SpanDetail(
+                        "t1", "s1", "0", "service-a", null, "GET /demo/checkout", "2026-06-01 12:00:00",
+                        rootStartNs, 2_000_000L, 0, "host-1", "inst-1", "GET /demo/checkout", "SPAN_KIND_SERVER",
+                        1, 0, "{}", null, 200, "GET", "/demo/checkout", null),
+                new SpanDetail(
+                        "t1", "s2", "s1", "service-a", null, "SELECT demo_order", "2026-06-01 12:00:00",
+                        rootStartNs + 10_000_000L, 500_000L, 0, "host-1", "inst-1", "SELECT demo_order", "SPAN_KIND_CLIENT",
+                        0, 1, "{\"db.system\":\"mysql\",\"db.operation\":\"select\"}", null, null, null, null, null),
+                new SpanDetail(
+                        "t1", "s3", "s1", "service-a", null, "SET order:10001", "2026-06-01 12:00:00",
+                        rootStartNs + 20_000_000L, 300_000L, 0, "host-1", "inst-1", "SET order:10001", "SPAN_KIND_CLIENT",
+                        0, 1, "{\"db.system\":\"redis\",\"db.statement\":\"SET order:10001\"}", null, null, null, null, null)));
+
+        TracePortalService service = new TracePortalService(
+                traceQuery, mock(ServiceFlowService.class), mock(ApmReadRepository.class), TestStorageSupport.storage());
+        Map<String, Object> resp = service.traceSpans(Map.of("traceId", "t1", "size", 100));
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> spans = (List<Map<String, Object>>) resp.get("data");
+        assertThat(spans.get(0).get("service_type")).isEqualTo("web");
+        assertThat(spans.get(1).get("service_type")).isEqualTo("db");
+        assertThat(spans.get(1).get("type")).isEqualTo("mysql");
+        assertThat(spans.get(2).get("service_type")).isEqualTo("cache");
+        assertThat(spans.get(2).get("type")).isEqualTo("redis");
+    }
+
+    @Test
     void preservesSubMillisecondTraceSpanDuration() {
         TraceQueryService traceQuery = mock(TraceQueryService.class);
         long rootStartNs = 1_000_000_000_000_000_000L;

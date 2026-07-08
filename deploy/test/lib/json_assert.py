@@ -249,6 +249,12 @@ def _is_span_row_list(items: list[Any]) -> bool:
     return True
 
 
+def _span_resource_matches(span: dict[Any, Any], resource_key: str) -> bool:
+    resource = str(span.get("resource") or "")
+    name = str(span.get("name") or "")
+    return resource == resource_key or resource_key in resource or resource_key in name
+
+
 def _sort_span_rows(items: list[Any]) -> list[Any]:
     def sort_key(item: dict[Any, Any]) -> tuple[Any, ...]:
         parent_flag = item.get("is_parent")
@@ -326,6 +332,24 @@ def _match_special(actual: Any, expected: dict[str, Any], path: str) -> bool:
         missing = [item for item in arg if item not in actual_services]
         if missing:
             raise JsonAssertError(path, f"missing child services {missing}")
+        return True
+    if key == "$containsSpanServiceTypes":
+        if not isinstance(actual, list):
+            raise JsonAssertError(path, f"expected list, got {type(actual).__name__}")
+        for resource_key, expected_fields in arg.items():
+            if not isinstance(expected_fields, dict):
+                raise JsonAssertError(path, f"expected object matcher for span {resource_key!r}")
+            match = next(
+                (
+                    item
+                    for item in actual
+                    if isinstance(item, dict) and _span_resource_matches(item, str(resource_key))
+                ),
+                None,
+            )
+            if match is None:
+                raise JsonAssertError(path, f"missing span matching resource {resource_key!r}")
+            _match_partial_dict(match, expected_fields, f"{path}[{resource_key}]")
         return True
     if key == "$nestedServiceChildren":
         if not isinstance(actual, list):
