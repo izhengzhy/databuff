@@ -1,6 +1,6 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "upgrade_type": "A",
   "min_upgrade_from": "0.1.0",
-  "notes": "Patch release; adds log_dc_record (OTLP logs) and schema_version ledger for upgrades from 0.1.1."
+  "notes": "Adds daily dynamic partition (30-day retention) to metric_* tables via metric_time column."
 }

@@ -6,6 +6,7 @@ import com.databuff.apm.common.model.DcSpan;
 import com.databuff.apm.common.serde.DcSpanUtil;
 import com.databuff.apm.ingest.otel.OtlMetricLine;
 import com.databuff.apm.common.storage.MetricIdentifierParser;
+import com.databuff.apm.common.storage.MetricRowTimeUtil;
 import com.databuff.apm.ingest.otel.OtlpMetricDebugLogger;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -45,7 +46,7 @@ public final class OtlpMetricRowMapper {
             }
             String table = MetricIdentifierParser.dorisTableName(parsed.measurement());
             Map<String, Object> row = new HashMap<>();
-            row.put("ts", line.tsMillis());
+            MetricRowTimeUtil.putTsAndMetricTime(row, line.tsMillis());
             row.put("service", line.service());
             row.put("service_id", line.serviceId());
             putIfPresent(row, "service_instance", line.serviceInstance());
@@ -82,7 +83,7 @@ public final class OtlpMetricRowMapper {
             }
             String table = MetricIdentifierParser.dorisTableName(parsed.measurement());
             Map<String, Object> row = new HashMap<>();
-            row.put("ts", readTsMillis(node));
+            MetricRowTimeUtil.putTsAndMetricTime(row, readTsMillis(node));
             row.put("service", text(node, "service"));
             row.put("service_id", text(node, "service_id"));
             putIfPresent(row, "service_instance", text(node, "service_instance"));

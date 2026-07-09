@@ -41,7 +41,7 @@ See [OpenTelemetry OTLP Ingestion](../opentelemetry-otlp-ingestion_en.md) for ex
 | Component | Role |
 |-----------|------|
 | **Ingest** | OTLP ingress, trace processing, metric aggregation, Doris Stream Load |
-| **Doris** | Columnar storage and time-series queries; trace table uses daily partitions (~30-day retention by default) |
+| **Doris** | Columnar storage and time-series queries; trace, log, and metric tables use daily partitions (~30-day retention by default) |
 | **Web** | REST APIs, UI, alerting, AI platform and MCP |
 
 Default Docker stack: Doris FE/BE, ingest, web. See [Docker Operations Reference](../运维参考/Docker运维_en.md).
