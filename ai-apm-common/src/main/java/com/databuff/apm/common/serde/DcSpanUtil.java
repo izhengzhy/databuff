@@ -208,7 +208,7 @@ public final class DcSpanUtil {
         Map<String, String> tags = componentBaseTags(span);
         tags.put("statusCode", nullToEmpty(OtelAttributeMaps.firstNonBlank(
                 meta, "rpc.grpc.status_code", "grpc.status_code", "status.code")));
-        tags.put("type", nullToEmpty(OtelAttributeMaps.firstNonBlank(meta, "rpc.system")));
+        tags.put("type", nullToEmpty(resolveRpcSystem(meta, span)));
         return minuteAggregatedMetric("service.rpc", span, tags);
     }
 
@@ -253,7 +253,7 @@ public final class DcSpanUtil {
 
     static String resolveRemoteType(DcSpan span, Map<String, String> meta) {
         if (isRpcSpan(span)) {
-            String rpcSystem = OtelAttributeMaps.firstNonBlank(meta, "rpc.system");
+            String rpcSystem = resolveRpcSystem(meta, span);
             return rpcSystem != null ? rpcSystem.trim().toLowerCase(Locale.ROOT) : "unknown";
         }
         if (isHttpSpan(span)) {
@@ -482,7 +482,7 @@ public final class DcSpanUtil {
     }
 
     private static String resolveCustomTypeIcon(Map<String, String> meta, DcSpan span) {
-        String rpcSystem = OtelAttributeMaps.firstNonBlank(meta, "rpc.system");
+        String rpcSystem = resolveRpcSystem(meta, span);
         if (rpcSystem != null && !rpcSystem.isBlank()) {
             return rpcSystem.toLowerCase(Locale.ROOT);
         }
@@ -540,6 +540,135 @@ public final class DcSpanUtil {
         return analysis;
     }
 
+    /**
+     * Resolve RPC framework from OTel semconv or DataBuff Java agent tags
+     * ({@code component}, {@code dubbo-version}, operation names like {@code dubbo.call}).
+     */
+    public static String resolveRpcSystem(Map<String, String> meta, DcSpan span) {
+        String rpcSystem = OtelAttributeMaps.firstNonBlank(meta, "rpc.system");
+        if (rpcSystem != null && !rpcSystem.isBlank()) {
+            return rpcSystem.trim();
+        }
+        if (OtelAttributeMaps.firstNonBlank(meta, "dubbo-version") != null) {
+            return "dubbo";
+        }
+        String component = OtelAttributeMaps.firstNonBlank(
+                meta, "component", "spanComponent", "newComponentName");
+        String componentRpc = rpcSystemFromComponent(component);
+        if (componentRpc != null) {
+            return componentRpc;
+        }
+        String urlRpc = rpcSystemFromUrl(OtelAttributeMaps.firstNonBlank(meta, "url", "short_url"));
+        if (urlRpc != null) {
+            return urlRpc;
+        }
+        String skyWalkingRpc = rpcSystemFromSkyWalkingMeta(meta);
+        if (skyWalkingRpc != null) {
+            return skyWalkingRpc;
+        }
+        String operation = firstNonBlank(span != null ? span.name : null, span != null ? span.resource : null);
+        return rpcSystemFromOperation(operation);
+    }
+
+    /** {@code dubbo://}, {@code grpc://} and other RPC scheme URLs must not count as HTTP. */
+    public static boolean isRpcProtocolUrl(String url) {
+        return rpcSystemFromUrl(url) != null;
+    }
+
+    private static String rpcSystemFromUrl(String url) {
+        if (url == null || url.isBlank()) {
+            return null;
+        }
+        int schemeEnd = url.indexOf("://");
+        if (schemeEnd <= 0) {
+            return null;
+        }
+        String protocol = url.substring(0, schemeEnd).trim().toLowerCase(Locale.ROOT);
+        return switch (protocol) {
+            case "dubbo" -> "dubbo";
+            case "grpc" -> "grpc";
+            case "motan" -> "motan";
+            case "thrift" -> "thrift";
+            case "brpc" -> "brpc";
+            default -> null;
+        };
+    }
+
+    private static String rpcSystemFromSkyWalkingMeta(Map<String, String> meta) {
+        String componentId = OtelAttributeMaps.firstNonBlank(meta, "skywalking.componentId");
+        if (componentId != null) {
+            try {
+                String fromComponentId = rpcSystemFromSkyWalkingComponentId(Integer.parseInt(componentId.trim()));
+                if (fromComponentId != null) {
+                    return fromComponentId;
+                }
+            } catch (NumberFormatException ignored) {
+                // ignore malformed component id
+            }
+        }
+        String spanLayer = OtelAttributeMaps.firstNonBlank(meta, "skywalking.spanLayer");
+        if (spanLayer != null && "RPCFramework".equalsIgnoreCase(spanLayer.trim())) {
+            return "rpc";
+        }
+        return null;
+    }
+
+    public static String rpcSystemFromSkyWalkingComponentId(int componentId) {
+        return switch (componentId) {
+            case 3 -> "dubbo";
+            case 8 -> "motan";
+            case 11 -> "feign";
+            case 23 -> "grpc";
+            case 28 -> "servicecomb";
+            case 43 -> "sofarpc";
+            case 85 -> "finagle";
+            case 91 -> "brpc";
+            case 100, 101 -> "thrift";
+            case 107 -> "jsonrpc";
+            default -> null;
+        };
+    }
+
+    private static String rpcSystemFromComponent(String component) {
+        if (component == null || component.isBlank()) {
+            return null;
+        }
+        String lower = component.toLowerCase(Locale.ROOT);
+        if (lower.contains("dubbo")) {
+            return "dubbo";
+        }
+        if (lower.contains("grpc")) {
+            return "grpc";
+        }
+        if (lower.contains("sofarpc") || lower.contains("sofa-rpc")) {
+            return "sofarpc";
+        }
+        if (lower.contains("feign")) {
+            return "feign";
+        }
+        if (lower.contains("thrift")) {
+            return "thrift";
+        }
+        return null;
+    }
+
+    private static String rpcSystemFromOperation(String operation) {
+        if (operation == null || operation.isBlank()) {
+            return null;
+        }
+        String lower = operation.trim().toLowerCase(Locale.ROOT);
+        if (lower.startsWith("dubbo.") || lower.startsWith("dubbo ")) {
+            return "dubbo";
+        }
+        if (lower.startsWith("grpc.") || lower.startsWith("grpc ")) {
+            return "grpc";
+        }
+        if (lower.startsWith("sofarpc.") || lower.startsWith("sofarpc ")) {
+            return "sofarpc";
+        }
+        return null;
+    }
+
     private static final class SpanAnalysis {
         private static final SpanAnalysis EMPTY = new SpanAnalysis(
                 null, null, null, null, false, false, false, false, false, false, false, false);
@@ -585,7 +714,7 @@ public final class DcSpanUtil {
         }
 
         private static SpanAnalysis from(DcSpan span, Map<String, String> meta) {
-            String rpcSystem = OtelAttributeMaps.firstNonBlank(meta, "rpc.system");
+            String rpcSystem = resolveRpcSystem(meta, span);
             String dbSystem = OtelAttributeMaps.firstNonBlank(meta, "db.system", "db.type");
             boolean hasDbSystem = dbSystem != null && !dbSystem.isBlank();
             // Align with OtelConverter: elasticsearch db.system takes priority over HTTP semconv.
@@ -593,7 +722,7 @@ public final class DcSpanUtil {
                     || containsIgnoreCase(rpcSystem, "elastic");
             boolean http = !elasticsearch && (
                     isPresent(span.metaHttpMethod)
-                            || isPresent(span.metaHttpUrl)
+                            || (isPresent(span.metaHttpUrl) && !isRpcProtocolUrl(span.metaHttpUrl))
                             || span.metaHttpStatusCode != null);
             boolean rpc = !http && rpcSystem != null;
             String messagingSystem = OtelAttributeMaps.firstNonBlank(meta, "messaging.system");
