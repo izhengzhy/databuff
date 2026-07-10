@@ -24,6 +24,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ServiceFlowExtractorTest {
 
     @Test
+    void extractSkipsSingleSpanOutboundOnlyTrace() throws Exception {
+        DcSpan clientRoot = span("trace-single-out", "client-root", "", "service-g", "service-g-id");
+        clientRoot.type = "SPAN_KIND_CLIENT";
+        clientRoot.resource = "HttpAsyncClient/local";
+        clientRoot.name = "HttpAsyncClient/local";
+        clientRoot.isIn = 0;
+        clientRoot.isOut = 1;
+
+        List<DcSpan> filled = FillPathAndRelationUtil.fillBytes(List.of(
+                DCSpanJsonEncoder.encode(clientRoot)));
+        assertThat(ServiceFlowExtractor.hasTraceEntryRoot(filled)).isFalse();
+        assertThat(ServiceFlowExtractor.extractFromTrace(filled)).isEmpty();
+    }
+
+    @Test
     void extractSkipsTraceWithoutIsParentRoot() throws Exception {
         DcSpan downstream = span("trace-7", "downstream", "external-parent", "service-k", "service-k-id");
         downstream.type = "SPAN_KIND_SERVER";

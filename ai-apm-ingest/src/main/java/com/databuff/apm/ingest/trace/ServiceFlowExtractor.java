@@ -22,16 +22,16 @@ public final class ServiceFlowExtractor {
     private ServiceFlowExtractor() {
     }
 
-    /** True when the trace has at least one span with {@code parent_id} blank/{@code 0}. */
+    /** True when the trace would produce at least one {@code service.flow} metric (legacy fill rules). */
     public static boolean hasTraceEntryRoot(List<DcSpan> spans) {
-        return findTraceEntryRoot(spans) != null;
+        return resolveTraceEntryRoot(spans) != null;
     }
 
     public static List<OptimizedMetric> extractFromTrace(List<DcSpan> spans) {
         if (spans == null || spans.isEmpty()) {
             return List.of();
         }
-        DcSpan root = findTraceEntryRoot(spans);
+        DcSpan root = resolveTraceEntryRoot(spans);
         if (root == null) {
             return List.of();
         }
@@ -42,6 +42,7 @@ public final class ServiceFlowExtractor {
             String parentKey = parentKey(span.parent_id);
             childrenByParent.computeIfAbsent(parentKey, ignored -> new ArrayList<>()).add(span);
         }
+        long srcCall = root.is_parent == 1 && root.isIn == 1 ? 1L : 0L;
         String entryPathId = ServiceFlowPathIds.entryPathId(nullToEmpty(root.serviceId));
         String entryInterfacePathId = ServiceFlowPathIds.entryInterfacePathId(
                 nullToEmpty(root.serviceId),
@@ -53,7 +54,7 @@ public final class ServiceFlowExtractor {
                 bySpanId,
                 0,
                 metrics,
-                1L,
+                srcCall,
                 entryPathId,
                 entryInterfacePathId,
                 null,
@@ -64,19 +65,32 @@ public final class ServiceFlowExtractor {
         return metrics;
     }
 
-    /** First span whose {@code parent_id} is blank/{@code 0} (legacy {@code parentId=0}). */
-    private static DcSpan findTraceEntryRoot(List<DcSpan> spans) {
-        DcSpan root = null;
+    /**
+     * Legacy {@code parentChildrenMap.get("0").get(0)}: first span with blank/{@code 0} parent id,
+     * skipping virtual roots and single-span outbound-only traces.
+     */
+    private static DcSpan resolveTraceEntryRoot(List<DcSpan> spans) {
+        List<DcSpan> roots = new ArrayList<>();
         for (DcSpan span : spans) {
-            if (!TraceParentUtil.isRootParentId(span.parent_id)
-                    || ServiceFlowSpanRules.isVirtualServiceSpan(span)) {
-                continue;
-            }
-            if (root == null || span.start < root.start) {
-                root = span;
+            if (TraceParentUtil.isRootParentId(span.parent_id)) {
+                roots.add(span);
             }
         }
+        if (roots.isEmpty()) {
+            return null;
+        }
+        DcSpan root = roots.get(0);
+        if (ServiceFlowSpanRules.isVirtualServiceSpan(root)) {
+            return null;
+        }
+        if (spanIdToSpanMapSizeIsOneWithoutInbound(spans, root)) {
+            return null;
+        }
         return root;
+    }
+
+    private static boolean spanIdToSpanMapSizeIsOneWithoutInbound(List<DcSpan> spans, DcSpan root) {
+        return spans.size() == 1 && root.isIn != 1;
     }
 
     private static void generateTree(

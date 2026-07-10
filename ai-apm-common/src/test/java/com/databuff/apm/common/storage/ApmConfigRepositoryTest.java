@@ -598,6 +598,18 @@ class ApmConfigRepositoryTest {
         when(rs.getString("group_key")).thenReturn("checkout");
         when(rs.getInt("silenced")).thenReturn(0);
         when(rs.getTimestamp("triggered_at")).thenReturn(Timestamp.from(now));
+        // readEventRow uses positional column indices (also supports joined queries).
+        when(rs.getString(1)).thenReturn("E1");
+        when(rs.getLong(2)).thenReturn(1L);
+        when(rs.getString(3)).thenReturn("demo");
+        when(rs.getString(4)).thenReturn("checkout");
+        when(rs.getString(5)).thenReturn("threshold");
+        when(rs.getString(6)).thenReturn("critical");
+        when(rs.getString(7)).thenReturn("trigger");
+        when(rs.getString(8)).thenReturn("breached");
+        when(rs.getString(9)).thenReturn("checkout");
+        when(rs.getInt(10)).thenReturn(0);
+        when(rs.getTimestamp(11)).thenReturn(Timestamp.from(now));
 
         ApmConfigRepository repository = new ApmConfigRepository(reader, "databuff");
         List<ApmConfigRepository.EventRow> rows = repository.listEventsByRuleAndService(

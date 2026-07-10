@@ -2163,45 +2163,6 @@ public final class MetricQueryBuilder {
                 Math.max(1, Math.min(limit, 500)));
     }
 
-    public static String traceEntryServicesSql(
-            String database, long fromMillis, long toMillis, String serviceFilter) {
-        return """
-                SELECT MAX(NULLIF(`service`, '')) AS service,
-                       MAX(NULLIF(`serviceId`, '')) AS service_id,
-                       '' AS entry_path_id,
-                       COUNT(*) AS call_cnt
-                FROM %s.`trace_dc_span`
-                WHERE %s
-                  AND `is_parent` = 1
-                %s
-                GROUP BY COALESCE(NULLIF(`serviceId`, ''), `service`)
-                HAVING MAX(NULLIF(`service`, '')) IS NOT NULL
-                    OR MAX(NULLIF(`serviceId`, '')) IS NOT NULL
-                ORDER BY call_cnt DESC
-                LIMIT 500
-                """.formatted(
-                database,
-                spanListTimeWhere(fromMillis, toMillis, null, null, 1),
-                serviceFilter == null ? "" : serviceFilter);
-    }
-
-    public static String traceEntryServiceFilter(String serviceId, String serviceName, String resource) {
-        StringBuilder filters = new StringBuilder();
-        if (serviceId != null && !serviceId.isBlank()) {
-            filters.append(buildTraceServiceIdsFilter(java.util.List.of(serviceId)));
-        }
-        if (serviceName != null && !serviceName.isBlank()) {
-            String escaped = escapeLiteral(serviceName);
-            filters.append(" AND `service` = '").append(escaped).append("' ");
-        }
-        if (resource != null && !resource.isBlank()) {
-            filters.append(" AND COALESCE(`resource`, `name`) = '")
-                    .append(escapeLiteral(resource))
-                    .append("' ");
-        }
-        return filters.toString();
-    }
-
     public static String serviceFlowEntryPathIdsSql(String database, long fromMillis, long toMillis, String serviceFilter) {
         return """
                 SELECT DISTINCT `entryPathId` AS entry_path_id

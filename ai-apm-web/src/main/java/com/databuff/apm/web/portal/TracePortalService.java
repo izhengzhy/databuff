@@ -421,30 +421,14 @@ public class TracePortalService {
         long now = System.currentTimeMillis();
         long from = PortalTimeParser.rangeFrom(body, now - 3_600_000L);
         long to = PortalTimeParser.rangeTo(body, now);
-        String serviceFilter = MetricQueryBuilder.traceEntryServiceFilter(
-                ServicePortalService.stringValue(body.get("serviceId"), null),
-                ServicePortalService.stringValue(body.get("service"), null),
-                decodeQueryValue(body.get("resource")));
-
-        try {
-            List<ServiceFlowEntryPoint> entryPoints = readRepository.queryServiceFlowEntryPoints(
-                    MetricQueryBuilder.traceEntryServicesSql(traceDatabase, from, to, serviceFilter));
-            List<Map<String, Object>> rows = toEntryPointRows(entryPoints);
-            if (!rows.isEmpty()) {
-                return Map.of("entryPoints", rows);
-            }
-        } catch (Exception ignored) {
-            // fall back below
-        }
-
-        String metricServiceFilter = MetricQueryBuilder.serviceFlowEntryServiceFilter(
+        String serviceFilter = MetricQueryBuilder.serviceFlowEntryServiceFilter(
                 ServicePortalService.stringValue(body.get("serviceId"), null),
                 ServicePortalService.stringValue(body.get("service"), null),
                 decodeQueryValue(body.get("resource")));
 
         try {
             List<String> entryPathIds = readRepository.queryDistinctStrings(
-                    MetricQueryBuilder.serviceFlowEntryPathIdsSql(metricDatabase, from, to, metricServiceFilter),
+                    MetricQueryBuilder.serviceFlowEntryPathIdsSql(metricDatabase, from, to, serviceFilter),
                     "entry_path_id");
             if (!entryPathIds.isEmpty()) {
                 List<ServiceFlowEntryPoint> entryPoints = readRepository.queryServiceFlowEntryPoints(
