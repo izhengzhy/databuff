@@ -187,11 +187,25 @@ curl -fsSL https://databuff.ai/databuff/ai-apm-k8s-download-images.sh | bash
 
 ---
 
-<h2 align="center" id="community">Community</h2>
+<h2 align="center" id="community">Community & Contributing</h2>
 
 <p align="center">
-  Scan the QR code to join the <strong>Databuff open-source community</strong> on WeChat
-  <br/><br/>
+  <a href="CONTRIBUTING.md">Contributing Guide</a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/databufflabs/databuff/issues">Open Issues</a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/databufflabs/databuff/discussions">Discussions</a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/databufflabs/databuff/labels/good%20first%20issue">Good First Issues</a>
+</p>
+
+<p align="center">
+  See <a href="CONTRIBUTING.md">CONTRIBUTING.md</a> to learn how to submit PRs, report bugs, or request features.
+  <br/>
+  Join our WeChat community for real-time help 👇
+</p>
+
+<p align="center">
   <img src="docs/images/community.png" alt="WeChat community QR code" width="128" />
 </p>
 

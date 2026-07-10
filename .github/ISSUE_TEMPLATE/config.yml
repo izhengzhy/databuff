@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: DataBuff Community (WeChat)
+    url: https://databuff.ai
+    about: Join our WeChat community for real-time discussion and support.
+  - name: GitHub Discussions
+    url: https://github.com/databufflabs/databuff/discussions
+    about: Ask questions and share ideas via GitHub Discussions.
