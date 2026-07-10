@@ -514,11 +514,14 @@ public final class OtelConverter {
                 attribute(attributes, "http.request.method"));
         dc.metaHttpStatusCode = firstIntAttribute(
                 attributes, "http.status_code", "http.response.status_code");
-        dc.metaHttpUrl = firstNonBlank(
+        String httpUrl = firstNonBlank(
                 attribute(attributes, "url.full"),
                 attribute(attributes, "http.url"),
                 attribute(attributes, "http.route"),
                 attribute(attributes, "url.path"));
+        if (httpUrl != null && !DcSpanUtil.isRpcProtocolUrl(httpUrl)) {
+            dc.metaHttpUrl = httpUrl;
+        }
     }
 
     private static Integer firstIntAttribute(List<KeyValue> attributes, String... keys) {

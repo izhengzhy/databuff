@@ -632,6 +632,37 @@ class DcSpanUtilTest {
         mq.meta = "{\"messaging.system\":\"kafka\",\"messaging.destination.name\":\"orders\"}";
         assertThat(DcSpanUtil.resolvePortalSpanDisplay(mq))
                 .isEqualTo(new DcSpanUtil.PortalSpanDisplay("mq", "kafka"));
+
+        DcSpan dubbo = baseSpan();
+        dubbo.name = "dubbo.call";
+        dubbo.resource = "com.demo.OrderService.findInventory(String)";
+        dubbo.meta = "{\"component\":\"apache-dubbo\",\"dubbo-version\":\"2.7\","
+                + "\"method\":\"findInventory\",\"url\":\"dubbo://service-b:20880/com.demo.OrderService\","
+                + "\"peer.hostname\":\"service-b\",\"peer.port\":\"20880\","
+                + "\"server.service\":\"service-b\",\"server.ip\":\"10.0.0.8\"}";
+        assertThat(DcSpanUtil.isRpcSpan(dubbo)).isTrue();
+        assertThat(DcSpanUtil.resolvePortalSpanDisplay(dubbo))
+                .isEqualTo(new DcSpanUtil.PortalSpanDisplay("custom", "dubbo"));
+        assertThat(DcSpanUtil.parseSpanData(dubbo).stream().map(OptimizedMetric::measurement))
+                .contains("service.rpc");
+
+        DcSpan grpc = baseSpan();
+        grpc.name = "grpc.client";
+        grpc.meta = "{\"component\":\"grpc-client\",\"request.type\":\"com.demo.Request\","
+                + "\"response.type\":\"com.demo.Response\",\"status.code\":\"0\"}";
+        assertThat(DcSpanUtil.isRpcSpan(grpc)).isTrue();
+        assertThat(DcSpanUtil.resolvePortalSpanDisplay(grpc))
+                .isEqualTo(new DcSpanUtil.PortalSpanDisplay("custom", "grpc"));
+
+        DcSpan legacySkyWalkingDubbo = baseSpan();
+        legacySkyWalkingDubbo.name = "com.demo.OrderService.findInventory(String)";
+        legacySkyWalkingDubbo.resource = legacySkyWalkingDubbo.name;
+        legacySkyWalkingDubbo.metaHttpUrl = "dubbo://service-b:20880/com.demo.OrderService.findInventory(String)";
+        legacySkyWalkingDubbo.meta = "{\"url\":\"dubbo://service-b:20880/com.demo.OrderService.findInventory(String)\","
+                + "\"skywalking.componentId\":\"3\",\"skywalking.spanLayer\":\"RPCFramework\"}";
+        assertThat(DcSpanUtil.isRpcSpan(legacySkyWalkingDubbo)).isTrue();
+        assertThat(DcSpanUtil.resolvePortalSpanDisplay(legacySkyWalkingDubbo))
+                .isEqualTo(new DcSpanUtil.PortalSpanDisplay("custom", "dubbo"));
     }
 
     private static DcSpan baseSpan() {

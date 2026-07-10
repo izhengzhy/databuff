@@ -173,7 +173,25 @@ curl -fsSL https://databuff.ai/databuff/ai-apm-k8s-download-images.sh | bash
 
 ---
 
-<h2 align="center" id="交流群">交流群</h2>
+<h2 align="center" id="交流群">社区贡献</h2>
+
+<p align="center">
+  <a href="CONTRIBUTING.md">贡献指南</a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/databufflabs/databuff/issues">提交 Issue</a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/databufflabs/databuff/discussions">Discussions</a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/databufflabs/databuff/labels/good%20first%20issue">Good First Issues</a>
+</p>
+
+<p align="center">
+  <b>参与贡献</b>：阅读 <a href="CONTRIBUTING.md">CONTRIBUTING.md</a> 了解如何提交 PR、报告 Bug 或请求功能。
+  <br/>
+  加入微信社区获取实时帮助 👇
+</p>
+
+<h3 align="center">交流群</h3>
 
 <p align="center">
   微信扫码加入 <strong>Databuff 开源交流群</strong>

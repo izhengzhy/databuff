@@ -2,6 +2,7 @@ package com.databuff.apm.ingest.skywalking;
 
 import com.databuff.apm.common.meta.OtelAttributeMaps;
 import com.databuff.apm.common.model.DcSpan;
+import com.databuff.apm.common.serde.DcSpanUtil;
 import com.databuff.apm.common.time.ApmTimeZones;
 import com.databuff.apm.common.trace.TraceSpanNames;
 import com.databuff.apm.common.util.ServiceKeyUtil;
@@ -12,6 +13,7 @@ import org.apache.skywalking.apm.network.language.agent.v3.SegmentObject;
 import org.apache.skywalking.apm.network.language.agent.v3.SegmentReference;
 import org.apache.skywalking.apm.network.language.agent.v3.SpanObject;
 import org.apache.skywalking.apm.network.language.agent.v3.SpanType;
+import org.apache.skywalking.apm.network.language.agent.v3.SpanLayer;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -81,13 +83,16 @@ public final class SkyWalkingConverter {
         dc.type = mapSpanType(span.getSpanType());
         dc.isIn = 0;
         dc.isOut = 0;
-        applyHttpAttributes(dc, tags);
+        applyHttpAttributes(dc, tags, span);
         applyPeer(dc, tags, span.getPeer());
         dc.hostName = firstNonBlank(tags.get("host.name"), serviceInstance, "unknown");
         dc.host_id = dc.hostName;
         dc.metaErrorType = tags.get("error.type");
         Map<String, String> meta = new LinkedHashMap<>(tags);
         meta.put(TraceDataSources.META_DATA_SOURCE, TraceDataSources.SKY_WALKING);
+        normalizeSkyWalkingRpcMeta(span, meta);
+        SkyWalkingMetaNormalizer.normalize(span, meta);
+        applyNormalizedDbResource(dc, meta);
         dc.meta = OtelAttributeMaps.encode(meta);
         OtelAttributeMaps.cache(dc, meta);
         return dc;
@@ -143,10 +148,66 @@ public final class SkyWalkingConverter {
         };
     }
 
-    private static void applyHttpAttributes(DcSpan dc, Map<String, String> tags) {
+    private static void applyHttpAttributes(DcSpan dc, Map<String, String> tags, SpanObject span) {
+        if (isSkyWalkingRpcSpan(span, tags)) {
+            return;
+        }
         dc.metaHttpMethod = firstNonBlank(tags.get("http.method"), tags.get("http.request.method"));
         dc.metaHttpStatusCode = parseInt(firstNonBlank(tags.get("http.status_code"), tags.get("status_code")));
-        dc.metaHttpUrl = firstNonBlank(tags.get("url"), tags.get("http.url"), tags.get("http.route"));
+        String url = firstNonBlank(tags.get("url"), tags.get("http.url"), tags.get("http.route"));
+        if (url != null && !DcSpanUtil.isRpcProtocolUrl(url)) {
+            dc.metaHttpUrl = url;
+        }
+    }
+
+    private static boolean isSkyWalkingRpcSpan(SpanObject span, Map<String, String> tags) {
+        if (span.getSpanLayer() == SpanLayer.RPCFramework) {
+            return true;
+        }
+        if (span.getComponentId() > 0 && DcSpanUtil.rpcSystemFromSkyWalkingComponentId(span.getComponentId()) != null) {
+            return true;
+        }
+        String url = tags.get("url");
+        return url != null && DcSpanUtil.isRpcProtocolUrl(url);
+    }
+
+    private static void applyNormalizedDbResource(DcSpan dc, Map<String, String> meta) {
+        String statement = OtelAttributeMaps.firstNonBlank(meta, "db.statement", "db.sql", "normalized.resource");
+        if (statement != null && !statement.isBlank()) {
+            dc.resource = statement;
+        }
+    }
+
+    private static void normalizeSkyWalkingRpcMeta(SpanObject span, Map<String, String> meta) {
+        if (span.getSpanLayer() != SpanLayer.Unknown) {
+            meta.put("skywalking.spanLayer", span.getSpanLayer().name());
+        }
+        if (span.getComponentId() > 0) {
+            meta.put("skywalking.componentId", String.valueOf(span.getComponentId()));
+        }
+        if (OtelAttributeMaps.firstNonBlank(meta, "rpc.system") != null) {
+            return;
+        }
+        String rpcSystem = null;
+        if (span.getComponentId() > 0) {
+            rpcSystem = DcSpanUtil.rpcSystemFromSkyWalkingComponentId(span.getComponentId());
+        }
+        if (rpcSystem == null && span.getSpanLayer() == SpanLayer.RPCFramework) {
+            rpcSystem = DcSpanUtil.resolveRpcSystem(meta, null);
+        }
+        if (rpcSystem == null) {
+            rpcSystem = DcSpanUtil.resolveRpcSystem(meta, spanResource(span));
+        }
+        if (rpcSystem != null) {
+            meta.put("rpc.system", rpcSystem);
+        }
+    }
+
+    private static DcSpan spanResource(SpanObject span) {
+        DcSpan placeholder = new DcSpan();
+        placeholder.resource = span.getOperationName();
+        placeholder.name = span.getOperationName();
+        return placeholder;
     }
 
     private static Map<String, String> tags(List<KeyStringValuePair> pairs) {

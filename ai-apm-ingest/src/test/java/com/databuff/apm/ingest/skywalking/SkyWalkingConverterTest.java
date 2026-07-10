@@ -3,6 +3,7 @@ package com.databuff.apm.ingest.skywalking;
 import com.databuff.apm.common.meta.OtelAttributeMaps;
 import com.databuff.apm.common.meta.SpanDirectionUtil;
 import com.databuff.apm.common.model.DcSpan;
+import com.databuff.apm.common.serde.DcSpanUtil;
 import com.databuff.apm.ingest.otel.OtlLogLine;
 import com.databuff.apm.ingest.otel.OtlMetricLine;
 import com.databuff.apm.ingest.trace.remote.TraceDataSources;
@@ -19,6 +20,7 @@ import org.apache.skywalking.apm.network.language.agent.v3.SegmentObject;
 import org.apache.skywalking.apm.network.language.agent.v3.SegmentReference;
 import org.apache.skywalking.apm.network.language.agent.v3.SpanObject;
 import org.apache.skywalking.apm.network.language.agent.v3.SpanType;
+import org.apache.skywalking.apm.network.language.agent.v3.SpanLayer;
 import org.apache.skywalking.apm.network.language.agent.v3.Thread;
 import org.apache.skywalking.apm.network.logging.v3.LogData;
 import org.apache.skywalking.apm.network.logging.v3.LogDataBody;
@@ -27,6 +29,7 @@ import org.apache.skywalking.apm.network.logging.v3.TraceContext;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -90,6 +93,66 @@ class SkyWalkingConverterTest {
         Map<String, String> meta = OtelAttributeMaps.parse(span);
         assertThat(meta.get("server.address")).isEqualTo("payments.example.com");
         assertThat(meta.get("server.port")).isEqualTo("443");
+    }
+
+    @Test
+    void convertsNativeDubboSpanAsRpcNotHttp() {
+        String dubboUrl = "dubbo://service-b:20880/com.demo.OrderService.findInventory(String)";
+        SegmentObject segment = SegmentObject.newBuilder()
+                .setTraceId("trace-abc")
+                .setTraceSegmentId("segment-1")
+                .setService("order-service")
+                .setServiceInstance("inst-1")
+                .addSpans(SpanObject.newBuilder()
+                        .setSpanId(0)
+                        .setParentSpanId(-1)
+                        .setStartTime(1_700_000_000_000L)
+                        .setEndTime(1_700_000_000_080L)
+                        .setOperationName("com.demo.OrderService.findInventory(String)")
+                        .setSpanType(SpanType.Exit)
+                        .setSpanLayer(SpanLayer.RPCFramework)
+                        .setComponentId(3)
+                        .setPeer("service-b:20880")
+                        .addTags(tag("url", dubboUrl)))
+                .build();
+
+        DcSpan span = converter.convertSegment(segment).get(0).span();
+        assertThat(span.metaHttpUrl).isNull();
+        assertThat(span.metaHttpMethod).isNull();
+        assertThat(DcSpanUtil.isRpcSpan(span)).isTrue();
+        assertThat(DcSpanUtil.resolvePortalSpanDisplay(span))
+                .isEqualTo(new DcSpanUtil.PortalSpanDisplay("custom", "dubbo"));
+
+        Map<String, String> meta = OtelAttributeMaps.parse(span.meta);
+        assertThat(meta.get("rpc.system")).isEqualTo("dubbo");
+        assertThat(meta.get("skywalking.componentId")).isEqualTo("3");
+        assertThat(meta.get("skywalking.spanLayer")).isEqualTo("RPCFramework");
+        assertThat(meta.get("url")).isEqualTo(dubboUrl);
+    }
+
+    @Test
+    void convertsNativeGrpcSpanAsRpc() {
+        SegmentObject segment = SegmentObject.newBuilder()
+                .setTraceId("trace-abc")
+                .setTraceSegmentId("segment-1")
+                .setService("order-service")
+                .addSpans(SpanObject.newBuilder()
+                        .setSpanId(0)
+                        .setParentSpanId(-1)
+                        .setStartTime(1_700_000_000_000L)
+                        .setEndTime(1_700_000_000_050L)
+                        .setOperationName("/com.demo.Greeter/SayHello")
+                        .setSpanType(SpanType.Exit)
+                        .setSpanLayer(SpanLayer.RPCFramework)
+                        .setComponentId(23)
+                        .setPeer("service-b:9090")
+                        .addTags(tag("status.code", "0")))
+                .build();
+
+        DcSpan span = converter.convertSegment(segment).get(0).span();
+        assertThat(span.metaHttpUrl).isNull();
+        assertThat(DcSpanUtil.isRpcSpan(span)).isTrue();
+        assertThat(OtelAttributeMaps.parse(span.meta).get("rpc.system")).isEqualTo("grpc");
     }
 
     @Test
