@@ -49,7 +49,7 @@ CREATE TABLE metric_jvm__v3 (
   INDEX idx_service_instance (`service_instance`) USING INVERTED COMMENT 'inverted index for tag service_instance',
   INDEX idx_tag_host (`tag_host`) USING INVERTED COMMENT 'inverted index for tag tag_host'
 ) ENGINE=OLAP
-AGGREGATE KEY(`ts`, `instance`, `service`, `service_id`, `service_instance`, `tag_host`)
+AGGREGATE KEY(`metric_time`, `ts`, `instance`, `service`, `service_id`, `service_instance`, `tag_host`)
 PARTITION BY RANGE(`metric_time`) ()
 DISTRIBUTED BY HASH(`service_id`) BUCKETS 16
 PROPERTIES (
@@ -93,7 +93,7 @@ CREATE TABLE metric_service__v3 (
   INDEX idx_service_id (`service_id`) USING INVERTED COMMENT 'inverted index for tag service_id',
   INDEX idx_service_instance (`service_instance`) USING INVERTED COMMENT 'inverted index for tag service_instance'
 ) ENGINE=OLAP
-AGGREGATE KEY(`ts`, `errorType`, `service`, `service_id`, `service_instance`)
+AGGREGATE KEY(`metric_time`, `ts`, `errorType`, `service`, `service_id`, `service_instance`)
 PARTITION BY RANGE(`metric_time`) ()
 DISTRIBUTED BY HASH(`service_id`) BUCKETS 16
 PROPERTIES (
@@ -151,7 +151,7 @@ CREATE TABLE metric_service_config__v3 (
   INDEX idx_srcServiceId (`srcServiceId`) USING INVERTED COMMENT 'inverted index for tag srcServiceId',
   INDEX idx_srcServiceInstance (`srcServiceInstance`) USING INVERTED COMMENT 'inverted index for tag srcServiceInstance'
 ) ENGINE=OLAP
-AGGREGATE KEY(`ts`, `config.type`, `durationRange`, `isIn`, `isOut`, `operation`, `resource`, `rootComponentType`, `rootResource`, `service`, `service_id`, `service_instance`, `srcService`, `srcServiceId`, `srcServiceInstance`)
+AGGREGATE KEY(`metric_time`, `ts`, `config.type`, `durationRange`, `isIn`, `isOut`, `operation`, `resource`, `rootComponentType`, `rootResource`, `service`, `service_id`, `service_instance`, `srcService`, `srcServiceId`, `srcServiceInstance`)
 PARTITION BY RANGE(`metric_time`) ()
 DISTRIBUTED BY HASH(`service_id`) BUCKETS 16
 PROPERTIES (
@@ -182,7 +182,7 @@ CREATE TABLE metric_service_cpu__v3 (
   INDEX idx_service_id (`service_id`) USING INVERTED COMMENT 'inverted index for tag service_id',
   INDEX idx_service_instance (`service_instance`) USING INVERTED COMMENT 'inverted index for tag service_instance'
 ) ENGINE=OLAP
-AGGREGATE KEY(`ts`, `service`, `serviceCode`, `service_id`, `service_instance`)
+AGGREGATE KEY(`metric_time`, `ts`, `service`, `serviceCode`, `service_id`, `service_instance`)
 PARTITION BY RANGE(`metric_time`) ()
 DISTRIBUTED BY HASH(`service_id`) BUCKETS 16
 PROPERTIES (
@@ -251,7 +251,7 @@ CREATE TABLE metric_service_db__v3 (
   INDEX idx_srcServiceId (`srcServiceId`) USING INVERTED COMMENT 'inverted index for tag srcServiceId',
   INDEX idx_srcServiceInstance (`srcServiceInstance`) USING INVERTED COMMENT 'inverted index for tag srcServiceInstance'
 ) ENGINE=OLAP
-AGGREGATE KEY(`ts`, `dbType`, `durationRange`, `isIn`, `isOut`, `isSlow`, `resource`, `rootComponentType`, `rootResource`, `service`, `service_id`, `service_instance`, `sqlContent`, `sqlDatabase`, `sqlOperation`, `srcService`, `srcServiceId`, `srcServiceInstance`)
+AGGREGATE KEY(`metric_time`, `ts`, `dbType`, `durationRange`, `isIn`, `isOut`, `isSlow`, `resource`, `rootComponentType`, `rootResource`, `service`, `service_id`, `service_instance`, `sqlContent`, `sqlDatabase`, `sqlOperation`, `srcService`, `srcServiceId`, `srcServiceInstance`)
 PARTITION BY RANGE(`metric_time`) ()
 DISTRIBUTED BY HASH(`service_id`) BUCKETS 16
 PROPERTIES (
@@ -295,7 +295,7 @@ CREATE TABLE metric_service_db_connection_pool__v3 (
   INDEX idx_service_id (`service_id`) USING INVERTED COMMENT 'inverted index for tag service_id',
   INDEX idx_service_instance (`service_instance`) USING INVERTED COMMENT 'inverted index for tag service_instance'
 ) ENGINE=OLAP
-AGGREGATE KEY(`ts`, `connectionPoolDbType`, `connectionPoolName`, `connectionPoolType`, `connectionPoolUrl`, `connectionPoolUsername`, `driverClassName`, `service`, `service_id`, `service_instance`)
+AGGREGATE KEY(`metric_time`, `ts`, `connectionPoolDbType`, `connectionPoolName`, `connectionPoolType`, `connectionPoolUrl`, `connectionPoolUsername`, `driverClassName`, `service`, `service_id`, `service_instance`)
 PARTITION BY RANGE(`metric_time`) ()
 DISTRIBUTED BY HASH(`service_id`) BUCKETS 16
 PROPERTIES (
@@ -327,7 +327,7 @@ CREATE TABLE metric_service_db_connection_pool_get__v3 (
   INDEX idx_service_id (`service_id`) USING INVERTED COMMENT 'inverted index for tag service_id',
   INDEX idx_service_instance (`service_instance`) USING INVERTED COMMENT 'inverted index for tag service_instance'
 ) ENGINE=OLAP
-AGGREGATE KEY(`ts`, `connectionPoolName`, `service`, `service_id`, `service_instance`)
+AGGREGATE KEY(`metric_time`, `ts`, `connectionPoolName`, `service`, `service_id`, `service_instance`)
 PARTITION BY RANGE(`metric_time`) ()
 DISTRIBUTED BY HASH(`service_id`) BUCKETS 16
 PROPERTIES (
@@ -377,7 +377,7 @@ CREATE TABLE metric_service_exception__v3 (
   INDEX idx_service_id (`service_id`) USING INVERTED COMMENT 'inverted index for tag service_id',
   INDEX idx_service_instance (`service_instance`) USING INVERTED COMMENT 'inverted index for tag service_instance'
 ) ENGINE=OLAP
-AGGREGATE KEY(`ts`, `componentService`, `componentServiceId`, `componentServiceInstance`, `exceptionCode`, `exceptionName`, `isIn`, `isOut`, `resource`, `rootComponentType`, `rootResource`, `service`, `service_id`, `service_instance`)
+AGGREGATE KEY(`metric_time`, `ts`, `componentService`, `componentServiceId`, `componentServiceInstance`, `exceptionCode`, `exceptionName`, `isIn`, `isOut`, `resource`, `rootComponentType`, `rootResource`, `service`, `service_id`, `service_instance`)
 PARTITION BY RANGE(`metric_time`) ()
 DISTRIBUTED BY HASH(`service_id`) BUCKETS 16
 PROPERTIES (
@@ -430,7 +430,7 @@ CREATE TABLE metric_service_flow__v3 (
   INDEX idx_service (`service`) USING INVERTED COMMENT 'inverted index for tag service',
   INDEX idx_service_id (`service_id`) USING INVERTED COMMENT 'inverted index for tag service_id'
 ) ENGINE=OLAP
-AGGREGATE KEY(`ts`, `entryInterfacePathId`, `entryPathId`, `interfacePathId`, `isIn`, `parentInterfacePathId`, `parentPathId`, `parentResource`, `parentService`, `parentServiceId`, `pathId`, `resource`, `service`, `service_id`)
+AGGREGATE KEY(`metric_time`, `ts`, `entryInterfacePathId`, `entryPathId`, `interfacePathId`, `isIn`, `parentInterfacePathId`, `parentPathId`, `parentResource`, `parentService`, `parentServiceId`, `pathId`, `resource`, `service`, `service_id`)
 PARTITION BY RANGE(`metric_time`) ()
 DISTRIBUTED BY HASH(`service_id`) BUCKETS 16
 PROPERTIES (
@@ -473,7 +473,7 @@ CREATE TABLE metric_service_health_status__v3 (
   INDEX idx_service_id (`service_id`) USING INVERTED COMMENT 'inverted index for tag service_id',
   INDEX idx_service_instance (`service_instance`) USING INVERTED COMMENT 'inverted index for tag service_instance'
 ) ENGINE=OLAP
-AGGREGATE KEY(`ts`, `convergenceType`, `gid`, `host`, `level`, `policyId`, `policyName`, `problemId`, `service`, `service_id`, `service_instance`)
+AGGREGATE KEY(`metric_time`, `ts`, `convergenceType`, `gid`, `host`, `level`, `policyId`, `policyName`, `problemId`, `service`, `service_id`, `service_instance`)
 PARTITION BY RANGE(`metric_time`) ()
 DISTRIBUTED BY HASH(`service_id`) BUCKETS 16
 PROPERTIES (
@@ -538,7 +538,7 @@ CREATE TABLE metric_service_http__v3 (
   INDEX idx_srcServiceInstance (`srcServiceInstance`) USING INVERTED COMMENT 'inverted index for tag srcServiceInstance',
   INDEX idx_url (`url`) USING INVERTED COMMENT 'inverted index for tag url'
 ) ENGINE=OLAP
-AGGREGATE KEY(`ts`, `durationRange`, `httpCode`, `httpMethod`, `isIn`, `isOut`, `resource`, `rootComponentType`, `rootResource`, `service`, `service_id`, `service_instance`, `srcService`, `srcServiceId`, `srcServiceInstance`, `url`)
+AGGREGATE KEY(`metric_time`, `ts`, `durationRange`, `httpCode`, `httpMethod`, `isIn`, `isOut`, `resource`, `rootComponentType`, `rootResource`, `service`, `service_id`, `service_instance`, `srcService`, `srcServiceId`, `srcServiceInstance`, `url`)
 PARTITION BY RANGE(`metric_time`) ()
 DISTRIBUTED BY HASH(`service_id`) BUCKETS 16
 PROPERTIES (
@@ -572,7 +572,7 @@ CREATE TABLE metric_service_http_connection_pool__v3 (
   INDEX idx_service_id (`service_id`) USING INVERTED COMMENT 'inverted index for tag service_id',
   INDEX idx_service_instance (`service_instance`) USING INVERTED COMMENT 'inverted index for tag service_instance'
 ) ENGINE=OLAP
-AGGREGATE KEY(`ts`, `httpConnectionPoolName`, `service`, `service_id`, `service_instance`)
+AGGREGATE KEY(`metric_time`, `ts`, `httpConnectionPoolName`, `service`, `service_id`, `service_instance`)
 PARTITION BY RANGE(`metric_time`) ()
 DISTRIBUTED BY HASH(`service_id`) BUCKETS 16
 PROPERTIES (
@@ -604,7 +604,7 @@ CREATE TABLE metric_service_http_connection_pool_get__v3 (
   INDEX idx_service_id (`service_id`) USING INVERTED COMMENT 'inverted index for tag service_id',
   INDEX idx_service_instance (`service_instance`) USING INVERTED COMMENT 'inverted index for tag service_instance'
 ) ENGINE=OLAP
-AGGREGATE KEY(`ts`, `httpConnectionPoolName`, `service`, `service_id`, `service_instance`)
+AGGREGATE KEY(`metric_time`, `ts`, `httpConnectionPoolName`, `service`, `service_id`, `service_instance`)
 PARTITION BY RANGE(`metric_time`) ()
 DISTRIBUTED BY HASH(`service_id`) BUCKETS 16
 PROPERTIES (
@@ -665,7 +665,7 @@ CREATE TABLE metric_service_instance__v3 (
   INDEX idx_service_type (`service_type`) USING INVERTED COMMENT 'inverted index for tag service_type',
   INDEX idx_virtualService (`virtualService`) USING INVERTED COMMENT 'inverted index for tag virtualService'
 ) ENGINE=OLAP
-AGGREGATE KEY(`ts`, `biz_pid_id`, `containerId`, `containerName`, `hostIp`, `hostname`, `javaVendor`, `javaVersion`, `k8sClusterId`, `k8sContainerId`, `k8sNamespace`, `k8sPodName`, `pid`, `pname`, `ports`, `service`, `service_id`, `service_instance`, `service_type`, `virtualService`)
+AGGREGATE KEY(`metric_time`, `ts`, `biz_pid_id`, `containerId`, `containerName`, `hostIp`, `hostname`, `javaVendor`, `javaVersion`, `k8sClusterId`, `k8sContainerId`, `k8sNamespace`, `k8sPodName`, `pid`, `pname`, `ports`, `service`, `service_id`, `service_instance`, `service_type`, `virtualService`)
 PARTITION BY RANGE(`metric_time`) ()
 DISTRIBUTED BY HASH(`service_id`) BUCKETS 16
 PROPERTIES (
@@ -697,7 +697,7 @@ CREATE TABLE metric_service_io__v3 (
   INDEX idx_service_id (`service_id`) USING INVERTED COMMENT 'inverted index for tag service_id',
   INDEX idx_service_instance (`service_instance`) USING INVERTED COMMENT 'inverted index for tag service_instance'
 ) ENGINE=OLAP
-AGGREGATE KEY(`ts`, `service`, `serviceCode`, `service_id`, `service_instance`)
+AGGREGATE KEY(`metric_time`, `ts`, `service`, `serviceCode`, `service_id`, `service_instance`)
 PARTITION BY RANGE(`metric_time`) ()
 DISTRIBUTED BY HASH(`service_id`) BUCKETS 16
 PROPERTIES (
@@ -730,7 +730,7 @@ CREATE TABLE metric_service_mem__v3 (
   INDEX idx_service_id (`service_id`) USING INVERTED COMMENT 'inverted index for tag service_id',
   INDEX idx_service_instance (`service_instance`) USING INVERTED COMMENT 'inverted index for tag service_instance'
 ) ENGINE=OLAP
-AGGREGATE KEY(`ts`, `service`, `serviceCode`, `service_id`, `service_instance`)
+AGGREGATE KEY(`metric_time`, `ts`, `service`, `serviceCode`, `service_id`, `service_instance`)
 PARTITION BY RANGE(`metric_time`) ()
 DISTRIBUTED BY HASH(`service_id`) BUCKETS 16
 PROPERTIES (
@@ -799,7 +799,7 @@ CREATE TABLE metric_service_mq__v3 (
   INDEX idx_topic (`topic`) USING INVERTED COMMENT 'inverted index for tag topic',
   INDEX idx_type (`type`) USING INVERTED COMMENT 'inverted index for tag type'
 ) ENGINE=OLAP
-AGGREGATE KEY(`ts`, `broker`, `durationRange`, `group`, `isConsume`, `isIn`, `isOut`, `partition`, `resource`, `rootComponentType`, `rootResource`, `service`, `service_id`, `service_instance`, `srcService`, `srcServiceId`, `srcServiceInstance`, `topic`, `type`)
+AGGREGATE KEY(`metric_time`, `ts`, `broker`, `durationRange`, `group`, `isConsume`, `isIn`, `isOut`, `partition`, `resource`, `rootComponentType`, `rootResource`, `service`, `service_id`, `service_instance`, `srcService`, `srcServiceId`, `srcServiceInstance`, `topic`, `type`)
 PARTITION BY RANGE(`metric_time`) ()
 DISTRIBUTED BY HASH(`service_id`) BUCKETS 16
 PROPERTIES (
@@ -831,7 +831,7 @@ CREATE TABLE metric_service_net__v3 (
   INDEX idx_service_id (`service_id`) USING INVERTED COMMENT 'inverted index for tag service_id',
   INDEX idx_service_instance (`service_instance`) USING INVERTED COMMENT 'inverted index for tag service_instance'
 ) ENGINE=OLAP
-AGGREGATE KEY(`ts`, `service`, `serviceCode`, `service_id`, `service_instance`)
+AGGREGATE KEY(`metric_time`, `ts`, `service`, `serviceCode`, `service_id`, `service_instance`)
 PARTITION BY RANGE(`metric_time`) ()
 DISTRIBUTED BY HASH(`service_id`) BUCKETS 16
 PROPERTIES (
@@ -868,7 +868,7 @@ CREATE TABLE metric_service_object_pool__v3 (
   INDEX idx_service_id (`service_id`) USING INVERTED COMMENT 'inverted index for tag service_id',
   INDEX idx_service_instance (`service_instance`) USING INVERTED COMMENT 'inverted index for tag service_instance'
 ) ENGINE=OLAP
-AGGREGATE KEY(`ts`, `objectPoolFairness`, `objectPoolName`, `objectPoolObjectClass`, `service`, `service_id`, `service_instance`)
+AGGREGATE KEY(`metric_time`, `ts`, `objectPoolFairness`, `objectPoolName`, `objectPoolObjectClass`, `service`, `service_id`, `service_instance`)
 PARTITION BY RANGE(`metric_time`) ()
 DISTRIBUTED BY HASH(`service_id`) BUCKETS 16
 PROPERTIES (
@@ -900,7 +900,7 @@ CREATE TABLE metric_service_object_pool_get__v3 (
   INDEX idx_service_id (`service_id`) USING INVERTED COMMENT 'inverted index for tag service_id',
   INDEX idx_service_instance (`service_instance`) USING INVERTED COMMENT 'inverted index for tag service_instance'
 ) ENGINE=OLAP
-AGGREGATE KEY(`ts`, `objectPoolName`, `service`, `service_id`, `service_instance`)
+AGGREGATE KEY(`metric_time`, `ts`, `objectPoolName`, `service`, `service_id`, `service_instance`)
 PARTITION BY RANGE(`metric_time`) ()
 DISTRIBUTED BY HASH(`service_id`) BUCKETS 16
 PROPERTIES (
@@ -958,7 +958,7 @@ CREATE TABLE metric_service_redis__v3 (
   INDEX idx_srcServiceId (`srcServiceId`) USING INVERTED COMMENT 'inverted index for tag srcServiceId',
   INDEX idx_srcServiceInstance (`srcServiceInstance`) USING INVERTED COMMENT 'inverted index for tag srcServiceInstance'
 ) ENGINE=OLAP
-AGGREGATE KEY(`ts`, `command`, `durationRange`, `isIn`, `isOut`, `resource`, `rootComponentType`, `rootResource`, `service`, `service_id`, `service_instance`, `srcService`, `srcServiceId`, `srcServiceInstance`)
+AGGREGATE KEY(`metric_time`, `ts`, `command`, `durationRange`, `isIn`, `isOut`, `resource`, `rootComponentType`, `rootResource`, `service`, `service_id`, `service_instance`, `srcService`, `srcServiceId`, `srcServiceInstance`)
 PARTITION BY RANGE(`metric_time`) ()
 DISTRIBUTED BY HASH(`service_id`) BUCKETS 16
 PROPERTIES (
@@ -1021,7 +1021,7 @@ CREATE TABLE metric_service_rpc__v3 (
   INDEX idx_statusCode (`statusCode`) USING INVERTED COMMENT 'inverted index for tag statusCode',
   INDEX idx_type (`type`) USING INVERTED COMMENT 'inverted index for tag type'
 ) ENGINE=OLAP
-AGGREGATE KEY(`ts`, `durationRange`, `isIn`, `isOut`, `resource`, `rootComponentType`, `rootResource`, `service`, `service_id`, `service_instance`, `srcService`, `srcServiceId`, `srcServiceInstance`, `statusCode`, `type`)
+AGGREGATE KEY(`metric_time`, `ts`, `durationRange`, `isIn`, `isOut`, `resource`, `rootComponentType`, `rootResource`, `service`, `service_id`, `service_instance`, `srcService`, `srcServiceId`, `srcServiceInstance`, `statusCode`, `type`)
 PARTITION BY RANGE(`metric_time`) ()
 DISTRIBUTED BY HASH(`service_id`) BUCKETS 16
 PROPERTIES (
@@ -1082,7 +1082,7 @@ CREATE TABLE metric_service_remote__v3 (
   INDEX idx_srcServiceInstance (`srcServiceInstance`) USING INVERTED COMMENT 'inverted index for tag srcServiceInstance',
   INDEX idx_remoteType (`remoteType`) USING INVERTED COMMENT 'inverted index for tag remoteType'
 ) ENGINE=OLAP
-AGGREGATE KEY(`ts`, `durationRange`, `isIn`, `isOut`, `resource`, `rootComponentType`, `rootResource`, `service`, `service_id`, `service_instance`, `srcService`, `srcServiceId`, `srcServiceInstance`, `remoteType`)
+AGGREGATE KEY(`metric_time`, `ts`, `durationRange`, `isIn`, `isOut`, `resource`, `rootComponentType`, `rootResource`, `service`, `service_id`, `service_instance`, `srcService`, `srcServiceId`, `srcServiceInstance`, `remoteType`)
 PARTITION BY RANGE(`metric_time`) ()
 DISTRIBUTED BY HASH(`service_id`) BUCKETS 16
 PROPERTIES (
@@ -1114,7 +1114,7 @@ CREATE TABLE metric_service_tcp__v3 (
   INDEX idx_service_id (`service_id`) USING INVERTED COMMENT 'inverted index for tag service_id',
   INDEX idx_service_instance (`service_instance`) USING INVERTED COMMENT 'inverted index for tag service_instance'
 ) ENGINE=OLAP
-AGGREGATE KEY(`ts`, `service`, `serviceCode`, `service_id`, `service_instance`)
+AGGREGATE KEY(`metric_time`, `ts`, `service`, `serviceCode`, `service_id`, `service_instance`)
 PARTITION BY RANGE(`metric_time`) ()
 DISTRIBUTED BY HASH(`service_id`) BUCKETS 16
 PROPERTIES (
@@ -1153,7 +1153,7 @@ CREATE TABLE metric_service_thread_pool__v3 (
   INDEX idx_service_instance (`service_instance`) USING INVERTED COMMENT 'inverted index for tag service_instance',
   INDEX idx_threadPoolName (`threadPoolName`) USING INVERTED COMMENT 'inverted index for tag threadPoolName'
 ) ENGINE=OLAP
-AGGREGATE KEY(`ts`, `service`, `service_id`, `service_instance`, `threadPoolName`)
+AGGREGATE KEY(`metric_time`, `ts`, `service`, `service_id`, `service_instance`, `threadPoolName`)
 PARTITION BY RANGE(`metric_time`) ()
 DISTRIBUTED BY HASH(`service_id`) BUCKETS 16
 PROPERTIES (
@@ -1191,7 +1191,7 @@ CREATE TABLE metric_service_thread_pool_cost__v3 (
   INDEX idx_threadPoolName (`threadPoolName`) USING INVERTED COMMENT 'inverted index for tag threadPoolName',
   INDEX idx_type (`type`) USING INVERTED COMMENT 'inverted index for tag type'
 ) ENGINE=OLAP
-AGGREGATE KEY(`ts`, `rootResource`, `service`, `service_id`, `service_instance`, `threadPoolName`, `type`)
+AGGREGATE KEY(`metric_time`, `ts`, `rootResource`, `service`, `service_id`, `service_instance`, `threadPoolName`, `type`)
 PARTITION BY RANGE(`metric_time`) ()
 DISTRIBUTED BY HASH(`service_id`) BUCKETS 16
 PROPERTIES (
@@ -1236,7 +1236,7 @@ CREATE TABLE metric_service_trace__v3 (
   INDEX idx_service_id (`service_id`) USING INVERTED COMMENT 'inverted index for tag service_id',
   INDEX idx_service_instance (`service_instance`) USING INVERTED COMMENT 'inverted index for tag service_instance'
 ) ENGINE=OLAP
-AGGREGATE KEY(`ts`, `errorType`, `hostName`, `httpMethod`, `httpStatusCode`, `resource`, `service`, `service_id`, `service_instance`)
+AGGREGATE KEY(`metric_time`, `ts`, `errorType`, `hostName`, `httpMethod`, `httpStatusCode`, `resource`, `service`, `service_id`, `service_instance`)
 PARTITION BY RANGE(`metric_time`) ()
 DISTRIBUTED BY HASH(`service_id`) BUCKETS 16
 PROPERTIES (

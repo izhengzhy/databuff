@@ -101,7 +101,7 @@ demo_image_ref() {
 
 openjdk_pull_image() {
   if [[ -n "${OPENJDK_REGISTRY:-}" ]]; then
-    printf '%s/openjdk:17.0.2-jdk\n' "${OPENJDK_REGISTRY%/}"
+    printf '%s/eclipse-temurin:17-jdk-jammy\n' "${OPENJDK_REGISTRY%/}"
     return 0
   fi
   printf '%s\n' "${OPENJDK_IMAGE:?set OPENJDK_IMAGE in deploy/env.sh}"
@@ -115,7 +115,7 @@ openjdk_image_for_platform() {
   local platform="$1"
 
   if [[ -n "${OPENJDK_REGISTRY:-}" ]]; then
-    printf '%s/openjdk:17.0.2-jdk\n' "${OPENJDK_REGISTRY%/}"
+    printf '%s/eclipse-temurin:17-jdk-jammy\n' "${OPENJDK_REGISTRY%/}"
     return 0
   fi
   printf '%s\n' "${OPENJDK_IMAGE:?set OPENJDK_IMAGE in deploy/env.sh}"

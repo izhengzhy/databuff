@@ -19,7 +19,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
@@ -50,7 +49,7 @@ public class AgentScopeChatService {
         try {
             ReActAgent agent = buildBrainAgent(runtime, provider);
             Msg response = agent.call(Msg.builder().textContent(message.trim()).build())
-                    .block(Duration.ofSeconds(120));
+                    .block();
             if (response == null || response.getTextContent() == null || response.getTextContent().isBlank()) {
                 return Optional.of(ChatOutcome.failed("empty AgentScope response"));
             }
@@ -76,7 +75,8 @@ public class AgentScopeChatService {
                 .sysPrompt(buildSysPrompt(runtime))
                 .model(model)
                 .toolkit(toolkit)
-                .maxIters(8)
+                .maxIters(runtime.resolvedMaxIters())
+                .modelExecutionConfig(runtime.llmModelExecutionConfig())
                 .checkRunning(false)
                 .permissionContext(AgentScopePermissionSupport.autoAllowContext());
 
@@ -129,7 +129,8 @@ public class AgentScopeChatService {
                 .sysPrompt(sysPrompt)
                 .model(model)
                 .toolkit(subToolkit)
-                .maxIters(6)
+                .maxIters(runtime.resolvedMaxIters())
+                .modelExecutionConfig(runtime.llmModelExecutionConfig())
                 .checkRunning(false)
                 .permissionContext(AgentScopePermissionSupport.autoAllowContext());
         if (hasSkill(runtime, skillId)) {

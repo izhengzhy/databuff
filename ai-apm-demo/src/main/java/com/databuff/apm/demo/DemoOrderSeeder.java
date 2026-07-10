@@ -25,7 +25,7 @@ public final class DemoOrderSeeder {
         boolean seedSkyWalking = protocol.equals("skywalking") || protocol.equals("both");
 
         String otlpEndpoint = System.getenv().getOrDefault("OTEL_EXPORTER_OTLP_ENDPOINT", "http://127.0.0.1:4318");
-        String skyWalkingTarget = System.getenv().getOrDefault("SKYWALKING_GRPC_TARGET", "127.0.0.1:31800");
+        String skyWalkingTarget = System.getenv().getOrDefault("SKYWALKING_GRPC_TARGET", "127.0.0.1:11800");
 
         System.out.println("[demo-seeder] protocol=" + protocol + " pid=" + ProcessHandle.current().pid()
                 + " traceInterval=" + traceIntervalSeconds + "s jvmInterval=" + jvmMetricIntervalSeconds + "s");

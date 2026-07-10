@@ -6,6 +6,7 @@ import com.databuff.apm.common.metric.MetricSchemaRegistry;
 import com.databuff.apm.common.metric.TraceMetricMinuteBucket;
 import com.databuff.apm.common.model.DcSpan;
 import com.databuff.apm.common.model.OptimizedMetric;
+import com.databuff.apm.common.trace.TraceParentUtil;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -21,8 +22,17 @@ public final class ServiceFlowExtractor {
     private ServiceFlowExtractor() {
     }
 
+    /** True when the trace has at least one span with {@code parent_id} blank/{@code 0}. */
+    public static boolean hasTraceEntryRoot(List<DcSpan> spans) {
+        return findTraceEntryRoot(spans) != null;
+    }
+
     public static List<OptimizedMetric> extractFromTrace(List<DcSpan> spans) {
         if (spans == null || spans.isEmpty()) {
+            return List.of();
+        }
+        DcSpan root = findTraceEntryRoot(spans);
+        if (root == null) {
             return List.of();
         }
         Map<String, List<DcSpan>> childrenByParent = new HashMap<>();
@@ -32,21 +42,10 @@ public final class ServiceFlowExtractor {
             String parentKey = parentKey(span.parent_id);
             childrenByParent.computeIfAbsent(parentKey, ignored -> new ArrayList<>()).add(span);
         }
-        List<DcSpan> roots = childrenByParent.getOrDefault("0", List.of());
-        if (roots.isEmpty()) {
-            return List.of();
-        }
-        DcSpan root = roots.get(0);
-        if (ServiceFlowSpanRules.isVirtualServiceSpan(root)) {
-            return List.of();
-        }
-        if (spanIdToSpanMapSizeIsOneWithoutInbound(spans, root)) {
-            return List.of();
-        }
-        long srcCall = root.is_parent == 1 && root.isIn == 1 ? 1L : 0L;
         String entryPathId = ServiceFlowPathIds.entryPathId(nullToEmpty(root.serviceId));
         String entryInterfacePathId = ServiceFlowPathIds.entryInterfacePathId(
-                nullToEmpty(root.serviceId), ServiceFlowSpanRules.displayResource(root));
+                nullToEmpty(root.serviceId),
+                ServiceFlowSpanRules.displayResource(root));
         List<OptimizedMetric> metrics = new ArrayList<>();
         generateTree(
                 root,
@@ -54,7 +53,7 @@ public final class ServiceFlowExtractor {
                 bySpanId,
                 0,
                 metrics,
-                srcCall,
+                1L,
                 entryPathId,
                 entryInterfacePathId,
                 null,
@@ -65,8 +64,19 @@ public final class ServiceFlowExtractor {
         return metrics;
     }
 
-    private static boolean spanIdToSpanMapSizeIsOneWithoutInbound(List<DcSpan> spans, DcSpan root) {
-        return spans.size() == 1 && root.isIn != 1;
+    /** First span whose {@code parent_id} is blank/{@code 0} (legacy {@code parentId=0}). */
+    private static DcSpan findTraceEntryRoot(List<DcSpan> spans) {
+        DcSpan root = null;
+        for (DcSpan span : spans) {
+            if (!TraceParentUtil.isRootParentId(span.parent_id)
+                    || ServiceFlowSpanRules.isVirtualServiceSpan(span)) {
+                continue;
+            }
+            if (root == null || span.start < root.start) {
+                root = span;
+            }
+        }
+        return root;
     }
 
     private static void generateTree(
@@ -99,7 +109,8 @@ public final class ServiceFlowExtractor {
                 parentServiceId,
                 parentResource,
                 resource,
-                srcCall));
+                srcCall,
+                current.isIn));
 
         List<DcSpan> children = new ArrayList<>();
         findChildren(current, current, childrenByParent, bySpanId, children);
@@ -195,12 +206,13 @@ public final class ServiceFlowExtractor {
             String parentServiceId,
             String parentResource,
             String resource,
-            long srcCall) {
+            long srcCall,
+            int flowIsIn) {
         Map<String, String> tags = new java.util.LinkedHashMap<>();
         tags.put("entryInterfacePathId", nullToEmpty(entryInterfacePathId));
         tags.put("entryPathId", nullToEmpty(entryPathId));
         tags.put("interfacePathId", nullToEmpty(interfacePathId));
-        tags.put("isIn", span.isIn == 1 ? "1" : "0");
+        tags.put("isIn", flowIsIn == 1 ? "1" : "0");
         tags.put("parentInterfacePathId", nullToEmpty(parentInterfacePathId));
         tags.put("parentPathId", parentPathId == null ? "" : parentPathId);
         tags.put("parentResource", nullToEmpty(parentResource));
@@ -209,7 +221,7 @@ public final class ServiceFlowExtractor {
         tags.put("pathId", nullToEmpty(pathId));
         tags.put("resource", nullToEmpty(resource));
         tags.put("service", nullToEmpty(span.service));
-        tags.put("serviceId", nullToEmpty(span.serviceId));
+        tags.put("service_id", nullToEmpty(span.serviceId));
         long slow = span.slow;
         long duration = span.duration;
         long endNanos = span.end > 0 ? span.end : span.start;
@@ -224,10 +236,7 @@ public final class ServiceFlowExtractor {
     }
 
     private static String parentKey(String parentId) {
-        if (parentId == null || parentId.isBlank()) {
-            return "0";
-        }
-        return parentId;
+        return TraceParentUtil.parentKey(parentId);
     }
 
     private static String nullToEmpty(String value) {

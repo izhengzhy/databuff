@@ -27,7 +27,7 @@ public final class OtlpMetricDirectWriter {
 
     private static final Logger log = LoggerFactory.getLogger(OtlpMetricDirectWriter.class);
     private static final List<String> JVM_KEY_COLUMNS = List.of(
-            "ts", "instance", "service", "service_id", "service_instance", "tag_host");
+            "metric_time", "ts", "instance", "service", "service_id", "service_instance", "tag_host");
     private static final ObjectMapper JSON = new ObjectMapper();
 
     private final MetricWriteRouter metricWriteRouter;

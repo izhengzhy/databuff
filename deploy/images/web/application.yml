@@ -10,3 +10,6 @@ apm:
     builtin-skills-dir: /app/skills
     custom-skills-dir: ./data/skills
     workspace-dir: ./data/ai-workspaces
+    max-iters: ${APM_AGENT_MAX_ITERS:1000}
+    llm-http-timeout-seconds: ${APM_AGENT_LLM_HTTP_TIMEOUT_SECONDS:300}
+    expert-round-timeout-seconds: ${APM_AGENT_EXPERT_ROUND_TIMEOUT_SECONDS:1200}

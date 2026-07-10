@@ -1,4 +1,4 @@
-ARG OPENJDK_IMAGE=openjdk:17.0.2-jdk
+ARG OPENJDK_IMAGE=eclipse-temurin:17-jdk-jammy
 FROM ${OPENJDK_IMAGE}
 WORKDIR /app
 

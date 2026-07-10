@@ -421,14 +421,30 @@ public class TracePortalService {
         long now = System.currentTimeMillis();
         long from = PortalTimeParser.rangeFrom(body, now - 3_600_000L);
         long to = PortalTimeParser.rangeTo(body, now);
-        String serviceFilter = MetricQueryBuilder.serviceFlowEntryServiceFilter(
+        String serviceFilter = MetricQueryBuilder.traceEntryServiceFilter(
+                ServicePortalService.stringValue(body.get("serviceId"), null),
+                ServicePortalService.stringValue(body.get("service"), null),
+                decodeQueryValue(body.get("resource")));
+
+        try {
+            List<ServiceFlowEntryPoint> entryPoints = readRepository.queryServiceFlowEntryPoints(
+                    MetricQueryBuilder.traceEntryServicesSql(traceDatabase, from, to, serviceFilter));
+            List<Map<String, Object>> rows = toEntryPointRows(entryPoints);
+            if (!rows.isEmpty()) {
+                return Map.of("entryPoints", rows);
+            }
+        } catch (Exception ignored) {
+            // fall back below
+        }
+
+        String metricServiceFilter = MetricQueryBuilder.serviceFlowEntryServiceFilter(
                 ServicePortalService.stringValue(body.get("serviceId"), null),
                 ServicePortalService.stringValue(body.get("service"), null),
                 decodeQueryValue(body.get("resource")));
 
         try {
             List<String> entryPathIds = readRepository.queryDistinctStrings(
-                    MetricQueryBuilder.serviceFlowEntryPathIdsSql(metricDatabase, from, to, serviceFilter),
+                    MetricQueryBuilder.serviceFlowEntryPathIdsSql(metricDatabase, from, to, metricServiceFilter),
                     "entry_path_id");
             if (!entryPathIds.isEmpty()) {
                 List<ServiceFlowEntryPoint> entryPoints = readRepository.queryServiceFlowEntryPoints(
@@ -560,10 +576,19 @@ public class TracePortalService {
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("service", service);
             row.put("serviceId", PortalServiceIdResolver.resolve(serviceId, service));
-            row.put("entrypointPathId", point.entrypointPathId());
+            row.put("entrypointPathId", resolveEntrypointPathId(point));
             rows.add(row);
         }
         return rows;
+    }
+
+    private static String resolveEntrypointPathId(ServiceFlowEntryPoint point) {
+        String pathId = point.entrypointPathId();
+        if (pathId != null && !pathId.isBlank()) {
+            return pathId;
+        }
+        return ServiceFlowPathIds.entryPathId(
+                PortalServiceIdResolver.resolve(point.serviceId(), point.service()));
     }
 
     private static String resolveEntryPathId(String entrypointPathId) {
@@ -987,7 +1012,7 @@ public class TracePortalService {
                 parseSpanListError(body));
     }
 
-    /** Legacy portal: {@code parentId=0} means trace entry spans ({@code is_parent=1}). */
+    /** Legacy portal: {@code parentId=0} means spans with blank/zero {@code parent_id} ({@code is_parent=1}). */
     private static SpanListScope resolveSpanListScope(Map<String, Object> body) {
         String parentId = ServicePortalService.stringValue(body.get("parentId"), "0");
         if ("0".equals(parentId)) {

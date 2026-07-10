@@ -38,7 +38,7 @@ public class SkyWalkingGrpcServer implements ApplicationListener<ApplicationRead
 
     public SkyWalkingGrpcServer(
             SkyWalkingIngestService ingestService,
-            @Value("${ingest.skywalking.grpc-port:31800}") int grpcPort) {
+            @Value("${ingest.skywalking.grpc-port:11800}") int grpcPort) {
         this.ingestService = ingestService;
         this.grpcPort = grpcPort;
     }

@@ -2,12 +2,9 @@ import http from '@/utils/axios';
 
 export interface ExpertRuntimeOptions {
   category?: string;
-  maxIters?: number;
   stream?: boolean;
   enablePlan?: boolean;
   dynamicSkillsEnabled?: boolean;
-  timeoutSeconds?: number;
-  maxConcurrentSubtasks?: number;
   exposeToolEvents?: boolean;
   toolAccessMode?: 'ALLOWLIST' | 'BLOCKLIST';
 }

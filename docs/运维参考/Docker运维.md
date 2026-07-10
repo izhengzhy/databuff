@@ -46,7 +46,7 @@ docker compose restart ai-apm-ingest
 | 容器名 | 组件 | 宿主机端口 | 说明 |
 |--------|------|------------|------|
 | `ai-apm-web` | Web 平台 | **27403** | UI 与 API |
-| `ai-apm-ingest` | Ingest | **4317** / **4318** | OTLP gRPC / HTTP |
+| `ai-apm-ingest` | Ingest | **4317** / **4318** / **11800** | OTLP gRPC / HTTP；SkyWalking Agent gRPC |
 | `ai-apm-doris-fe` | Doris FE | 8030 / 9030 | HTTP / MySQL 协议 |
 | `ai-apm-doris-be` | Doris BE | 8040 | BE HTTP |
 
@@ -78,7 +78,7 @@ docker compose logs ai-apm-doris-fe ai-apm-doris-be
 |------|------|
 | Doris 启动失败 / BE OOM | 确认宿主机内存；FE 已在 compose 中将 `-Xmx` patch 为 1200m |
 | `vm.max_map_count` 过低 | `start.sh` 会尝试调至 2000000；Linux 可写入 `sysctl.conf` 持久化 |
-| 端口被占用 | 修改 `docker-compose.yml` 中 ports 映射或释放 27403 / 4317 / 4318 |
+| 端口被占用 | 修改 `docker-compose.yml` 中 ports 映射或释放 27403 / 4317 / 4318 / 11800 |
 | 服务列表为空 | 确认 Agent/SDK 指向 `4317`/`4318`；见 [OTLP 接入](../opentelemetry-otlp-ingestion.md) |
 | 规则创建后无告警 | 确认服务已有指标；评估每分钟执行一次；检查规则监控对象是否匹配 |
 | 需重置表结构 | 安装目录执行 `./reset-table.sh`（会清空 Doris 业务表，慎用） |

@@ -15,6 +15,9 @@ set -a
 . "$_deploy_env"
 set +a
 
+export OPENJDK_IMAGE="${OPENJDK_IMAGE:-eclipse-temurin:17-jdk-jammy}"
+export LOCAL_WEB_IMAGE="${LOCAL_WEB_IMAGE:-databuff-local/web-dev:17-jdk-jammy}"
+
 DORIS_FE_SERVICE="ai-apm-doris-fe"
 DORIS_BE_SERVICE="ai-apm-doris-be"
 INGEST_SERVICE="ai-apm-ingest"

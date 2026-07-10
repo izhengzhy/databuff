@@ -11,7 +11,6 @@ import io.agentscope.core.tool.mcp.McpClientWrapper;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -56,7 +55,6 @@ public class AgentScopeExpertRuntime implements ExpertRuntime {
         if (input == null || input.message() == null || input.message().isBlank()) {
             return Mono.just(ExpertChatResult.failed("message is empty"));
         }
-        int timeoutSeconds = expert.options().timeoutSeconds();
         ExpertChatContext.State context = toContext(input);
         return Mono.fromCallable(() -> ExpertChatContext.run(context, () -> {
                     RuntimeContext runtimeContext = buildRuntimeContext(input);
@@ -64,7 +62,7 @@ public class AgentScopeExpertRuntime implements ExpertRuntime {
                                     List.of(AgentScopeToolConfirmSupport.attachAutoConfirmIfNeeded(
                                             agent, buildUserMessage(input))),
                                     runtimeContext)
-                            .block(Duration.ofSeconds(timeoutSeconds));
+                            .block();
                     if (response == null
                             || response.getTextContent() == null
                             || response.getTextContent().isBlank()) {
@@ -81,7 +79,6 @@ public class AgentScopeExpertRuntime implements ExpertRuntime {
         if (input == null || input.message() == null || input.message().isBlank()) {
             return Flux.just(ExpertRuntimeEvent.error("message is empty"));
         }
-        int timeoutSeconds = expert.options().timeoutSeconds();
         ExpertChatContext.State context = toContext(input);
         RuntimeContext runtimeContext = buildRuntimeContext(input);
         Msg userMessage = AgentScopeToolConfirmSupport.attachAutoConfirmIfNeeded(agent, buildUserMessage(input));
@@ -89,9 +86,6 @@ public class AgentScopeExpertRuntime implements ExpertRuntime {
         return Flux.defer(() -> {
             ExpertChatScopeRegistry.register(context);
             Flux<AgentEvent> agentEvents = agent.streamEvents(userMessage, runtimeContext);
-            if (context.taskId() == null || context.taskId().isBlank()) {
-                agentEvents = agentEvents.timeout(Duration.ofSeconds(timeoutSeconds));
-            }
             return agentEvents
                     .flatMap(recorder::record)
                     .doFinally(signal -> {

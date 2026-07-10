@@ -851,6 +851,14 @@ class MetricQueryBuilderTest {
     }
 
     @Test
+    void buildsTraceEntryServicesSqlFromIsParentSpans() {
+        String sql = MetricQueryBuilder.traceEntryServicesSql("databuff", 0L, 3_600_000L, "");
+        assertThat(sql).contains("trace_dc_span");
+        assertThat(sql).contains("`is_parent` = 1");
+        assertThat(sql).contains("GROUP BY COALESCE(NULLIF(`serviceId`, ''), `service`)");
+    }
+
+    @Test
     void buildsServiceFlowEntryPointsSqlGroupsByEntryPathIdOnly() {
         String sql = MetricQueryBuilder.serviceFlowEntryPointsSql(
                 "databuff", 0L, 3_600_000L, java.util.List.of("123"));

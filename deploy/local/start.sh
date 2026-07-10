@@ -18,7 +18,8 @@ chmod +x "${ROOT}/scripts/"*.sh 2>/dev/null || true
 # shellcheck source=scripts/lib.sh
 . "${ROOT}/scripts/lib.sh"
 load_local_env
-ensure_openjdk_image
+ensure_jdk_image
+ensure_local_web_image
 
 # shellcheck source=scripts/compose-env.sh
 . "${ROOT}/scripts/compose-env.sh"

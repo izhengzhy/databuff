@@ -98,9 +98,9 @@ public final class MultipleServiceFlowTreeBuilder {
         Map<String, List<FlowNode>> groupMap = nodes.stream()
                 .collect(Collectors.groupingBy(node -> node.uid + node.parentId));
         groupMap.forEach((key, value) -> {
-            Optional<FlowNode> outbound = value.stream().filter(node -> node.isIn == 0).findFirst();
-            if (outbound.isPresent()) {
-                value.removeIf(node -> node.isIn == 1);
+            Optional<FlowNode> inbound = value.stream().filter(node -> node.isIn == 1).findFirst();
+            if (inbound.isPresent()) {
+                value.removeIf(node -> node.isIn == 0);
             }
         });
         nodes.clear();
@@ -119,11 +119,6 @@ public final class MultipleServiceFlowTreeBuilder {
                 .filter(node -> node.parentId != null && !node.parentId.isBlank())
                 .collect(Collectors.groupingBy(node -> node.parentId));
         for (FlowNode root : rootList) {
-            if (root.isIn != 1) {
-                root.call = 0L;
-                root.avgDuration = 0L;
-                root.callPct = 0.0;
-            }
             generateTree(root, treeNodeMap, 0, pathIds);
             horizontalMergeWithSameServiceId(root);
             verticalMergeWithSameServiceId(root);

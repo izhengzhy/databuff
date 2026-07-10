@@ -70,7 +70,7 @@ services:
       start_period: 120s
 
   ai-apm-ingest:
-    image: ${OPENJDK_IMAGE}
+    image: ${OPENJDK_IMAGE:-eclipse-temurin:17-jdk-jammy}
     container_name: ai-apm-ingest
     hostname: ai-apm-ingest
     restart: unless-stopped
@@ -88,7 +88,7 @@ services:
     ports:
       - "4317:4317"
       - "4318:4318"
-      - "31800:31800"
+      - "11800:11800"
     depends_on:
       ai-apm-doris-fe:
         condition: service_healthy
@@ -105,7 +105,12 @@ services:
         ipv4_address: 172.20.80.3
 
   ai-apm-web:
-    image: ${OPENJDK_IMAGE}
+    image: ${LOCAL_WEB_IMAGE:-databuff-local/web-dev:17-jdk-jammy}
+    build:
+      context: .
+      dockerfile: Dockerfile.web-dev
+      args:
+        OPENJDK_IMAGE: ${OPENJDK_IMAGE:-eclipse-temurin:17-jdk-jammy}
     container_name: ai-apm-web
     hostname: ai-apm-web
     restart: unless-stopped
@@ -139,7 +144,7 @@ services:
         ipv4_address: 172.20.80.4
 
   ai-apm-demo:
-    image: ${OPENJDK_IMAGE}
+    image: ${OPENJDK_IMAGE:-eclipse-temurin:17-jdk-jammy}
     container_name: ai-apm-demo
     hostname: ai-apm-demo
     restart: unless-stopped
@@ -151,7 +156,7 @@ services:
       JAVA_TOOL_OPTIONS: -Xms64m -Xmx128m -Duser.timezone=Asia/Shanghai
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://ai-apm-ingest:4318}
       SEED_PROTOCOL: ${SEED_PROTOCOL:-otlp}
-      SKYWALKING_GRPC_TARGET: ${SKYWALKING_GRPC_TARGET:-ai-apm-ingest:31800}
+      SKYWALKING_GRPC_TARGET: ${SKYWALKING_GRPC_TARGET:-ai-apm-ingest:11800}
       SEED_INTERVAL_SECONDS: ${SEED_INTERVAL_SECONDS:-30}
       JVM_METRIC_INTERVAL_SECONDS: ${JVM_METRIC_INTERVAL_SECONDS:-60}
     volumes:
@@ -164,7 +169,7 @@ services:
         ipv4_address: 172.20.80.6
 
   ai-apm-demo-sw:
-    image: ${OPENJDK_IMAGE}
+    image: ${OPENJDK_IMAGE:-eclipse-temurin:17-jdk-jammy}
     container_name: ai-apm-demo-sw
     hostname: ai-apm-demo-sw
     restart: unless-stopped
@@ -175,7 +180,7 @@ services:
       TZ: Asia/Shanghai
       JAVA_TOOL_OPTIONS: -Xms64m -Xmx128m -Duser.timezone=Asia/Shanghai
       SEED_PROTOCOL: skywalking
-      SKYWALKING_GRPC_TARGET: ai-apm-ingest:31800
+      SKYWALKING_GRPC_TARGET: ai-apm-ingest:11800
       SEED_INTERVAL_SECONDS: 30
       JVM_METRIC_INTERVAL_SECONDS: 60
     volumes:

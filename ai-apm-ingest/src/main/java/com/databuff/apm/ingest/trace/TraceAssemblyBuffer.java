@@ -1,6 +1,7 @@
 package com.databuff.apm.ingest.trace;
 
 import com.databuff.apm.common.model.DcSpan;
+import com.databuff.apm.common.trace.TraceParentUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -169,7 +170,7 @@ public final class TraceAssemblyBuffer implements AutoCloseable {
     }
 
     static boolean isRootSpan(DcSpan span) {
-        return span != null && (span.parent_id == null || span.parent_id.isBlank());
+        return span != null && TraceParentUtil.isRootParentId(span.parent_id);
     }
 
     private static final class TraceBucket {

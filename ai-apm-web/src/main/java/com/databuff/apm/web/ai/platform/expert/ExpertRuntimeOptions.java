@@ -1,13 +1,13 @@
 package com.databuff.apm.web.ai.platform.expert;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record ExpertRuntimeOptions(
         String category,
-        int maxIters,
         boolean stream,
         boolean enablePlan,
         boolean dynamicSkillsEnabled,
-        int timeoutSeconds,
-        int maxConcurrentSubtasks,
         boolean exposeToolEvents,
         ExpertToolAccessMode toolAccessMode) {
 
@@ -21,6 +21,6 @@ public record ExpertRuntimeOptions(
     }
 
     public static ExpertRuntimeOptions defaults() {
-        return new ExpertRuntimeOptions("默认分类", 8, false, false, false, 120, 3, true, ExpertToolAccessMode.ALLOWLIST);
+        return new ExpertRuntimeOptions("默认分类", false, false, false, true, ExpertToolAccessMode.ALLOWLIST);
     }
 }

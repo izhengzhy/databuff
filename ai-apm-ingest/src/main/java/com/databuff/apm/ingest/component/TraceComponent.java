@@ -18,6 +18,7 @@ import com.databuff.apm.ingest.pipeline.task.AsyncTask;
 import com.databuff.apm.ingest.trace.TraceAssemblyBuffer;
 import com.databuff.apm.ingest.trace.TraceEnrichProcessor;
 import com.databuff.apm.ingest.trace.TraceFillProcessor;
+import com.databuff.apm.ingest.support.LogRateLimiter;
 import com.databuff.apm.ingest.trace.VirtualServiceExtractor;
 import com.databuff.apm.ingest.trace.remote.RemoteCallProcessor;
 import com.databuff.apm.common.storage.DorisBatchWriter;
@@ -44,6 +45,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public final class TraceComponent extends AbstractComponent<TraceComponent.TraceTask> {
 
     private static final Logger log = LoggerFactory.getLogger(TraceComponent.class);
+    private static final LogRateLimiter TASK_FAILURE_LIMITER = new LogRateLimiter(10_000L);
 
     /** 集群 trace 转发 stream，partition key = traceId。 */
     public static final String TRACE_STREAM = "ingest.trace.span";
@@ -196,7 +198,17 @@ public final class TraceComponent extends AbstractComponent<TraceComponent.Trace
                     processSpan(String.valueOf(key), traceEvent);
                 }
             } catch (Exception e) {
-                log.warn("Trace task failed key={} eventType={}: {}", key, eventType(event), e.getMessage(), e);
+                if (log.isDebugEnabled()) {
+                    log.debug("Trace task failed key={} eventType={}: {}", key, eventType(event), e.getMessage(), e);
+                }
+                long count = TASK_FAILURE_LIMITER.record();
+                if (count > 0) {
+                    log.warn("Trace task failures: {} in last 10s; latest key={} eventType={}: {}",
+                            count,
+                            key,
+                            eventType(event),
+                            e.getMessage());
+                }
             }
         }
 

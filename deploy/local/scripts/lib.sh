@@ -114,13 +114,15 @@ load_local_env() {
     . "${LOCAL_ROOT}/../env.sh"
     set +a
   fi
+  export OPENJDK_IMAGE="${OPENJDK_IMAGE:-eclipse-temurin:17-jdk-jammy}"
+  export LOCAL_WEB_IMAGE="${LOCAL_WEB_IMAGE:-databuff-local/web-dev:17-jdk-jammy}"
 }
 
 local_image_arch() {
   docker image inspect "$1" --format '{{.Architecture}}' 2>/dev/null || true
 }
 
-ensure_openjdk_image() {
+ensure_jdk_image() {
   local pull_ref registry_host host_arch image_arch
 
   pull_ref="$(openjdk_pull_image)"
@@ -129,7 +131,7 @@ ensure_openjdk_image() {
   if docker image inspect "${OPENJDK_IMAGE}" >/dev/null 2>&1; then
     image_arch="$(local_image_arch "${OPENJDK_IMAGE}")"
     if [ "$image_arch" = "$host_arch" ]; then
-      echo "[local] using local ${OPENJDK_IMAGE} (linux/${host_arch})"
+      echo "[local] using local JDK image ${OPENJDK_IMAGE} (linux/${host_arch})"
       return 0
     fi
     echo "[local] ${OPENJDK_IMAGE} is linux/${image_arch}, need linux/${host_arch}; re-pulling"
@@ -142,7 +144,7 @@ ensure_openjdk_image() {
     fi
   fi
 
-  echo "[local] pull ${pull_ref} (linux/${host_arch})"
+  echo "[local] pull JDK base image ${pull_ref} (linux/${host_arch})"
   if ! docker pull --platform "linux/${host_arch}" "$pull_ref"; then
     if [[ -n "${OPENJDK_REGISTRY:-}" ]]; then
       registry_host="${OPENJDK_REGISTRY%%/*}"
@@ -155,4 +157,20 @@ ensure_openjdk_image() {
   if [[ "$pull_ref" != "${OPENJDK_IMAGE}" ]]; then
     docker tag "$pull_ref" "${OPENJDK_IMAGE}"
   fi
+}
+
+ensure_local_web_image() {
+  if docker image inspect "${LOCAL_WEB_IMAGE}" >/dev/null 2>&1; then
+    echo "[local] using local web dev image ${LOCAL_WEB_IMAGE}"
+    return 0
+  fi
+  echo "[local] building web dev image ${LOCAL_WEB_IMAGE} (FROM ${OPENJDK_IMAGE})"
+  docker build -t "${LOCAL_WEB_IMAGE}" \
+    --build-arg "OPENJDK_IMAGE=${OPENJDK_IMAGE}" \
+    -f "${LOCAL_ROOT}/Dockerfile.web-dev" \
+    "${LOCAL_ROOT}"
+}
+
+ensure_openjdk_image() {
+  ensure_jdk_image
 }

@@ -9,6 +9,7 @@ import com.databuff.apm.common.util.ServiceKeyUtil;
 import com.databuff.apm.common.serde.DCSpanJsonDecoder;
 import com.databuff.apm.common.serde.DCSpanJsonEncoder;
 import com.databuff.apm.common.serde.DcSpanUtil;
+import com.databuff.apm.common.trace.TraceParentUtil;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -58,7 +59,7 @@ public final class FillPathAndRelationUtil {
         for (DcSpan span : spans) {
             // Legacy ingest pipeline: isIn/isOut from span name + kind before relation fill
             SpanDirectionUtil.applyNameBasedDirection(span);
-            if (span.parent_id == null || span.parent_id.isBlank()) {
+            if (TraceParentUtil.isRootParentId(span.parent_id)) {
                 span.is_parent = 1;
                 // Root entry has no in-trace caller; leave src* empty instead of self-placeholder.
                 span.srcService = null;

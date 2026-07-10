@@ -102,10 +102,10 @@ public final class OtlpMetricDebugLogger {
 
     /** Ingest batch summary after OTLP convert, before direct write. */
     public static void ingestBatch(String service, int totalLines, int jvmLines, int skippedMap) {
-        if (totalLines == 0) {
+        if (!log.isDebugEnabled() || totalLines == 0) {
             return;
         }
-        log.info(
+        log.debug(
                 "[metric-pipeline] RECEIVED service={} totalLines={} jvmLines={} mapSkipped={}",
                 service,
                 totalLines,
@@ -115,7 +115,10 @@ public final class OtlpMetricDebugLogger {
 
     /** JVM rows merged for one export batch (one row per instance key). */
     public static void mergedJvmRow(String service, String serviceId, int partialRows, java.util.Collection<String> metricFields) {
-        log.info(
+        if (!log.isDebugEnabled()) {
+            return;
+        }
+        log.debug(
                 "[metric-pipeline] MERGED service={} serviceId={} partialRows={} fields={}",
                 service,
                 serviceId,
@@ -125,7 +128,10 @@ public final class OtlpMetricDebugLogger {
 
     /** Row queued into Doris batch writer. */
     public static void queuedRow(String table, String service, String rowJson) {
-        log.info(
+        if (!log.isDebugEnabled()) {
+            return;
+        }
+        log.debug(
                 "[metric-pipeline] QUEUED table={} service={} row={}",
                 table,
                 service,

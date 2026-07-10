@@ -86,7 +86,7 @@ class AiChatOrchestratorTest {
                 aiFixture.aiConfigService(),
                 aiFixture.agentRuntimeConfig(),
                 mock(ApmToolkit.class),
-                new OpenAiCompatibleChatClient(),
+                new OpenAiCompatibleChatClient(aiFixture.agentRuntimeConfig()),
                 aiFixture.store(),
                 runtimeRouter,
                 new AiRuntimeForwarder(runtimeRouter, 120L),

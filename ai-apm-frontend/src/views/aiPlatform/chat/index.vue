@@ -447,7 +447,15 @@
         :charts="selectedToolCharts"
         class="tool-detail-charts"
       />
-      <pre v-else class="tool-detail-content">{{ selectedToolDetail }}</pre>
+      <div v-else-if="selectedToolTerminalDisplay" class="tool-detail-terminal">
+        <div class="tool-detail-terminal-meta">{{ selectedToolTerminalDisplay.meta }}</div>
+        <pre class="tool-detail-content is-terminal">{{ selectedToolTerminalDisplay.body }}</pre>
+      </div>
+      <div v-else-if="selectedToolBashParamsDisplay" class="tool-detail-terminal">
+        <div v-if="selectedToolBashParamsDisplay.meta" class="tool-detail-terminal-meta">{{ selectedToolBashParamsDisplay.meta }}</div>
+        <pre class="tool-detail-content is-terminal">{{ selectedToolBashParamsDisplay.command }}</pre>
+      </div>
+      <pre v-else :class="['tool-detail-content', { 'is-terminal': selectedToolIsTerminal }]">{{ selectedToolDetail }}</pre>
     </el-dialog>
   </div>
 </template>
@@ -462,6 +470,13 @@ import ChatUploadPreview from './ChatUploadPreview.vue';
 import ThinkingProcess from './components/ThinkingProcess.vue';
 import AiTrendCharts from './components/AiTrendCharts.vue';
 import { buildThinkingDetailItems, formatToolDurationText } from './utils/thinking-detail';
+import {
+  formatTerminalToolDisplay,
+  formatBashToolParamsDisplay,
+  isTerminalToolName,
+  normalizeToolValue,
+  stringifyToolValue,
+} from './utils/tool-detail-format';
 import {
   allUserRoundsHaveFinalAnswer,
   hasVisibleAssistantAnswerForRound,
@@ -765,6 +780,43 @@ export default class AiPlatformChat extends Vue {
       return ''
     }
     return this.formatToolDetail(this.selectedToolMessage)
+  }
+
+  private get selectedToolTerminalDisplay () {
+    if (!this.selectedToolMessage || this.selectedToolDetailView !== 'result') {
+      return null
+    }
+    const toolName = this.processToolName(this.selectedToolMessage)
+    if (!isTerminalToolName(toolName)) {
+      return null
+    }
+    return formatTerminalToolDisplay(this.selectedToolDetail)
+  }
+
+  private get selectedToolBashParamsDisplay () {
+    if (!this.selectedToolMessage || this.selectedToolDetailView !== 'params') {
+      return null
+    }
+    if (this.processToolName(this.selectedToolMessage) !== 'Bash') {
+      return null
+    }
+    const metadata = this.selectedToolMessage.metadata || {}
+    const callId = String(metadata.toolCallId || metadata.callId || '').trim()
+    return formatBashToolParamsDisplay(this.toolInputOf(metadata, callId))
+  }
+
+  private get selectedToolDetailCopyText (): string {
+    if (this.selectedToolBashParamsDisplay) {
+      return this.selectedToolBashParamsDisplay.command
+    }
+    return this.selectedToolDetail
+  }
+
+  private get selectedToolIsTerminal (): boolean {
+    if (!this.selectedToolMessage || this.selectedToolDetailView !== 'result') {
+      return false
+    }
+    return isTerminalToolName(this.processToolName(this.selectedToolMessage))
   }
 
   private get selectedToolDetailTitle (): string {
@@ -1630,7 +1682,7 @@ export default class AiPlatformChat extends Vue {
   }
 
   private async copySelectedToolDetail () {
-    const text = this.selectedToolDetail
+    const text = this.selectedToolDetailCopyText
     if (!text.trim()) {
       this.$message.warning(i18n.t('modules.views.aiPlatform.chat.s_fb391a9f') as string)
       return
@@ -1694,22 +1746,11 @@ export default class AiPlatformChat extends Vue {
   }
 
   private stringifyToolValue (value: unknown): string {
-    return JSON.stringify(this.normalizeToolValue(value), null, 2)
+    return stringifyToolValue(value)
   }
 
   private normalizeToolValue (value: unknown): unknown {
-    if (typeof value !== 'string') {
-      return value
-    }
-    const trimmed = value.trim()
-    if (!trimmed) {
-      return ''
-    }
-    try {
-      return JSON.parse(trimmed)
-    } catch {
-      return value
-    }
+    return normalizeToolValue(value)
   }
 
   private extractTrendChartsFromToolMessage (item: AiChatMessage | null): Array<Record<string, unknown>> {
@@ -2975,6 +3016,24 @@ export default class AiPlatformChat extends Vue {
   font-size: 13px;
 }
 
+.tool-detail-terminal {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tool-detail-terminal-meta {
+  padding: 10px 14px;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  color: #1e40af;
+  background: #eff6ff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
 .tool-detail-content {
   max-height: 520px;
   margin: 0;
@@ -2990,6 +3049,13 @@ export default class AiPlatformChat extends Vue {
   white-space: pre-wrap;
   word-break: break-word;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+
+  &.is-terminal {
+    max-height: 460px;
+    white-space: pre;
+    word-break: normal;
+    overflow-x: auto;
+  }
 
   &::-webkit-scrollbar {
     width: 6px;

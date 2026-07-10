@@ -4,7 +4,7 @@
 # Usage:
 #   ./deploy/images/build-images.sh
 #
-# OpenJDK 基础镜像：openjdk:17.0.2-jdk（无 databuff/ 前缀）。
+# JDK 基础镜像：eclipse-temurin:17-jdk-jammy（无 databuff/ 前缀）。
 # 构建时 OPENJDK_REGISTRY（如 test.xxx.com/databuff）写入 shell profile，
 # Dockerfile FROM 从该仓库拉取；需先 docker login ${OPENJDK_REGISTRY%%/*}。
 #

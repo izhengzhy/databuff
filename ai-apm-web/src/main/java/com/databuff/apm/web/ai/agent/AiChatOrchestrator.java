@@ -158,7 +158,7 @@ public class AiChatOrchestrator implements BrainRoundContinuer {
                     latestAssistantReply(submitted.sessionId()),
                     aiConfigService.aiReady());
         }
-        waitForCompletion(submitted.sessionId(), 120_000L);
+        waitForCompletion(submitted.sessionId(), agentRuntimeConfig.expertRoundTimeoutMillis());
         return new AgentBrainService.ChatResponse(
                 submitted.sessionId(),
                 submitted.expertId(),
@@ -438,7 +438,7 @@ public class AiChatOrchestrator implements BrainRoundContinuer {
                             textBeforeFirstTool.append(event.content());
                         }
                         })
-                        .blockLast(java.time.Duration.ofSeconds(120));
+                        .blockLast(agentRuntimeConfig.expertRoundTimeout());
                 if (!content.isEmpty()) {
                     return content.toString();
                 }
@@ -446,7 +446,7 @@ public class AiChatOrchestrator implements BrainRoundContinuer {
                         && !toolActivitySeen[0]
                         && !textBeforeFirstTool.isEmpty()
                         && !brainRoundStillInProgress(sessionId)) {
-                    ExpertChatResult recovery = runtime.chat(input).block(java.time.Duration.ofSeconds(120));
+                    ExpertChatResult recovery = runtime.chat(input).block(agentRuntimeConfig.expertRoundTimeout());
                     if (recovery != null && recovery.ok() && recovery.content() != null && !recovery.content().isBlank()) {
                         content.append(recovery.content());
                     }
@@ -470,7 +470,7 @@ public class AiChatOrchestrator implements BrainRoundContinuer {
                         sessionId, sessionStore.peekCurrentRoundIndex(sessionId))) {
                     return "";
                 }
-                ExpertChatResult result = runtime.chat(input).block(java.time.Duration.ofSeconds(120));
+                ExpertChatResult result = runtime.chat(input).block(agentRuntimeConfig.expertRoundTimeout());
                 if (result != null && result.ok()) {
                     return result.content();
                 }
@@ -520,7 +520,7 @@ public class AiChatOrchestrator implements BrainRoundContinuer {
         String assistantMessageId = sessionStore.reserveAssistantMessageId(sessionId, expertId);
         sessionStore.setRunning(sessionId, true);
 
-        SseEmitter emitter = new SseEmitter(120_000L);
+        SseEmitter emitter = new SseEmitter(agentRuntimeConfig.expertRoundTimeoutMillis());
         String userName = requireUserName(request);
         Set<String> outputsBefore = sessionWorkspaceService.snapshotOutputPaths(sessionId);
         ExpertChatInput input = new ExpertChatInput(

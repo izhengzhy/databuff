@@ -35,7 +35,7 @@ ingest:
     grpc-port: 4317
   skywalking:
     enabled: true
-    grpc-port: 31800
+    grpc-port: 11800
   meta-service:
     sync-interval-ms: 60000
   remote:

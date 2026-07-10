@@ -24,6 +24,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ServiceFlowExtractorTest {
 
     @Test
+    void extractSkipsTraceWithoutIsParentRoot() throws Exception {
+        DcSpan downstream = span("trace-7", "downstream", "external-parent", "service-k", "service-k-id");
+        downstream.type = "SPAN_KIND_SERVER";
+        downstream.is_parent = 0;
+
+        List<DcSpan> filled = FillPathAndRelationUtil.fillBytes(List.of(
+                DCSpanJsonEncoder.encode(downstream)));
+        assertThat(ServiceFlowExtractor.hasTraceEntryRoot(filled)).isFalse();
+        assertThat(ServiceFlowExtractor.extractFromTrace(filled)).isEmpty();
+    }
+
+    @Test
     void extractProducesPathTaggedFlowMetrics() throws Exception {
         DcSpan root = span("trace-1", "root", "", "gateway", "gateway-id");
         DcSpan child = span("trace-1", "child", "root", "checkout", "checkout-id");
@@ -41,6 +53,82 @@ class ServiceFlowExtractorTest {
         assertThat(tagValue(rootMetric, "entryPathId")).isNotBlank();
         assertThat(tagValue(rootMetric, "pathId")).isNotBlank();
         assertThat(tagValue(rootMetric, "parentPathId")).isBlank();
+        assertThat(tagValue(rootMetric, "service_id")).isEqualTo("gateway-id");
+    }
+
+    @Test
+    void extractStartsFromIsParentRootEvenWhenOutboundClient() throws Exception {
+        DcSpan clientRoot = span("trace-5", "client-root", "", "service-b", "service-b-id");
+        clientRoot.type = "SPAN_KIND_CLIENT";
+        clientRoot.resource = "/callB";
+        clientRoot.name = "/callB";
+        clientRoot.isIn = 0;
+        clientRoot.isOut = 1;
+
+        DcSpan serverEntry = span("trace-5", "server-entry", "client-root", "service-b", "service-b-id");
+        serverEntry.type = "SPAN_KIND_SERVER";
+        serverEntry.resource = "GET:/callB";
+        serverEntry.name = "GET:/callB";
+        serverEntry.isIn = 1;
+        serverEntry.isOut = 0;
+
+        DcSpan downstream = span("trace-5", "downstream", "server-entry", "service-c", "service-c-id");
+        downstream.type = "SPAN_KIND_SERVER";
+        downstream.resource = "GET:/api";
+        downstream.name = "GET:/api";
+
+        List<DcSpan> filled = FillPathAndRelationUtil.fillBytes(List.of(
+                DCSpanJsonEncoder.encode(clientRoot),
+                DCSpanJsonEncoder.encode(serverEntry),
+                DCSpanJsonEncoder.encode(downstream)));
+        List<OptimizedMetric> metrics = ServiceFlowExtractor.extractFromTrace(filled);
+
+        assertThat(metrics.stream().map(metric -> tagValue(metric, "service")).distinct())
+                .contains("service-b", "service-c");
+
+        OptimizedMetric entry = metrics.stream()
+                .filter(metric -> "service-b".equals(tagValue(metric, "service")))
+                .filter(metric -> tagValue(metric, "parentPathId").isBlank())
+                .findFirst()
+                .orElseThrow();
+        assertThat(tagValue(entry, "resource")).isEqualTo("/callB");
+        assertThat(tagValue(entry, "isIn")).isEqualTo("0");
+    }
+
+    @Test
+    void extractUsesIsParentRootForOutboundTraceWithoutInboundSibling() throws Exception {
+        DcSpan clientRoot = span("trace-6", "client-root", "", "service-j", "service-j-id");
+        clientRoot.type = "SPAN_KIND_CLIENT";
+        clientRoot.resource = "/methodB0";
+        clientRoot.name = "/methodB0";
+        clientRoot.isIn = 0;
+        clientRoot.isOut = 1;
+
+        DcSpan downstream = span("trace-6", "downstream", "client-root", "service-k", "service-k-id");
+        downstream.type = "SPAN_KIND_SERVER";
+        downstream.resource = "GET:/methodB0";
+        downstream.name = "GET:/methodB0";
+        downstream.isIn = 1;
+        downstream.isOut = 0;
+
+        List<DcSpan> filled = FillPathAndRelationUtil.fillBytes(List.of(
+                DCSpanJsonEncoder.encode(clientRoot),
+                DCSpanJsonEncoder.encode(downstream)));
+        List<OptimizedMetric> metrics = ServiceFlowExtractor.extractFromTrace(filled);
+
+        OptimizedMetric entry = metrics.stream()
+                .filter(metric -> "service-j".equals(tagValue(metric, "service")))
+                .filter(metric -> tagValue(metric, "parentPathId").isBlank())
+                .findFirst()
+                .orElseThrow();
+        assertThat(tagValue(entry, "isIn")).isEqualTo("0");
+        assertThat(tagValue(entry, "service_id")).isEqualTo("service-j-id");
+
+        OptimizedMetric child = metrics.stream()
+                .filter(metric -> "service-k".equals(tagValue(metric, "service")))
+                .findFirst()
+                .orElseThrow();
+        assertThat(tagValue(child, "parentService")).isEqualTo("service-j");
     }
 
     @Test

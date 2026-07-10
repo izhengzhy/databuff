@@ -55,4 +55,22 @@ class ApmTimeZonesTest {
                 .toEpochMilli();
         assertThat(millis).isEqualTo(expected);
     }
+
+    @Test
+    void wallClockMinuteAndHourBucketsMatchFormatBucket() {
+        long[] samples = {
+                0L,
+                1_700_000_000L,
+                1_704_067_200L,
+                ApmTimeZones.wallClockToEpochSecond("2026-06-05 22:10:00"),
+        };
+        for (long epochSec : samples) {
+            long minuteAligned = (epochSec / 60) * 60;
+            long hourAligned = (epochSec / 3600) * 3600;
+            assertThat(ApmTimeZones.wallClockMinuteBucket(minuteAligned))
+                    .isEqualTo(Long.parseLong(ApmTimeZones.formatBucket(minuteAligned, "yyyyMMddHHmm")));
+            assertThat(ApmTimeZones.wallClockHourBucket(hourAligned))
+                    .isEqualTo(Long.parseLong(ApmTimeZones.formatBucket(hourAligned, "yyyyMMddHH")));
+        }
+    }
 }

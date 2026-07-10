@@ -32,7 +32,7 @@ class ExpertScopedSkillRepositoryTest {
         for (AiSkillDefinition skill : skillManagementService.list()) {
             syncService.syncSkill(skill);
         }
-        repository = new FileSystemSkillRepository(tempDir);
+        repository = new FileSystemSkillRepository(runtimeConfig.builtinSkillsDirectory());
         assertThat(repository.getAllSkillNames())
                 .contains("skill.brain.routing", "skill.data.metrics", "skill.inspection.health");
     }

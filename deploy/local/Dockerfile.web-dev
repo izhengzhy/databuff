@@ -1,0 +1,16 @@
+ARG OPENJDK_IMAGE=eclipse-temurin:17-jdk-jammy
+FROM ${OPENJDK_IMAGE}
+
+RUN printf 'Acquire::Retries "5";\nAcquire::http::Timeout "120";\n' > /etc/apt/apt.conf.d/80-retries \
+    && apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        openssh-client \
+        sshpass \
+        procps \
+        iproute2 \
+        nmap \
+    && rm -rf /var/lib/apt/lists/* \
+    && printf 'Host *\n  GSSAPIAuthentication no\n  PreferredAuthentications publickey,password\n  ConnectTimeout 10\n' \
+        > /etc/ssh/ssh_config.d/99-databuff.conf
+
+WORKDIR /app

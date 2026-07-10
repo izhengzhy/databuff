@@ -1,10 +1,3 @@
-logging:
-  level:
-    com.databuff.apm.ingest.otel.OtlpMetricDebugLogger: DEBUG
-    com.databuff.apm.ingest.metric.OtlpMetricDirectWriter: INFO
-    com.databuff.apm.ingest.metric.MetricWriteRouter: INFO
-    com.databuff.apm.common.storage.DorisStreamLoadSink: INFO
-
 server:
   port: 4318
 

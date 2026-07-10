@@ -146,7 +146,7 @@ class AiAcceptanceIntegrationTest {
                 aiFixture.aiConfigService(),
                 aiFixture.agentRuntimeConfig(),
                 mock(ApmToolkit.class),
-                new OpenAiCompatibleChatClient(),
+                new OpenAiCompatibleChatClient(aiFixture.agentRuntimeConfig()),
                 aiFixture.store(),
                 WebTestClusterSupport.standaloneAiRouter("web-1"),
                 new AiRuntimeForwarder(WebTestClusterSupport.standaloneAiRouter("web-1"), 120L),

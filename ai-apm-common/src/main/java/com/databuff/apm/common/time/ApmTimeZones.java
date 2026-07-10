@@ -3,6 +3,7 @@ package com.databuff.apm.common.time;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.DateTimeParseException;
@@ -92,5 +93,24 @@ public final class ApmTimeZones {
     public static String formatBucket(long epochSecond, String pattern) {
         return FORMATTERS.computeIfAbsent(pattern, DateTimeFormatter::ofPattern)
                 .format(Instant.ofEpochSecond(epochSecond).atZone(SHANGHAI));
+    }
+
+    /** Numeric {@code yyyyMMddHHmm} bucket for UTC-aligned minute epoch seconds. */
+    public static long wallClockMinuteBucket(long utcAlignedMinuteEpochSecond) {
+        ZonedDateTime zdt = Instant.ofEpochSecond(utcAlignedMinuteEpochSecond).atZone(SHANGHAI);
+        return zdt.getYear() * 100_000_000L
+                + zdt.getMonthValue() * 1_000_000L
+                + zdt.getDayOfMonth() * 10_000L
+                + zdt.getHour() * 100L
+                + zdt.getMinute();
+    }
+
+    /** Numeric {@code yyyyMMddHH} bucket for UTC-aligned hour epoch seconds. */
+    public static long wallClockHourBucket(long utcAlignedHourEpochSecond) {
+        ZonedDateTime zdt = Instant.ofEpochSecond(utcAlignedHourEpochSecond).atZone(SHANGHAI);
+        return zdt.getYear() * 1_000_000L
+                + zdt.getMonthValue() * 10_000L
+                + zdt.getDayOfMonth() * 100L
+                + zdt.getHour();
     }
 }

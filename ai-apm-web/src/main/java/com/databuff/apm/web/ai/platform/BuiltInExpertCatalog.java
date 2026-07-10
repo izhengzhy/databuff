@@ -53,6 +53,12 @@ public final class BuiltInExpertCatalog {
                         "logTools.queryLogsBySpanId", now),
                 tool("inspect.inspectService", "服务巡检", "Run threshold-free preliminary anomaly inspection for one service",
                         "inspectTools.inspectService", now),
+                tool("Bash", "Shell 命令", "Executes a given bash command in a persistent shell session with optional timeout",
+                        "bashTools.bash", now),
+                tool("BashOutput", "后台 Shell 输出", "Retrieve incremental output from a background bash shell",
+                        "bashTools.bashOutput", now),
+                tool("KillShell", "终止后台 Shell", "Kill a running background bash shell by its ID",
+                        "bashTools.killShell", now),
                 tool("brain.dispatchExpertTask", "专家路由派发", "Dispatch a subtask to another digital expert asynchronously; task must faithfully restate the user's request without expanding scope",
                         "expertDispatchTool.dispatchExpertTask", now));
     }
@@ -101,7 +107,16 @@ public final class BuiltInExpertCatalog {
                                 "log.queryLogDetail",
                                 "log.queryLogsByTraceId",
                                 "inspect.inspectService"),
-                        List.of("skill.inspection.health"), now));
+                        List.of("skill.inspection.health"), now),
+                expert("ops", "运维专家", "在本机执行 shell 命令排查系统与部署；远程通过 ssh/sshpass 写在命令中", ExpertType.SPECIALIST,
+                        List.of(
+                                "Bash",
+                                "BashOutput",
+                                "KillShell",
+                                "data.queryMetricData",
+                                "data.queryServiceAlarms",
+                                "inspect.inspectService"),
+                        List.of(), now));
     }
 
     private static AiToolDefinition tool(
@@ -155,6 +170,7 @@ public final class BuiltInExpertCatalog {
             case "brain" -> "大脑专家";
             case "data" -> "数据分析";
             case "inspection" -> "健康巡检";
+            case "ops" -> "运维排查";
             default -> "默认分类";
         };
     }
@@ -164,7 +180,7 @@ public final class BuiltInExpertCatalog {
             case "brain" -> """
                     你是 DataBuff APM 的 AI 大脑，负责理解用户问题并分派给合适的数字专家，汇总专家结果后回答用户。
                     回复前先调用 load_skill_through_path(skillId="skill.brain.routing", path="SKILL.md") 加载路由规则，再执行任何操作。
-                    你只负责路由与汇总，不要直接调用问数、巡检或时间类工具。
+                    你只负责路由与汇总，不要直接调用问数、巡检、Bash 或时间类工具。
                     派发时 `task` 须忠实转述用户原意，不得扩大需求范围或擅自追加用户未要求的指标、字段与分析维度。用中文回答。
                     """;
             case "data" -> """
@@ -176,6 +192,10 @@ public final class BuiltInExpertCatalog {
                     你是 DataBuff APM 智能巡检专家，负责对服务健康状态做初步异常检测和后续诊断。
                     回复前先调用 load_skill_through_path(skillId="skill.inspection.health", path="SKILL.md") 加载巡检流程，再执行巡检和补充查询。
                     用中文回答，区分初步检测结果与后续分析结论，不要编造未查询到的数据。
+                    """;
+            case "ops" -> """
+                    你是 DataBuff APM 运维专家，负责通过 Bash 工具在本机或远程主机执行 shell 命令，排查系统、部署与运行环境。
+                    必须基于命令真实输出回答，不要编造。用中文回答。
                     """;
             default -> "你是 DataBuff APM 数字专家。用中文回答。";
         };

@@ -4,6 +4,7 @@ import com.databuff.apm.cluster.v1.AggregationPartialRequest;
 import com.databuff.apm.cluster.v1.ClusterCoordinationServiceGrpc;
 import com.databuff.apm.common.cluster.aggregate.ClusterPartialForwarder;
 import com.databuff.apm.common.cluster.coordination.ClusterInstanceCoordinator;
+import com.databuff.apm.ingest.support.LogRateLimiter;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import org.slf4j.Logger;
@@ -16,6 +17,7 @@ import java.util.concurrent.TimeUnit;
 public final class GrpcClusterPartialForwarder implements ClusterPartialForwarder, AutoCloseable {
 
     private static final Logger log = LoggerFactory.getLogger(GrpcClusterPartialForwarder.class);
+    private static final LogRateLimiter FORWARD_LIMITER = new LogRateLimiter(10_000L);
 
     private final ClusterInstanceCoordinator coordinator;
     private final String originNodeId;
@@ -36,7 +38,7 @@ public final class GrpcClusterPartialForwarder implements ClusterPartialForwarde
             byte[] partial) {
         String endpoint = coordinator.endpointFor(targetNodeId).orElse(null);
         if (endpoint == null) {
-            log.warn(
+            warnThrottled(
                     "Cluster forward out failed stream={} target={} reason=no-endpoint partition={} windowMs={} bytes={} {}",
                     stream,
                     targetNodeId,
@@ -59,7 +61,7 @@ public final class GrpcClusterPartialForwarder implements ClusterPartialForwarde
                     .setOriginNodeId(originNodeId)
                     .build());
             if (!response.getAccepted()) {
-                log.warn(
+                warnThrottled(
                         "Cluster forward out rejected stream={} origin={} target={} endpoint={} partition={} windowMs={} bytes={}",
                         stream,
                         originNodeId,
@@ -70,7 +72,7 @@ public final class GrpcClusterPartialForwarder implements ClusterPartialForwarde
                         partial.length);
             }
         } catch (Exception e) {
-            log.warn(
+            warnThrottled(
                     "Cluster forward out failed stream={} origin={} target={} endpoint={} partition={} windowMs={} bytes={}: {}",
                     stream,
                     originNodeId,
@@ -80,6 +82,16 @@ public final class GrpcClusterPartialForwarder implements ClusterPartialForwarde
                     windowStart,
                     partial == null ? 0 : partial.length,
                     e.toString());
+        }
+    }
+
+    private static void warnThrottled(String template, Object... args) {
+        if (log.isDebugEnabled()) {
+            log.debug(template, args);
+        }
+        long count = FORWARD_LIMITER.record();
+        if (count > 0) {
+            log.warn("Cluster partial forward failures: {} in last 10s", count);
         }
     }
 

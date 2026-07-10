@@ -6,6 +6,7 @@ import com.databuff.apm.ingest.event.TraceEvent;
 import com.databuff.apm.ingest.gateway.PipelineGateway;
 import com.databuff.apm.ingest.log.OtlpLogDirectWriter;
 import com.databuff.apm.ingest.metric.OtlpMetricDirectWriter;
+import com.databuff.apm.ingest.support.LogRateLimiter;
 import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
@@ -28,6 +29,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public final class OtlpIngestService {
 
     private static final Logger log = LoggerFactory.getLogger(OtlpIngestService.class);
+    private static final LogRateLimiter TRACE_BATCH_EMIT_LIMITER = new LogRateLimiter(10_000L);
 
     private final OtelConverter converter;
     private final PipelineGateway gateway;
@@ -66,10 +68,16 @@ public final class OtlpIngestService {
             if (gateway.emit(entry.getKey(), new TraceBatchEvent(entry.getValue()))) {
                 accepted += entry.getValue().size();
             } else {
-                log.warn(
-                        "Trace batch emit failed traceId={} spans={}",
-                        shortTraceId(entry.getKey()),
-                        entry.getValue().size());
+                if (log.isDebugEnabled()) {
+                    log.debug(
+                            "Trace batch emit failed traceId={} spans={}",
+                            shortTraceId(entry.getKey()),
+                            entry.getValue().size());
+                }
+                long suppressed = TRACE_BATCH_EMIT_LIMITER.record();
+                if (suppressed > 0) {
+                    log.warn("Trace batch emit failed {} times in the last 10s (trace pipeline queue full)", suppressed);
+                }
             }
         }
         tracesIngested.addAndGet(accepted);

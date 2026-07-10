@@ -18,9 +18,9 @@ apm_refresh_image_pkg_bases() {
 }
 apm_refresh_image_refs
 
-export OPENJDK_IMAGE="openjdk:17.0.2-jdk"
-# 构建 / local 拉取 openjdk 的 registry 前缀（如 test.xxx.com/databuff，建议写入 shell profile）。
-# 设置后从 ${OPENJDK_REGISTRY}/openjdk:17.0.2-jdk 拉取并 tag 为 openjdk:17.0.2-jdk；未设置则直接 pull 短名。
+export OPENJDK_IMAGE="eclipse-temurin:17-jdk-jammy"
+# 构建 / local 拉取 JDK 基础镜像的 registry 前缀（如 test.xxx.com/databuff，建议写入 shell profile）。
+# 设置后从 ${OPENJDK_REGISTRY}/eclipse-temurin:17-jdk-jammy 拉取并 tag 为 eclipse-temurin:17-jdk-jammy；未设置则直接 pull 短名。
 export OPENJDK_REGISTRY="${OPENJDK_REGISTRY:-}"
 
 export DORIS_FE_IMAGE=apache/doris:fe-4.1.1

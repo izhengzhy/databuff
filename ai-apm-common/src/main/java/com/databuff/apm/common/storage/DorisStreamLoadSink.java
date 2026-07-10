@@ -108,7 +108,7 @@ public final class DorisStreamLoadSink {
         }
         String status = truncate(body, 300);
         if (success) {
-            log.info(
+            log.debug(
                     "[metric-pipeline] STREAM_LOAD table={} rows={} success=true sample={} doris={}",
                     table,
                     rowCount,

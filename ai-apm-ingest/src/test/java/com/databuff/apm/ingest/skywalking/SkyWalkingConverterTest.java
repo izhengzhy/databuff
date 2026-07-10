@@ -176,6 +176,27 @@ class SkyWalkingConverterTest {
 
         DcSpan span = converter.convertSegment(segment).get(0).span();
         assertThat(span.parent_id).isEqualTo(SkyWalkingIdUtil.spanId("segment-parent", 2));
+        assertThat(span.is_parent).isZero();
+    }
+
+    @Test
+    void marksSegmentRootWithoutCrossProcessRefAsParent() {
+        SegmentObject segment = SegmentObject.newBuilder()
+                .setTraceId("trace-abc")
+                .setTraceSegmentId("segment-root")
+                .setService("entry-service")
+                .addSpans(SpanObject.newBuilder()
+                        .setSpanId(0)
+                        .setParentSpanId(-1)
+                        .setStartTime(1_700_000_000_000L)
+                        .setEndTime(1_700_000_000_050L)
+                        .setOperationName("/entry")
+                        .setSpanType(SpanType.Entry))
+                .build();
+
+        DcSpan span = converter.convertSegment(segment).get(0).span();
+        assertThat(span.parent_id).isEmpty();
+        assertThat(span.is_parent).isEqualTo(1);
     }
 
     @Test

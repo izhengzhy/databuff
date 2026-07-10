@@ -50,7 +50,10 @@ public final class TraceFillProcessor {
             virtualServiceExtractor.extractFromTrace(spans);
         }
         List<byte[]> encoded = FillPathAndRelationUtil.encodeFilled(spans);
-        List<OptimizedMetric> metrics = new ArrayList<>(ServiceFlowExtractor.extractFromTrace(spans));
+        List<OptimizedMetric> metrics = new ArrayList<>();
+        if (ServiceFlowExtractor.hasTraceEntryRoot(spans)) {
+            metrics.addAll(ServiceFlowExtractor.extractFromTrace(spans));
+        }
         for (DcSpan span : spans) {
             metrics.addAll(DcSpanUtil.parseSpanData(span));
         }

@@ -1,5 +1,6 @@
 package com.databuff.apm.web.ai;
 
+import com.databuff.apm.web.ai.agent.AgentRuntimeConfig;
 import org.junit.jupiter.api.Test;
 
 import java.net.InetSocketAddress;
@@ -21,7 +22,7 @@ class OpenAiCompatibleChatClientTest {
         server.start();
         try {
             int port = server.getAddress().getPort();
-            OpenAiCompatibleChatClient client = new OpenAiCompatibleChatClient();
+            OpenAiCompatibleChatClient client = new OpenAiCompatibleChatClient(new AgentRuntimeConfig());
             OpenAiCompatibleChatClient.ChatResult result = client.chat(
                     new OpenAiCompatibleChatClient.ResolvedLlmProvider(
                             "openai", "http://127.0.0.1:" + port + "/v1", "gpt-4o-mini", "sk"),
@@ -46,7 +47,7 @@ class OpenAiCompatibleChatClientTest {
         server.start();
         try {
             int port = server.getAddress().getPort();
-            OpenAiCompatibleChatClient client = new OpenAiCompatibleChatClient();
+            OpenAiCompatibleChatClient client = new OpenAiCompatibleChatClient(new AgentRuntimeConfig());
             OpenAiCompatibleChatClient.ChatResult result = client.chat(
                     new OpenAiCompatibleChatClient.ResolvedLlmProvider(
                             "minimax",
@@ -64,7 +65,7 @@ class OpenAiCompatibleChatClientTest {
 
     @Test
     void rejectsEmptyMessage() {
-        OpenAiCompatibleChatClient client = new OpenAiCompatibleChatClient();
+        OpenAiCompatibleChatClient client = new OpenAiCompatibleChatClient(new AgentRuntimeConfig());
         assertThat(client.chat(null, " ").ok()).isFalse();
     }
 
@@ -81,7 +82,7 @@ class OpenAiCompatibleChatClientTest {
         server.start();
         try {
             int port = server.getAddress().getPort();
-            OpenAiCompatibleChatClient client = new OpenAiCompatibleChatClient();
+            OpenAiCompatibleChatClient client = new OpenAiCompatibleChatClient(new AgentRuntimeConfig());
             OpenAiCompatibleChatClient.ResolvedLlmProvider provider =
                     new OpenAiCompatibleChatClient.ResolvedLlmProvider(
                             "openai", "http://127.0.0.1:" + port + "/v1/", "gpt-4o-mini", " sk ");

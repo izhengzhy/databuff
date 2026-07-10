@@ -1,6 +1,7 @@
 package com.databuff.apm.web.ai.agent;
 
 import com.databuff.apm.web.ai.platform.runtime.LayeredFilesystemSkillRepository;
+import io.agentscope.core.model.ExecutionConfig;
 import io.agentscope.core.skill.repository.AgentSkillRepository;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Component;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
@@ -44,12 +46,22 @@ public class AgentRuntimeConfig {
     private String workspaceDir = "./data/ai-workspaces";
     private String workspaceShellCommands = "cat,head,tail,grep,wc,ls,file,python3";
     private int workspaceShellTimeoutSeconds = 60;
+    /** Max ReAct reasoning-tool loop iterations per expert turn. */
+    private int maxIters = 1000;
+    /** Per-request LLM HTTP timeout (OpenAI-compatible and AgentScope model calls). */
+    private int llmHttpTimeoutSeconds = 300;
+    /** Orchestrator wait for a full expert turn (stream or sync). */
+    private int expertRoundTimeoutSeconds = 1200;
 
     @PostConstruct
     void logReady() {
         log.info(
-                "Agent runtime ready (agentscopeEnabled={}, builtinSkillsDir={}, customSkillsDir={}, workspaceDir={})",
+                "Agent runtime ready (agentscopeEnabled={}, maxIters={}, llmHttpTimeoutSeconds={},"
+                        + " expertRoundTimeoutSeconds={}, builtinSkillsDir={}, customSkillsDir={}, workspaceDir={})",
                 agentscopeEnabled,
+                maxIters,
+                llmHttpTimeoutSeconds,
+                expertRoundTimeoutSeconds,
                 builtinSkillsDir,
                 customSkillsDir,
                 workspaceDir);
@@ -172,6 +184,52 @@ public class AgentRuntimeConfig {
 
     public void setWorkspaceShellTimeoutSeconds(int workspaceShellTimeoutSeconds) {
         this.workspaceShellTimeoutSeconds = workspaceShellTimeoutSeconds;
+    }
+
+    public int getMaxIters() {
+        return maxIters;
+    }
+
+    public void setMaxIters(int maxIters) {
+        this.maxIters = maxIters;
+    }
+
+    public int getLlmHttpTimeoutSeconds() {
+        return llmHttpTimeoutSeconds;
+    }
+
+    public void setLlmHttpTimeoutSeconds(int llmHttpTimeoutSeconds) {
+        this.llmHttpTimeoutSeconds = llmHttpTimeoutSeconds;
+    }
+
+    public int getExpertRoundTimeoutSeconds() {
+        return expertRoundTimeoutSeconds;
+    }
+
+    public void setExpertRoundTimeoutSeconds(int expertRoundTimeoutSeconds) {
+        this.expertRoundTimeoutSeconds = expertRoundTimeoutSeconds;
+    }
+
+    public Duration llmHttpTimeout() {
+        return Duration.ofSeconds(Math.max(1, llmHttpTimeoutSeconds));
+    }
+
+    public Duration expertRoundTimeout() {
+        return Duration.ofSeconds(Math.max(1, expertRoundTimeoutSeconds));
+    }
+
+    public long expertRoundTimeoutMillis() {
+        return Math.max(1L, expertRoundTimeoutSeconds) * 1000L;
+    }
+
+    public int resolvedMaxIters() {
+        return Math.max(1, maxIters);
+    }
+
+    public ExecutionConfig llmModelExecutionConfig() {
+        return ExecutionConfig.mergeConfigs(
+                ExecutionConfig.builder().timeout(llmHttpTimeout()).build(),
+                ExecutionConfig.MODEL_DEFAULTS);
     }
 
     public Path workspaceDirectory() {

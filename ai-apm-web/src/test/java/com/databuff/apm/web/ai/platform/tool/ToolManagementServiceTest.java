@@ -34,7 +34,10 @@ class ToolManagementServiceTest {
                         "data.queryTraceDetail",
                         "data.queryServiceAlarms",
                         "data.queryMetricData",
-                        "inspect.inspectService");
+                        "inspect.inspectService",
+                        "Bash",
+                        "BashOutput",
+                        "KillShell");
         assertThat(service.delete("data.queryServicesAll")).isFalse();
     }
 

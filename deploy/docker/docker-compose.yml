@@ -78,6 +78,7 @@ services:
     ports:
       - "4317:4317"
       - "4318:4318"
+      - "11800:11800"   # SkyWalking Agent gRPC
     depends_on:
       ai-apm-doris-fe:
         condition: service_healthy

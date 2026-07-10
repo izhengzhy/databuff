@@ -4,6 +4,7 @@ import com.databuff.apm.web.ai.platform.tool.AiToolDefinition;
 import com.databuff.apm.web.ai.platform.tool.JavaBeanToolAllowlist;
 import com.databuff.apm.web.ai.platform.tool.ToolType;
 import com.databuff.apm.web.ai.platform.task.ExpertDispatchTool;
+import com.databuff.apm.web.tools.local.BashTools;
 import com.databuff.apm.web.tools.local.CommonTools;
 import com.databuff.apm.web.tools.local.DataTools;
 import com.databuff.apm.web.tools.local.InspectTools;
@@ -38,6 +39,8 @@ public class AgentScopeToolFactory {
     private LogTools logTools;
     @Autowired
     private ExpertDispatchTool expertDispatchTool;
+    @Autowired
+    private BashTools bashTools;
     @Autowired
     private RemoteMcpToolRegistrar remoteMcpToolRegistrar;
 
@@ -91,6 +94,8 @@ public class AgentScopeToolFactory {
             toolkit.registerTool(timeTool);
         } else if ("expertDispatchTool".equals(beanName) && expertDispatchTool != null) {
             toolkit.registerTool(expertDispatchTool);
+        } else if ("bashTools".equals(beanName) && bashTools != null) {
+            toolkit.registerTool(bashTools);
         } else {
             log.warn("Tool {} implementation {} has no registered local bean", tool.toolId(), implementation);
         }

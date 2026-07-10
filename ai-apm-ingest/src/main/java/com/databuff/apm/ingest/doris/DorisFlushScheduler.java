@@ -6,6 +6,7 @@ import com.databuff.apm.common.storage.DorisStreamLoadSink;
 import com.databuff.apm.common.storage.DorisTableNames;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.databuff.apm.ingest.support.LogRateLimiter;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -23,6 +24,7 @@ import java.util.concurrent.TimeoutException;
 public class DorisFlushScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(DorisFlushScheduler.class);
+    private static final LogRateLimiter FLUSH_FAILURE_LIMITER = new LogRateLimiter(10_000L);
     private static final java.util.Set<String> PARTITIONED_TABLES = java.util.Set.of(
             DorisTableNames.TRACE_DC_SPAN,
             DorisTableNames.LOG_DC_RECORD);
@@ -90,7 +92,7 @@ public class DorisFlushScheduler {
                 }
             }
         } catch (TimeoutException e) {
-            log.warn(
+            warnFlushFailure(
                     "Doris flush timed out for {}.{} (>{}ms) — check DORIS_BE_HTTP_HOST / BE port",
                     sink.database(),
                     sink.table(),
@@ -98,9 +100,19 @@ public class DorisFlushScheduler {
         } catch (ExecutionException e) {
             Throwable cause = e.getCause();
             String message = cause != null ? cause.getMessage() : e.getMessage();
-            log.warn("Doris flush failed for {}.{}: {}", sink.database(), sink.table(), message);
+            warnFlushFailure("Doris flush failed for {}.{}: {}", sink.database(), sink.table(), message);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+        }
+    }
+
+    private static void warnFlushFailure(String template, Object... args) {
+        if (log.isDebugEnabled()) {
+            log.debug(template, args);
+        }
+        long count = FLUSH_FAILURE_LIMITER.record();
+        if (count > 0) {
+            log.warn("Doris flush failures: {} in last 10s", count);
         }
     }
 }

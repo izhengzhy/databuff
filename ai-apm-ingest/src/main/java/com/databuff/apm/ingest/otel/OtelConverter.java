@@ -4,6 +4,7 @@ import com.databuff.apm.common.serde.DcSpanUtil;
 import com.databuff.apm.common.meta.OtelAttributeMaps;
 import com.databuff.apm.ingest.metric.JvmOtelMetricNormalizer;
 import com.databuff.apm.common.model.DcSpan;
+import com.databuff.apm.common.trace.TraceParentUtil;
 import com.databuff.apm.common.trace.TraceSpanNames;
 import com.databuff.apm.common.time.ApmTimeZones;
 import com.databuff.apm.common.util.ServiceKeyUtil;
@@ -407,8 +408,12 @@ public final class OtelConverter {
         dc.name = TraceSpanNames.normalizeOtelName(otelName, spanAttributes);
         dc.trace_id = hex(span.getTraceId());
         dc.span_id = hex(span.getSpanId());
-        dc.parent_id = hex(span.getParentSpanId());
-        dc.is_parent = span.getParentSpanId().isEmpty() ? 1 : 0;
+        if (isEmptyParentSpanId(span.getParentSpanId())) {
+            dc.parent_id = "";
+        } else {
+            dc.parent_id = hex(span.getParentSpanId());
+        }
+        TraceParentUtil.applyIsParent(dc);
         dc.start = start;
         dc.end = end;
         dc.duration = duration;
@@ -467,6 +472,18 @@ public final class OtelConverter {
         long epochSec = startNanos / 1_000_000_000L;
         long hour = epochSec / 3600;
         return Long.parseLong(ApmTimeZones.formatBucket(hour * 3600L, "yyyyMMddHH"));
+    }
+
+    private static boolean isEmptyParentSpanId(com.google.protobuf.ByteString parentSpanId) {
+        if (parentSpanId == null || parentSpanId.isEmpty()) {
+            return true;
+        }
+        for (int i = 0; i < parentSpanId.size(); i++) {
+            if (parentSpanId.byteAt(i) != 0) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static String hex(com.google.protobuf.ByteString bytes) {

@@ -89,8 +89,8 @@ class AiPlatformPersistenceTest {
         when(expertRs.getString("tool_ids_json")).thenReturn("[\"custom.tool\"]");
         when(expertRs.getString("skill_ids_json")).thenReturn("[\"custom.skill\"]");
         when(expertRs.getString("options_json")).thenReturn("""
-                {"maxIters":4,"stream":false,"enablePlan":true,"dynamicSkillsEnabled":false,
-                "timeoutSeconds":30,"maxConcurrentSubtasks":2,"exposeToolEvents":true}
+                {"stream":false,"enablePlan":true,"dynamicSkillsEnabled":false,
+                "exposeToolEvents":true}
                 """);
         when(expertRs.getInt("enabled")).thenReturn(1);
         when(expertRs.getInt("built_in")).thenReturn(0);

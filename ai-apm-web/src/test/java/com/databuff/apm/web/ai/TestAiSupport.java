@@ -112,7 +112,7 @@ public final class TestAiSupport {
                     aiConfigService,
                     agentRuntimeConfig,
                     toolkit,
-                    new OpenAiCompatibleChatClient(),
+                    new OpenAiCompatibleChatClient(agentRuntimeConfig),
                     store,
                     runtimeRouter,
                     runtimeForwarder,

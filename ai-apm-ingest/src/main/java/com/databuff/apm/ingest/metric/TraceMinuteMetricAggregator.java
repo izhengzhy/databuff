@@ -7,6 +7,7 @@ import com.databuff.apm.common.metric.TraceMetricMinuteBucket;
 import com.databuff.apm.common.model.OptimizedMetric;
 import com.databuff.apm.common.serde.OptimizedMetricUtil;
 import com.databuff.apm.ingest.cluster.ClusterAggregationLog;
+import com.databuff.apm.ingest.support.LogRateLimiter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,6 +35,7 @@ import java.util.concurrent.TimeUnit;
 public final class TraceMinuteMetricAggregator implements AutoCloseable {
 
     private static final Logger log = LoggerFactory.getLogger(TraceMinuteMetricAggregator.class);
+    private static final LogRateLimiter DROP_LIMITER = new LogRateLimiter(10_000L);
 
     public static final String STREAM = "ingest.metric.trace-minute";
 
@@ -100,7 +102,7 @@ public final class TraceMinuteMetricAggregator implements AutoCloseable {
             return;
         }
         if (!partitionMembership.owns(partitionKey)) {
-            log.warn(
+            warnDropped(
                     "Cluster metric accept dropped stream={} reason=not-owner-no-forward windowMs={} partition={} owner={} metric={} {}",
                     STREAM,
                     windowStartMs,
@@ -115,7 +117,7 @@ public final class TraceMinuteMetricAggregator implements AutoCloseable {
 
     public void acceptForwarded(String partitionKey, long windowStartMs, long windowEndMs, byte[] partial) {
         if (partial == null || partial.length == 0) {
-            log.warn(
+            warnDropped(
                     "Cluster metric forward-in dropped stream={} reason=empty-partial windowMs={} partition={} {}",
                     STREAM,
                     windowStartMs,
@@ -125,7 +127,7 @@ public final class TraceMinuteMetricAggregator implements AutoCloseable {
         }
         if (!partitionMembership.owns(partitionKey)) {
             OptimizedMetric preview = OptimizedMetricUtil.deserialize(partial);
-            log.warn(
+            warnDropped(
                     "Cluster metric forward-in dropped stream={} reason=not-owner windowMs={} partition={} owner={} metric={} {}",
                     STREAM,
                     windowStartMs,
@@ -137,6 +139,16 @@ public final class TraceMinuteMetricAggregator implements AutoCloseable {
         }
         OptimizedMetric incoming = OptimizedMetricUtil.deserialize(partial);
         mergeLocal(windowStartMs, partitionKey, incoming);
+    }
+
+    private static void warnDropped(String template, Object... args) {
+        if (log.isDebugEnabled()) {
+            log.debug(template, args);
+        }
+        long count = DROP_LIMITER.record();
+        if (count > 0) {
+            log.warn("Trace minute metric drops: {} in last 10s", count);
+        }
     }
 
     /** Test / shutdown hook: flush a specific minute window immediately. */

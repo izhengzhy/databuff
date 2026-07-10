@@ -166,7 +166,7 @@ public final class DcSpanUtil {
         return tags;
     }
 
-    /** Trace overview ({@code parentId=0}) aggregates only trace entry spans ({@code is_parent=1}). */
+    /** Trace overview ({@code parentId=0}) aggregates spans with blank/zero {@code parent_id} ({@code is_parent=1}). */
     static OptimizedMetric serviceTraceMetric(DcSpan span) {
         if (span.is_parent != 1) {
             return null;
@@ -540,11 +540,16 @@ public final class DcSpanUtil {
         return analysis;
     }
 
+    public static String resolveRpcSystem(Map<String, String> meta, DcSpan span) {
+        String operation = span != null ? firstNonBlank(span.name, span.resource) : null;
+        return resolveRpcSystem(meta, operation);
+    }
+
     /**
      * Resolve RPC framework from OTel semconv or DataBuff Java agent tags
      * ({@code component}, {@code dubbo-version}, operation names like {@code dubbo.call}).
      */
-    public static String resolveRpcSystem(Map<String, String> meta, DcSpan span) {
+    public static String resolveRpcSystem(Map<String, String> meta, String operationName) {
         String rpcSystem = OtelAttributeMaps.firstNonBlank(meta, "rpc.system");
         if (rpcSystem != null && !rpcSystem.isBlank()) {
             return rpcSystem.trim();
@@ -566,8 +571,7 @@ public final class DcSpanUtil {
         if (skyWalkingRpc != null) {
             return skyWalkingRpc;
         }
-        String operation = firstNonBlank(span != null ? span.name : null, span != null ? span.resource : null);
-        return rpcSystemFromOperation(operation);
+        return rpcSystemFromOperation(operationName);
     }
 
     /** {@code dubbo://}, {@code grpc://} and other RPC scheme URLs must not count as HTTP. */

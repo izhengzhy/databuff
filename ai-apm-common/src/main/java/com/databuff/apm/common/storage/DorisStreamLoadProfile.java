@@ -11,7 +11,7 @@ import java.util.Map;
 public record DorisStreamLoadProfile(Map<String, String> headers) {
 
     private static final List<String> JVM_TAG_COLUMNS = List.of(
-            "ts", "instance", "service", "service_id", "service_instance", "tag_host");
+            "metric_time", "ts", "instance", "service", "service_id", "service_instance", "tag_host");
 
     public static DorisStreamLoadProfile forTable(String table) {
         if (DorisTableNames.META_SERVICE.equals(table)) {

@@ -39,6 +39,7 @@ Online docs: [databuff.ai/docs](https://databuff.ai/docs/en/)
 - [Application Performance](使用手册/应用性能_en.md)
 - [AI Platform](使用手册/AI平台_en.md)
 - [Agent Integration](使用手册/Agent集成_en.md)
+- [SkyWalking Ingestion](使用手册/SkyWalking接入_en.md)
 - [Custom Digital Experts](使用手册/自定义数字专家_en.md)
 - [External MCP Integration](使用手册/外部MCP集成_en.md)
 
@@ -46,6 +47,7 @@ Online docs: [databuff.ai/docs](https://databuff.ai/docs/en/)
 
 - [Docker Operations](运维参考/Docker运维_en.md)
 - [Kubernetes Operations](运维参考/K8s运维_en.md)
+- [Performance Tuning and Capacity](运维参考/性能优化_en.md)
 - [Upgrade and Uninstall](运维参考/升级与卸载_en.md)
 - [Offline Installation](运维参考/离线安装_en.md)
 

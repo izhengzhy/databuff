@@ -26,7 +26,7 @@ export const DefaultConfig = {
       //   path: '',
       // },
       grpc: {
-        endpoint: '0.0.0.0:31800',
+        endpoint: '0.0.0.0:11800',
       },
     },
   },

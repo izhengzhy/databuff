@@ -1,5 +1,6 @@
 package com.databuff.apm.web.ai;
 
+import com.databuff.apm.web.ai.agent.AgentRuntimeConfig;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
@@ -14,10 +15,15 @@ import java.util.Map;
 @Component
 public class OpenAiCompatibleChatClient {
 
+    private final AgentRuntimeConfig agentRuntimeConfig;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(5))
             .build();
+
+    public OpenAiCompatibleChatClient(AgentRuntimeConfig agentRuntimeConfig) {
+        this.agentRuntimeConfig = agentRuntimeConfig;
+    }
 
     public ChatResult chat(ResolvedLlmProvider provider, String userMessage) {
         if (provider == null || userMessage == null || userMessage.isBlank()) {
@@ -38,7 +44,7 @@ public class OpenAiCompatibleChatClient {
                     }));
             URI uri = URI.create(LlmChatModelFactory.buildOpenAiChatCompletionsUrl(provider.baseUrl()));
             HttpRequest.Builder builder = HttpRequest.newBuilder(uri)
-                    .timeout(Duration.ofSeconds(60))
+                    .timeout(agentRuntimeConfig.llmHttpTimeout())
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(body));
             if (provider.apiKey() != null && !provider.apiKey().isBlank()) {
@@ -69,7 +75,7 @@ public class OpenAiCompatibleChatClient {
                     }));
             URI uri = URI.create(LlmChatModelFactory.buildAnthropicMessagesUrl(provider.baseUrl()));
             HttpRequest.Builder builder = HttpRequest.newBuilder(uri)
-                    .timeout(Duration.ofSeconds(60))
+                    .timeout(agentRuntimeConfig.llmHttpTimeout())
                     .header("Content-Type", "application/json")
                     .header("anthropic-version", "2023-06-01")
                     .POST(HttpRequest.BodyPublishers.ofString(body));

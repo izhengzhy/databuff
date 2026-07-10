@@ -57,6 +57,27 @@ class TraceFillTest {
     }
 
     @Test
+    void fillTreatsParentIdZeroAsRoot() throws Exception {
+        DcSpan root = span("trace-zero-parent", "root", "0", "gateway");
+        root.is_parent = 0;
+
+        List<DcSpan> filled = FillPathAndRelationUtil.fillBytes(List.of(
+                DCSpanJsonEncoder.encode(root)));
+        assertThat(filled.get(0).is_parent).isEqualTo(1);
+    }
+
+    @Test
+    void fillProcessorSkipsServiceFlowWithoutIsParentRoot() throws Exception {
+        DcSpan downstream = span("trace-8", "downstream", "external-parent", "service-k");
+        downstream.type = "SPAN_KIND_SERVER";
+        downstream.is_parent = 0;
+
+        TraceFillProcessor.FillResult result = new TraceFillProcessor().processTrace(List.of(downstream));
+        assertThat(result.metrics().stream().map(OptimizedMetric::measurement))
+                .doesNotContain("service.flow");
+    }
+
+    @Test
     void fillProcessorProducesServiceFlowMetric() throws Exception {
         DcSpan root = span("trace-5", "root", "", "gateway");
         DcSpan child = span("trace-5", "child", "root", "checkout");

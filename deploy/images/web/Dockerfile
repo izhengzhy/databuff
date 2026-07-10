@@ -1,4 +1,4 @@
-ARG OPENJDK_IMAGE=openjdk:17.0.2-jdk
+ARG OPENJDK_IMAGE=eclipse-temurin:17-jdk-jammy
 FROM ${OPENJDK_IMAGE}
 WORKDIR /app
 
@@ -6,7 +6,18 @@ COPY start.sh application.yml ./
 COPY skills/ ./skills/
 COPY *.jar ./
 
-RUN chmod +x start.sh \
+RUN printf 'Acquire::Retries "5";\nAcquire::http::Timeout "120";\n' > /etc/apt/apt.conf.d/80-retries \
+    && apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        openssh-client \
+        sshpass \
+        procps \
+        iproute2 \
+        nmap \
+    && rm -rf /var/lib/apt/lists/* \
+    && printf 'Host *\n  GSSAPIAuthentication no\n  PreferredAuthentications publickey,password\n  ConnectTimeout 10\n' \
+        > /etc/ssh/ssh_config.d/99-databuff.conf \
+    && chmod +x start.sh \
     && mkdir -p ./data/skills ./data/ai-workspaces
 
 ENV TZ=Asia/Shanghai

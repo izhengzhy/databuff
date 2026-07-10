@@ -42,7 +42,7 @@ class ExpertToolResolverTest {
     private static AiExpertDefinition expert(List<String> toolIds, ExpertToolAccessMode mode) {
         Instant now = Instant.now();
         ExpertRuntimeOptions options = new ExpertRuntimeOptions(
-                "默认分类", 8, true, false, false, 120, 3, true, mode);
+                "默认分类", true, false, false, true, mode);
         return new AiExpertDefinition(
                 "custom", "Custom", null, "desc", ExpertType.CUSTOM,
                 null, null, "prompt", toolIds, List.of(),

@@ -22,6 +22,9 @@ public final class JavaBeanToolAllowlist {
             "logTools.queryLogsByTraceId",
             "logTools.queryLogsBySpanId",
             "inspectTools.inspectService",
+            "bashTools.bash",
+            "bashTools.bashOutput",
+            "bashTools.killShell",
             "expertDispatchTool.dispatchExpertTask");
 
     private JavaBeanToolAllowlist() {

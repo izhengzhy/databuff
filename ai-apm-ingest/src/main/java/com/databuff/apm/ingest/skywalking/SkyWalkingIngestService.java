@@ -6,6 +6,7 @@ import com.databuff.apm.ingest.event.TraceEvent;
 import com.databuff.apm.ingest.gateway.PipelineGateway;
 import com.databuff.apm.ingest.log.OtlpLogDirectWriter;
 import com.databuff.apm.ingest.metric.OtlpMetricDirectWriter;
+import com.databuff.apm.ingest.support.LogRateLimiter;
 import org.apache.skywalking.apm.network.language.agent.v3.JVMMetricCollection;
 import org.apache.skywalking.apm.network.language.agent.v3.SegmentObject;
 import org.apache.skywalking.apm.network.logging.v3.LogData;
@@ -22,6 +23,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public final class SkyWalkingIngestService {
 
     private static final Logger log = LoggerFactory.getLogger(SkyWalkingIngestService.class);
+    private static final LogRateLimiter TRACE_BATCH_EMIT_LIMITER = new LogRateLimiter(10_000L);
 
     private final SkyWalkingConverter traceConverter;
     private final SkyWalkingJvmConverter jvmConverter;
@@ -65,7 +67,18 @@ public final class SkyWalkingIngestService {
             if (gateway.emit(entry.getKey(), new TraceBatchEvent(entry.getValue()))) {
                 accepted += entry.getValue().size();
             } else {
-                log.warn("SkyWalking trace batch emit failed traceId={} spans={}", entry.getKey(), entry.getValue().size());
+                if (log.isDebugEnabled()) {
+                    log.debug(
+                            "SkyWalking trace batch emit failed traceId={} spans={}",
+                            entry.getKey(),
+                            entry.getValue().size());
+                }
+                long suppressed = TRACE_BATCH_EMIT_LIMITER.record();
+                if (suppressed > 0) {
+                    log.warn(
+                            "SkyWalking trace batch emit failed {} times in the last 10s (trace pipeline queue full)",
+                            suppressed);
+                }
             }
         }
         tracesIngested.addAndGet(accepted);

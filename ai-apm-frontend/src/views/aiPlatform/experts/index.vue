@@ -164,26 +164,9 @@
             <el-form-item label="Prompt">
               <el-input v-model="form.systemPrompt" type="textarea" :rows="7" :placeholder="$t('modules.views.aiPlatform.experts.s_7e82489e')" />
             </el-form-item>
-          </div>
-          <div class="form-section">
-            <div class="form-section-head">
-              <div class="form-section-title">{{ $t('modules.views.aiPlatform.experts.s_9bbb8121') }}</div>
-              <div class="form-section-desc">{{ $t('modules.views.aiPlatform.experts.s_cdd07631') }}</div>
-            </div>
-            <div class="form-grid">
-              <el-form-item label="Max Iters">
-                <el-input-number v-model="form.options.maxIters" :min="1" :max="32" />
-              </el-form-item>
-              <el-form-item label="Timeout(s)">
-                <el-input-number v-model="form.options.timeoutSeconds" :min="10" :max="600" />
-              </el-form-item>
-              <el-form-item label="Max Subtasks">
-                <el-input-number v-model="form.options.maxConcurrentSubtasks" :min="1" :max="10" />
-              </el-form-item>
-              <el-form-item label="Tool Events">
-                <el-switch v-model="form.options.exposeToolEvents" :active-text="$t('modules.views.aiPlatform.experts.s_80710e5c')" :inactive-text="$t('modules.views.aiPlatform.experts.s_dce5379c')" />
-              </el-form-item>
-            </div>
+            <el-form-item label="Tool Events">
+              <el-switch v-model="form.options.exposeToolEvents" :active-text="$t('modules.views.aiPlatform.experts.s_80710e5c')" :inactive-text="$t('modules.views.aiPlatform.experts.s_dce5379c')" />
+            </el-form-item>
           </div>
         </el-form>
       </div>
@@ -299,12 +282,9 @@ export default class AiPlatformExperts extends Vue {
 
   private defaultOptions (): ExpertRuntimeOptions {
     return {
-      maxIters: 8,
       stream: false,
       enablePlan: false,
       dynamicSkillsEnabled: false,
-      timeoutSeconds: 120,
-      maxConcurrentSubtasks: 3,
       exposeToolEvents: true,
       toolAccessMode: 'ALLOWLIST',
     }

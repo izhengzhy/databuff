@@ -8,7 +8,6 @@ import com.databuff.apm.web.ai.platform.BuiltInExpertCatalog;
 import com.databuff.apm.web.ai.platform.expert.AiExpertDefinition;
 import com.databuff.apm.web.ai.platform.expert.BrainRoutingCatalog;
 import com.databuff.apm.web.ai.platform.expert.ExpertManagementService;
-import com.databuff.apm.web.ai.platform.expert.ExpertRuntimeOptions;
 import com.databuff.apm.web.ai.platform.skill.AiSkillDefinition;
 import com.databuff.apm.web.ai.platform.skill.SkillManagementService;
 import com.databuff.apm.web.ai.platform.tool.AiToolDefinition;
@@ -149,7 +148,6 @@ public class AgentScopeRuntimeAdapter {
         List<McpClientWrapper> mcpClients = toolFactory.registerTools(toolkit, tools);
         toolkit.registerTool(sessionWorkspaceTools);
 
-        ExpertRuntimeOptions options = expert.options();
         boolean sessionScopedBrain = chatSessionId != null
                 && !chatSessionId.isBlank()
                 && "brain".equals(expert.expertId());
@@ -159,7 +157,8 @@ public class AgentScopeRuntimeAdapter {
                 .sysPrompt(embeddedSkills.prompt())
                 .model(model)
                 .toolkit(toolkit)
-                .maxIters(options.maxIters())
+                .maxIters(agentRuntimeConfig.resolvedMaxIters())
+                .modelExecutionConfig(agentRuntimeConfig.llmModelExecutionConfig())
                 .checkRunning(false)
                 .permissionContext(AgentScopePermissionSupport.autoAllowContext());
 

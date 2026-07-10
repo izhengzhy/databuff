@@ -62,6 +62,9 @@ apm:
     workspace-dir: ${APM_DATA_DIR:./data}/ai-workspaces
     workspace-shell-commands: cat,head,tail,grep,wc,ls,file,python3
     workspace-shell-timeout-seconds: 60
+    max-iters: ${APM_AGENT_MAX_ITERS:1000}
+    llm-http-timeout-seconds: ${APM_AGENT_LLM_HTTP_TIMEOUT_SECONDS:300}
+    expert-round-timeout-seconds: ${APM_AGENT_EXPERT_ROUND_TIMEOUT_SECONDS:1200}
     brain-agent-name: brain
     data-agent-name: data
     inspection-agent-name: inspection

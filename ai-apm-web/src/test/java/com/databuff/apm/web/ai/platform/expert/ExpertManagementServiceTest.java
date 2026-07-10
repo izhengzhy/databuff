@@ -19,7 +19,7 @@ class ExpertManagementServiceTest {
     void seedsBuiltInExpertsAndProtectsDelete() {
         ExpertManagementService service = service();
         assertThat(service.list()).extracting(AiExpertDefinition::expertId)
-                .contains("brain", "data", "inspection");
+                .contains("brain", "data", "inspection", "ops");
         assertThat(service.find("data")).get()
                 .extracting(AiExpertDefinition::name)
                 .isEqualTo("智能问数");
@@ -33,6 +33,8 @@ class ExpertManagementServiceTest {
                         "data.queryServicesAll", "data.queryTraceDetail", "data.queryServiceAlarms");
         assertThat(service.find("inspection").orElseThrow().toolIds())
                 .contains("common.getCurrentTimeRange", "data.queryMetricData", "inspect.inspectService");
+        assertThat(service.find("ops").orElseThrow().toolIds())
+                .contains("Bash", "BashOutput", "KillShell", "inspect.inspectService");
         assertThat(service.delete("brain")).isFalse();
     }
 

@@ -21,6 +21,10 @@ spec:
       port: 4318
       targetPort: otlp-http
       nodePort: 30418
+    - name: skywalking-grpc
+      port: 11800
+      targetPort: skywalking-grpc
+      nodePort: 31180
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -50,6 +54,8 @@ spec:
               containerPort: 4317
             - name: otlp-http
               containerPort: 4318
+            - name: skywalking-grpc
+              containerPort: 11800
             - name: cluster-grpc
               containerPort: 18112
           envFrom:
