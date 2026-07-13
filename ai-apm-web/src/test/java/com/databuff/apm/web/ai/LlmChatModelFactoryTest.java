@@ -1,7 +1,7 @@
 package com.databuff.apm.web.ai;
 
-import io.agentscope.core.model.AnthropicChatModel;
-import io.agentscope.core.model.OpenAIChatModel;
+import io.agentscope.extensions.model.anthropic.AnthropicChatModel;
+import io.agentscope.extensions.model.openai.OpenAIChatModel;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

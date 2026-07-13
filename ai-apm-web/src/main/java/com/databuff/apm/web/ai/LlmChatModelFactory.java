@@ -1,8 +1,8 @@
 package com.databuff.apm.web.ai;
 
-import io.agentscope.core.model.AnthropicChatModel;
+import io.agentscope.extensions.model.anthropic.AnthropicChatModel;
 import io.agentscope.core.model.Model;
-import io.agentscope.core.model.OpenAIChatModel;
+import io.agentscope.extensions.model.openai.OpenAIChatModel;
 
 import java.net.URI;
 import java.util.regex.Pattern;

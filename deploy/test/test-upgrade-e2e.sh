@@ -4,8 +4,8 @@
 # Flow: install (FROM) → seed demo → snapshot data → update (TO) → verify → data retention verify
 #
 # Usage:
-#   FROM_VERSION=0.1.2 TO_VERSION=0.1.3 ./test-upgrade-e2e.sh
-#   RUN_DATA_RETENTION=1 FROM_VERSION=0.1.2 TO_VERSION=0.1.3 ./test-upgrade-e2e.sh
+#   FROM_VERSION=0.1.3 TO_VERSION=0.1.4 ./test-upgrade-e2e.sh
+#   RUN_DATA_RETENTION=1 FROM_VERSION=0.1.3 TO_VERSION=0.1.4 ./test-upgrade-e2e.sh
 #
 # Environment:
 #   RUN_DATA_RETENTION   1 = snapshot before update + verify after verify-upgrade (default 1)
