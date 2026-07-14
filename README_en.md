@@ -19,6 +19,9 @@
   &nbsp;|&nbsp;
   <a href="#community">Community</a>
 </p>
+<p align="center">
+  Username:Admin, Password:Databuff@123
+</p>
 <h2>Features</h2>
 
 - 🤖 **AI-native, not a bolt-on chat box** — LLM queries traces, metrics, topology, and alerts directly from real data
