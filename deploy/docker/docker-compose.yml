@@ -8,7 +8,6 @@ services:
     container_name: ai-apm-doris-fe
     hostname: ai-apm-doris-fe
     restart: unless-stopped
-    cpus: 1
     mem_limit: 2g
     working_dir: /opt/apache-doris
     environment:
@@ -40,7 +39,6 @@ services:
     container_name: ai-apm-doris-be
     hostname: ai-apm-doris-be
     restart: unless-stopped
-    cpus: 2
     mem_limit: 6g
     working_dir: /opt/apache-doris
     environment:
@@ -68,7 +66,6 @@ services:
     container_name: ai-apm-ingest
     hostname: ai-apm-ingest
     restart: unless-stopped
-    cpus: 2
     mem_limit: 5g
     environment:
       TZ: Asia/Shanghai
@@ -99,7 +96,6 @@ services:
     container_name: ai-apm-web
     hostname: ai-apm-web
     restart: unless-stopped
-    cpus: 1
     mem_limit: 2g
     environment:
       TZ: Asia/Shanghai
