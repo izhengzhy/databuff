@@ -69,6 +69,10 @@ compose_supports_wait() {
   compose_cmd up --help 2>/dev/null | grep -q -- '--wait'
 }
 
+compose_supports_wait_timeout() {
+  compose_cmd up --help 2>/dev/null | grep -q -- '--wait-timeout'
+}
+
 compose_down_legacy_project() {
   # Older packages used different project/container names; clean them up once.
   local legacy_project
@@ -104,9 +108,24 @@ compose_up() {
 # Doris FE/BE only: block until healthchecks pass. App services (ingest/web) are
 # started with compose_up and readiness is handled by wait_for_apm_services_ready
 # in start.sh — compose --wait would abort too early when Java is still warming up.
+# Default 180s so a stuck "Waiting" (never healthy/unhealthy) fails into Web 排障
+# instead of hanging forever. Override: COMPOSE_WAIT_TIMEOUT=<seconds>.
 compose_up_wait() {
+  local wait_timeout="${COMPOSE_WAIT_TIMEOUT:-180}"
   if compose_supports_wait; then
-    compose_cmd up -d --wait "$@"
+    echo "[compose] waiting for healthy (timeout=${wait_timeout}s): $*" >&2
+    if compose_supports_wait_timeout; then
+      compose_cmd up -d --wait --wait-timeout "$wait_timeout" "$@"
+    elif command -v timeout >/dev/null 2>&1; then
+      # timeout(1) cannot invoke bash functions; call the compose binary directly.
+      if docker compose version >/dev/null 2>&1; then
+        timeout "$wait_timeout" docker compose -f "$COMPOSE_FILE" up -d --wait "$@"
+      else
+        timeout "$wait_timeout" docker-compose -f "$COMPOSE_FILE" up -d --wait "$@"
+      fi
+    else
+      compose_cmd up -d --wait "$@"
+    fi
   else
     compose_cmd up -d "$@"
   fi
