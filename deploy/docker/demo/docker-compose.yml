@@ -7,7 +7,6 @@ services:
     container_name: ai-apm-demo
     hostname: ai-apm-demo
     restart: unless-stopped
-    mem_limit: 256m
     environment:
       TZ: Asia/Shanghai
       JAVA_TOOL_OPTIONS: -Xms64m -Xmx128m -Duser.timezone=Asia/Shanghai

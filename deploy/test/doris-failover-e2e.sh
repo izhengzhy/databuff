@@ -12,8 +12,8 @@
 #   C:                deploy/test/run-tests.sh — API regression
 # Ops docs: docs/运维参考/Docker运维.md 「发布验收 / Release gate」
 #
-# Simulates Doris FE/BE healthcheck failure via docker-compose.override.yml (BE mem_limit),
-# asserts Web bootstrap mode, then removes override and verifies full stack recovery.
+# Simulates Doris FE/BE healthcheck failure by injecting a tiny BE mem_limit into compose,
+# asserts Web bootstrap mode, then restores compose and verifies full stack recovery.
 #
 # Usage (113, offline 140 bundle — P0):
 #   export BUNDLE_ROOT=/root/databuff-e2e-offline-bundles/140/databuff-ai-apm-offline-<VER>-amd64
@@ -39,7 +39,7 @@
 #   APM_PKG_BASE          default http://192.168.50.140/databuff
 #   BUNDLE_ROOT           offline bundle extract dir (offline mode)
 #   INSTALL_MODE          offline|online (default offline when BUNDLE_ROOT set, else online)
-#   BE_MEM_LIMIT          BE override mem_limit (default 256m)
+#   BE_MEM_LIMIT          Injected BE mem_limit for OOM (default 256m; not in shipping compose)
 #   SIMULATE_OFFLINE      1 = iptables DROP egress before failure start (default 0)
 #   STOP_AFTER            install|inject|failure|ops_prompt|recovery|reinstall|all
 #   SKIP_INSTALL          1
@@ -181,8 +181,15 @@ step_inject_failure() {
   fi
   log "inject BE mem_limit=${BE_MEM_LIMIT} → ${compose_yml}"
   cp "$compose_yml" "$compose_bak"
-  # Replace mem_limit only within the doris-be section
-  sed -i '/^  ai-apm-doris-be:/,/^  ai-apm-/ s/^    mem_limit:.*$/    mem_limit: '"${BE_MEM_LIMIT}"'/' "$compose_yml"
+  # Shipping compose has no mem_limit; insert (or replace) under ai-apm-doris-be only
+  if sed -n '/^  ai-apm-doris-be:/,/^  ai-apm-/p' "$compose_yml" | grep -q '^    mem_limit:'; then
+    sed -i '/^  ai-apm-doris-be:/,/^  ai-apm-/ s/^    mem_limit:.*$/    mem_limit: '"${BE_MEM_LIMIT}"'/' "$compose_yml"
+  else
+    sed -i '/^  ai-apm-doris-be:/,/^  ai-apm-/ s/^    restart:.*$/&\n    mem_limit: '"${BE_MEM_LIMIT}"'/' "$compose_yml"
+  fi
+  if ! sed -n '/^  ai-apm-doris-be:/,/^  ai-apm-/p' "$compose_yml" | grep -q "mem_limit: ${BE_MEM_LIMIT}"; then
+    fail "failed to inject mem_limit=${BE_MEM_LIMIT} into ai-apm-doris-be"
+  fi
   log "injected mem_limit=${BE_MEM_LIMIT} into ${compose_yml} (backup: ${compose_bak})"
   maybe_stop inject
 }

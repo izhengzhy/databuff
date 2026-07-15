@@ -200,19 +200,10 @@ ALTER TABLE metric_service SET ("dynamic_partition.start" = "-14");
 
 ### FE / BE memory
 
-- **FE**: `docker-compose.yml` startup `sed`-patches `-Xmx8192m` → `-Xmx1200m` to fit the 2 GiB limit. **Do not remove** this patch.
-- **BE OOM**: raise BE container memory as below.
+- **FE**: `docker-compose.yml` startup `sed`-patches `-Xmx8192m` → `-Xmx1200m`. **Do not remove** this patch.
+- **BE OOM**: Docker deploy does not set container `mem_limit`; BE uses host free RAM. Keep ≥6–8g free on the host and watch usage with `docker stats ai-apm-doris-be --no-stream`.
 
-**How to raise Doris BE memory (Docker):**
-
-1. `cd /opt/databuff-ai-apm && cp docker-compose.yml docker-compose.yml.bak`
-2. Under `ai-apm-doris-be`, change `mem_limit: 6g` → `8g` (host must have free RAM).
-3. `docker compose up -d ai-apm-doris-be`
-4. `docker stats ai-apm-doris-be --no-stream`
-
-![BE mem_limit edit example](../images/perf-docker-be-memory.png)
-
-If OOM persists, shorten `dynamic_partition.start` or add disk before adding more memory.
+If OOM persists, shorten `dynamic_partition.start` or add disk before adding host memory.
 
 ## 4. Web queries and alerting
 
@@ -358,7 +349,7 @@ grep -m1 avx2 /proc/cpuinfo && echo "AVX2: yes" || echo "AVX2: no"
 |---------|--------|------------|
 | High ingest write latency | `INGEST_*_BUFFER_SIZE`, `*_TASKS`; `INGEST_DORIS_FLUSH_INTERVAL_MS` / `FLUSH_TIMEOUT_MS` | Raise parallelism/buffers; shorter flush interval trades Doris load |
 | Ingest write failures | `DORIS_FE_HOST`, `DORIS_BE_HTTP_HOST`; ingest/BE logs | Fix Stream Load connectivity; BE disk and health |
-| Doris BE OOM / restart | BE `mem_limit`, retention, `be-storage` usage | More memory or shorter `dynamic_partition.start` |
+| Doris BE OOM / restart | Host free RAM, retention, `be-storage` usage | More host memory or shorter `dynamic_partition.start` |
 | Doris FE OOM | FE `-Xmx1200m` patch present | Keep compose `sed` patch |
 | Slow web queries | UI time range; partition pruning; BE compaction | Narrow time window; check BE CPU/IO |
 | Rule evaluation slows web | `apm.monitor.pool.*`; rule count | Reduce rules; raise `max-size` if needed |

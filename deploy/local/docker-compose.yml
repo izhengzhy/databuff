@@ -7,8 +7,6 @@ services:
     container_name: ai-apm-doris-fe
     hostname: ai-apm-doris-fe
     restart: unless-stopped
-    # Doris FE 除 JVM 外还有较多堆外内存，不能与应用 JAR 服务共用 300M 上限
-    mem_limit: 768m
     working_dir: /opt/apache-doris
     environment:
       FE_SERVERS: fe1:172.20.80.2:9010
@@ -39,8 +37,6 @@ services:
     container_name: ai-apm-doris-be
     hostname: ai-apm-doris-be
     restart: unless-stopped
-    # BE 默认 -Xmx2048m，必须 patch；本地建议 3G（含 C++ 引擎与缓存）
-    mem_limit: 3072m
     working_dir: /opt/apache-doris
     environment:
       FE_SERVERS: fe1:172.20.80.2:9010
@@ -72,7 +68,6 @@ services:
     container_name: ai-apm-ingest
     hostname: ai-apm-ingest
     restart: unless-stopped
-    mem_limit: 384m
     working_dir: /app
     entrypoint: ["/bin/sh", "/app/start.sh"]
     environment:
@@ -106,7 +101,6 @@ services:
     container_name: ai-apm-web
     hostname: ai-apm-web
     restart: unless-stopped
-    mem_limit: 384m
     working_dir: /app
     entrypoint: ["/bin/sh", "/app/start.sh"]
     environment:
@@ -139,7 +133,6 @@ services:
     container_name: ai-apm-demo
     hostname: ai-apm-demo
     restart: unless-stopped
-    mem_limit: 256m
     working_dir: /app
     entrypoint: ["/bin/sh", "/app/start.sh"]
     environment:
@@ -164,7 +157,6 @@ services:
     container_name: ai-apm-demo-sw
     hostname: ai-apm-demo-sw
     restart: unless-stopped
-    mem_limit: 256m
     working_dir: /app
     entrypoint: ["/bin/sh", "/app/start.sh"]
     environment:

@@ -92,18 +92,18 @@ cd deploy/docker
 
 ## JVM 与资源
 
-默认资源配置（Docker `cpus` / `mem_limit`，K8s `resources.limits` 一致）：
+默认推荐资源（Docker 不设容器 `mem_limit`；堆内存靠 JVM / FE `-Xmx`；K8s 仍用 `resources.limits`）：
 
-| 组件 | CPU | 内存 | JVM (`Xmx` 建议小于内存 limit) |
-|------|-----|------|--------------------------------|
-| Doris FE | 1 | 2g | FE `-Xmx1200m`（启动时 patch，见 compose） |
-| Doris BE | 2 | 6g | 官方 `be-4.1.1` 镜像 |
-| ingest | 2 | 5g | `-Xms1g -Xmx4g` |
-| web | 1 | 2g | `-Xms512m -Xmx1536m` |
+| 组件 | 建议主机内存余量 | JVM / 进程侧 |
+|------|------------------|--------------|
+| Doris FE | ≥2g | FE `-Xmx1200m`（启动时 patch，见 compose） |
+| Doris BE | ≥6g | 官方 `be-4.1.1` 镜像 |
+| ingest | ≥5g | `-Xms1g -Xmx4g` |
+| web | ≥2g | `-Xms512m -Xmx1536m` |
 
-需要调整资源时直接改 `docker-compose.yml`，不再依赖 `.env` 注入变量。
+需要调整堆大小时改 `docker-compose.yml` 中的 `JAVA_TOOL_OPTIONS` / FE `sed` patch，不再依赖 `.env` 注入变量。
 
-Doris 4.x 使用官方 `fe` / `be` 分离镜像（默认 **4.1.1**）。首次启动时 `start.sh` 会等待 Doris FE/BE 就绪后执行 `scripts/init-doris.sh` 导入 `sql/databuff.sql`（轮询 BE 存储容量，不再固定 sleep）。FE 默认 `-Xmx8192m` 与 2g 容器 limit 冲突会导致 OOM；compose 启动前会 patch 为 `-Xmx1200m`。ingest 通过 `DORIS_BE_HTTP_HOST=ai-apm-doris-be` 直连 BE 做 Stream Load。手动重置表结构用 `./reset-table.sh`。
+Doris 4.x 使用官方 `fe` / `be` 分离镜像（默认 **4.1.1**）。首次启动时 `start.sh` 会等待 Doris FE/BE 就绪后执行 `scripts/init-doris.sh` 导入 `sql/databuff.sql`（轮询 BE 存储容量，不再固定 sleep）。FE 默认 `-Xmx8192m` 过大易拖垮主机；compose 启动前会 patch 为 `-Xmx1200m`。ingest 通过 `DORIS_BE_HTTP_HOST=ai-apm-doris-be` 直连 BE 做 Stream Load。手动重置表结构用 `./reset-table.sh`。
 
 ## 端口
 

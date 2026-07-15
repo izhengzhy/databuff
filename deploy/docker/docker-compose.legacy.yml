@@ -1,6 +1,8 @@
 # DataBuff APM Docker — legacy compose (docker-compose v1.18–1.28)
-# 去掉 cpus / depends_on.condition / healthcheck.start_period / networks.name
+# 去掉 cpus / mem_limit / depends_on.condition / healthcheck.start_period / networks.name
+# （Compose file v3.x 不支持顶层 mem_limit，1.22 会直接 Invalid）
 # 启动顺序由 start.sh 分阶段控制，就绪检测由 init-doris.sh / runtime.sh 负责
+# Java 侧仍靠 JAVA_TOOL_OPTIONS / FE -Xmx 控制堆内存
 
 version: "3.2"
 
@@ -10,7 +12,6 @@ services:
     container_name: ai-apm-doris-fe
     hostname: ai-apm-doris-fe
     restart: unless-stopped
-    mem_limit: 2g
     working_dir: /opt/apache-doris
     environment:
       FE_SERVERS: fe1:172.20.80.2:9010
@@ -40,7 +41,6 @@ services:
     container_name: ai-apm-doris-be
     hostname: ai-apm-doris-be
     restart: unless-stopped
-    mem_limit: 6g
     working_dir: /opt/apache-doris
     environment:
       FE_SERVERS: fe1:172.20.80.2:9010
@@ -65,7 +65,6 @@ services:
     container_name: ai-apm-ingest
     hostname: ai-apm-ingest
     restart: unless-stopped
-    mem_limit: 5g
     environment:
       TZ: Asia/Shanghai
       JAVA_TOOL_OPTIONS: -Xms1g -Xmx4g -Duser.timezone=Asia/Shanghai
@@ -92,7 +91,6 @@ services:
     container_name: ai-apm-web
     hostname: ai-apm-web
     restart: unless-stopped
-    mem_limit: 2g
     environment:
       TZ: Asia/Shanghai
       JAVA_TOOL_OPTIONS: -Xms512m -Xmx1536m -Duser.timezone=Asia/Shanghai
