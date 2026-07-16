@@ -90,7 +90,7 @@ CREATE TABLE log_dc_record (
   `service_instance`    VARCHAR(512)  NOT NULL DEFAULT '' COMMENT 'OTel service.instance.id',
   `severity`            VARCHAR(32)   NOT NULL DEFAULT 'UNSPECIFIED',
   `severity_number`     INT           NOT NULL DEFAULT 0,
-  `body`                VARCHAR(65533)         COMMENT 'log message text',
+  `body`                STRING                 COMMENT 'log message text (STRING; ingest truncates by Java String.length)',
   `attributes_json`     VARCHAR(15000)         COMMENT 'LogRecord attributes JSON',
   `resource_json`       VARCHAR(15000)          COMMENT 'Resource attributes JSON',
   `time_ns`             BIGINT        NOT NULL COMMENT 'original time_unix_nano',

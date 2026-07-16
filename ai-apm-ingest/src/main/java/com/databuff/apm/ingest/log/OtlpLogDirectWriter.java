@@ -1,6 +1,7 @@
 package com.databuff.apm.ingest.log;
 
 import com.databuff.apm.common.storage.DorisBatchWriter;
+import com.databuff.apm.common.storage.DorisVarcharLimits;
 import com.databuff.apm.ingest.meta.MetaServiceCollector;
 import com.databuff.apm.ingest.otel.OtlLogLine;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -16,10 +17,19 @@ public final class OtlpLogDirectWriter {
 
     private final DorisBatchWriter logBatchWriter;
     private final MetaServiceCollector metaServiceCollector;
+    private final int logBodyMaxLength;
 
     public OtlpLogDirectWriter(DorisBatchWriter logBatchWriter, MetaServiceCollector metaServiceCollector) {
+        this(logBatchWriter, metaServiceCollector, DorisVarcharLimits.LOG_BODY);
+    }
+
+    public OtlpLogDirectWriter(
+            DorisBatchWriter logBatchWriter,
+            MetaServiceCollector metaServiceCollector,
+            int logBodyMaxLength) {
         this.logBatchWriter = logBatchWriter;
         this.metaServiceCollector = metaServiceCollector;
+        this.logBodyMaxLength = logBodyMaxLength > 0 ? logBodyMaxLength : DorisVarcharLimits.LOG_BODY;
     }
 
     public void write(List<OtlLogLine> lines) {
@@ -36,7 +46,7 @@ public final class OtlpLogDirectWriter {
                 metaServiceCollector.remember(line);
             }
             try {
-                logBatchWriter.offer(line.toJsonBytes());
+                logBatchWriter.offer(line.toJsonBytes(logBodyMaxLength));
             } catch (JsonProcessingException e) {
                 skipped++;
                 log.warn("Failed to serialize OTLP log row for {}: {}", line.service(), e.getMessage());

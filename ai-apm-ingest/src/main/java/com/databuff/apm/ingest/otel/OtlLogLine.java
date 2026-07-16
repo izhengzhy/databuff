@@ -2,6 +2,7 @@ package com.databuff.apm.ingest.otel;
 
 import com.databuff.apm.common.serde.ReusableJson;
 import com.databuff.apm.common.storage.DorisVarcharLimits;
+import com.databuff.apm.ingest.support.TruncationWarn;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -28,6 +29,11 @@ public record OtlLogLine(
     private static final ObjectMapper JSON = new ObjectMapper();
 
     public byte[] toJsonBytes() throws JsonProcessingException {
+        return toJsonBytes(DorisVarcharLimits.LOG_BODY);
+    }
+
+    /** @param bodyMaxLength max {@link String#length()} for {@code body} (configurable soft cap) */
+    public byte[] toJsonBytes(int bodyMaxLength) throws JsonProcessingException {
         Map<String, Object> row = new LinkedHashMap<>();
         row.put("log_time", logTime);
         row.put("service_id", serviceId);
@@ -38,7 +44,7 @@ public record OtlLogLine(
         row.put("hostname", hostname == null ? "" : hostname);
         row.put("severity", severity == null ? "UNSPECIFIED" : severity);
         row.put("severity_number", severityNumber);
-        row.put("body", DorisVarcharLimits.truncate(body == null ? "" : body, DorisVarcharLimits.LOG_BODY));
+        row.put("body", truncateBody(body == null ? "" : body, bodyMaxLength));
         putIfPresent(row, "attributes_json",
                 DorisVarcharLimits.truncate(attributesJson, DorisVarcharLimits.JSON_BLOB));
         putIfPresent(row, "resource_json",
@@ -46,6 +52,14 @@ public record OtlLogLine(
         row.put("time_ns", timeNs);
         row.put("observed_time_ns", observedTimeNs);
         return ReusableJson.writeValueAsBytes(JSON, row);
+    }
+
+    private String truncateBody(String value, int maxLength) {
+        if (value.length() <= maxLength) {
+            return value;
+        }
+        TruncationWarn.logBodyTruncated(service, value.length(), maxLength);
+        return DorisVarcharLimits.truncate(value, maxLength);
     }
 
     private static void putIfPresent(Map<String, Object> row, String key, String value) {

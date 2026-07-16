@@ -20,7 +20,7 @@ public record DorisStreamLoadProfile(Map<String, String> headers) {
         if (DorisTableNames.METRIC_JVM.equals(table)) {
             return metricJvm();
         }
-        return new DorisStreamLoadProfile(Map.of("strict_mode", "false"));
+        return new DorisStreamLoadProfile(Map.copyOf(defaultHeaders()));
     }
 
     /**
@@ -28,8 +28,7 @@ public record DorisStreamLoadProfile(Map<String, String> headers) {
      * ({@code service}, {@code type}, {@code describe}).
      */
     public static DorisStreamLoadProfile metaService() {
-        Map<String, String> headers = new LinkedHashMap<>();
-        headers.put("strict_mode", "false");
+        Map<String, String> headers = defaultHeaders();
         headers.put(
                 "columns",
                 "id,name,`service`,service_type,apikey,custom_tags,`type`,fqdn,`source`,`describe`,"
@@ -63,11 +62,21 @@ public record DorisStreamLoadProfile(Map<String, String> headers) {
                 jsonPaths.add("$." + jsonKey);
             }
         });
-        Map<String, String> headers = new LinkedHashMap<>();
-        headers.put("strict_mode", "false");
+        Map<String, String> headers = defaultHeaders();
         headers.put("columns", String.join(",", columnExprs));
         headers.put("jsonpaths", jsonPaths(jsonPaths));
         return new DorisStreamLoadProfile(Map.copyOf(headers));
+    }
+
+    /**
+     * {@code max_filter_ratio=1}: quality-bad rows are filtered; good rows still load
+     * (one oversized field must not fail the whole batch).
+     */
+    private static Map<String, String> defaultHeaders() {
+        Map<String, String> headers = new LinkedHashMap<>();
+        headers.put("strict_mode", "false");
+        headers.put("max_filter_ratio", "1");
+        return headers;
     }
 
     private static String jsonPaths(List<String> paths) {

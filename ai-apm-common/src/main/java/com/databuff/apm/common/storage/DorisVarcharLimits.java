@@ -1,8 +1,10 @@
 package com.databuff.apm.common.storage;
 
 /**
- * Doris VARCHAR upper bounds for long text columns (aligned with {@code databuff.sql} / V004).
- * Ingest truncates to these limits so a single oversized value cannot fail an entire Stream Load batch.
+ * Doris text column upper bounds (aligned with {@code databuff.sql} / V004 / V005).
+ * Ingest truncates by {@link String#length()} so a single oversized value cannot fail an entire
+ * Stream Load batch. VARCHAR limits are character caps chosen to stay under Doris UTF-8 byte
+ * ceilings for typical payloads; {@link #LOG_BODY} is a soft cap for the STRING column.
  */
 public final class DorisVarcharLimits {
 
@@ -24,7 +26,12 @@ public final class DorisVarcharLimits {
 
     public static final int SPAN_METRICS = 1000;
 
-    public static final int LOG_BODY = 65533;
+    /**
+     * Default max {@link String#length()} for {@code log_dc_record.body} (Doris STRING).
+     * Override via {@code ingest.doris.log-body-max-length}. Align with BE
+     * {@code string_type_length_soft_limit_bytes} when raising (CJK ≈ 3 UTF-8 bytes per char).
+     */
+    public static final int LOG_BODY = 1_048_576;
 
     private DorisVarcharLimits() {
     }

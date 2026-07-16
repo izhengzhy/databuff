@@ -10,25 +10,44 @@ import java.util.Objects;
 
 /**
  * Flushes {@link DorisBatchWriter} batches via {@link DorisStreamLoader}.
+ * On Stream Load failure the batch is re-queued; after
+ * {@link #DEFAULT_MAX_CONSECUTIVE_FAILURES} consecutive failures for this sink the batch is
+ * dropped (fail-soft) so a poison pill cannot block the table indefinitely.
  */
 public final class DorisStreamLoadSink {
 
     private static final Logger log = LoggerFactory.getLogger(DorisStreamLoadSink.class);
 
+    /** Default consecutive Stream Load failures before dropping the current batch. */
+    public static final int DEFAULT_MAX_CONSECUTIVE_FAILURES = 3;
+
     private final DorisBatchWriter batchWriter;
     private final DorisStreamLoader streamLoader;
     private final String database;
     private final String table;
+    private final int maxConsecutiveFailures;
+
+    private int consecutiveFailures;
 
     public DorisStreamLoadSink(
             DorisBatchWriter batchWriter,
             DorisStreamLoader streamLoader,
             String database,
             String table) {
+        this(batchWriter, streamLoader, database, table, DEFAULT_MAX_CONSECUTIVE_FAILURES);
+    }
+
+    public DorisStreamLoadSink(
+            DorisBatchWriter batchWriter,
+            DorisStreamLoader streamLoader,
+            String database,
+            String table,
+            int maxConsecutiveFailures) {
         this.batchWriter = Objects.requireNonNull(batchWriter);
         this.streamLoader = Objects.requireNonNull(streamLoader);
         this.database = Objects.requireNonNull(database);
         this.table = Objects.requireNonNull(table);
+        this.maxConsecutiveFailures = Math.max(1, maxConsecutiveFailures);
     }
 
     public int flushReady() throws IOException {
@@ -57,12 +76,27 @@ public final class DorisStreamLoadSink {
                 throw new IOException("Doris stream load failed" + hint + ": " + result.body()
                         + (sample.isEmpty() ? "" : " sampleRow=" + sample));
             }
+            consecutiveFailures = 0;
             logPipelineStreamLoad(table, batch.size(), sampleRow(batch), true, result.body());
             log.debug("Stream loaded {} rows to {}.{}", batch.size(), database, table);
             return batch.size();
         } catch (IOException e) {
-            batchWriter.offerAll(batch);
-            throw e;
+            consecutiveFailures++;
+            if (consecutiveFailures < maxConsecutiveFailures) {
+                batchWriter.offerAll(batch);
+                throw e;
+            }
+            String sample = sampleRow(batch);
+            log.error(
+                    "Doris stream load dropped after {} consecutive failures {}.{} rows={} sample={} cause={}",
+                    consecutiveFailures,
+                    database,
+                    table,
+                    batch.size(),
+                    sample,
+                    e.toString());
+            consecutiveFailures = 0;
+            return 0;
         }
     }
 
@@ -93,6 +127,11 @@ public final class DorisStreamLoadSink {
 
     public String database() {
         return database;
+    }
+
+    /** Visible for tests. */
+    int consecutiveFailures() {
+        return consecutiveFailures;
     }
 
     private static String sampleRow(List<byte[]> batch) {

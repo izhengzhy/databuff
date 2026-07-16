@@ -3,12 +3,14 @@ package com.databuff.apm.common.storage;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class DorisStreamLoadSinkTest {
 
@@ -66,5 +68,43 @@ class DorisStreamLoadSinkTest {
                 "trace_dc_span");
         assertThat(sink.database()).isEqualTo("databuff");
         assertThat(sink.table()).isEqualTo("trace_dc_span");
+    }
+
+    @Test
+    void requeuesOnFailureUntilBudgetThenDrops() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
+        int port = server.getAddress().getPort();
+        AtomicInteger calls = new AtomicInteger();
+        server.createContext("/api/databuff/log_dc_record/_stream_load", exchange -> {
+            calls.incrementAndGet();
+            byte[] fail = "{\"Status\": \"Fail\", \"Message\": \"too long\"}".getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, fail.length);
+            try (java.io.OutputStream os = exchange.getResponseBody()) {
+                os.write(fail);
+            }
+        });
+        server.start();
+        try {
+            DorisStreamLoader loader = new DorisStreamLoader(
+                    new DorisConnectionConfig("127.0.0.1", 9030, port), "root", "");
+            DorisBatchWriter writer = new DorisBatchWriter(10);
+            DorisStreamLoadSink sink = new DorisStreamLoadSink(writer, loader, "databuff", "log_dc_record", 3);
+            writer.offer("{\"body\":\"x\"}".getBytes(StandardCharsets.UTF_8));
+
+            assertThatThrownBy(sink::flushAll).isInstanceOf(IOException.class);
+            assertThat(writer.pendingCount()).isEqualTo(1);
+            assertThat(sink.consecutiveFailures()).isEqualTo(1);
+
+            assertThatThrownBy(sink::flushAll).isInstanceOf(IOException.class);
+            assertThat(writer.pendingCount()).isEqualTo(1);
+            assertThat(sink.consecutiveFailures()).isEqualTo(2);
+
+            assertThat(sink.flushAll()).isZero();
+            assertThat(writer.pendingCount()).isZero();
+            assertThat(sink.consecutiveFailures()).isZero();
+            assertThat(calls.get()).isEqualTo(3);
+        } finally {
+            server.stop(0);
+        }
     }
 }

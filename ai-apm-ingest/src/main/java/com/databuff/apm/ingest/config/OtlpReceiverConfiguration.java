@@ -8,6 +8,7 @@ import com.databuff.apm.ingest.meta.MetaServiceCollector;
 import com.databuff.apm.ingest.metric.MetricWriteRouter;
 import com.databuff.apm.ingest.otel.OtelConverter;
 import com.databuff.apm.ingest.otel.OtlpIngestService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -29,8 +30,9 @@ public class OtlpReceiverConfiguration {
     @Bean
     OtlpLogDirectWriter otlpLogDirectWriter(
             DorisBatchWriter logBatchWriter,
-            MetaServiceCollector metaServiceCollector) {
-        return new OtlpLogDirectWriter(logBatchWriter, metaServiceCollector);
+            MetaServiceCollector metaServiceCollector,
+            @Value("${ingest.doris.log-body-max-length:1048576}") int logBodyMaxLength) {
+        return new OtlpLogDirectWriter(logBatchWriter, metaServiceCollector, logBodyMaxLength);
     }
 
     @Bean

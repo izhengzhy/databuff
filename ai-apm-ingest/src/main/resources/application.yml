@@ -52,6 +52,10 @@ ingest:
     metric-table: service
     trace-database: databuff
     trace-table: trace_dc_span
+    # Max Java String.length for log_dc_record.body (Doris STRING). Env: INGEST_DORIS_LOG_BODY_MAX_LENGTH
+    log-body-max-length: ${INGEST_DORIS_LOG_BODY_MAX_LENGTH:1048576}
+    # Consecutive Stream Load failures per sink before dropping the batch (fail-soft). Env: INGEST_DORIS_STREAM_LOAD_MAX_FAILURES
+    stream-load-max-failures: ${INGEST_DORIS_STREAM_LOAD_MAX_FAILURES:3}
     flush-interval-ms: ${INGEST_DORIS_FLUSH_INTERVAL_MS:8000}
     flush-timeout-ms: ${INGEST_DORIS_FLUSH_TIMEOUT_MS:45000}
     username: ${DORIS_USER:root}

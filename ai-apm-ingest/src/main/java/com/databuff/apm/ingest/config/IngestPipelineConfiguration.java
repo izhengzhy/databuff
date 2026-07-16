@@ -156,9 +156,10 @@ public class IngestPipelineConfiguration {
     DorisStreamLoadSink metaServiceStreamLoadSink(
             DorisBatchWriter metaServiceBatchWriter,
             DorisStreamLoader loader,
-            @Value("${ingest.doris.metric-database:databuff}") String database) {
+            @Value("${ingest.doris.metric-database:databuff}") String database,
+            @Value("${ingest.doris.stream-load-max-failures:3}") int streamLoadMaxFailures) {
         return new DorisStreamLoadSink(
-                metaServiceBatchWriter, loader, database, DorisTableNames.META_SERVICE);
+                metaServiceBatchWriter, loader, database, DorisTableNames.META_SERVICE, streamLoadMaxFailures);
     }
 
     @Bean
@@ -166,8 +167,9 @@ public class IngestPipelineConfiguration {
             DorisBatchWriter traceBatchWriter,
             DorisStreamLoader loader,
             @Value("${ingest.doris.trace-database:databuff}") String database,
-            @Value("${ingest.doris.trace-table:trace_dc_span}") String table) {
-        return new DorisStreamLoadSink(traceBatchWriter, loader, database, table);
+            @Value("${ingest.doris.trace-table:trace_dc_span}") String table,
+            @Value("${ingest.doris.stream-load-max-failures:3}") int streamLoadMaxFailures) {
+        return new DorisStreamLoadSink(traceBatchWriter, loader, database, table, streamLoadMaxFailures);
     }
 
     @Bean
@@ -175,15 +177,17 @@ public class IngestPipelineConfiguration {
             DorisBatchWriter logBatchWriter,
             DorisStreamLoader loader,
             @Value("${ingest.doris.trace-database:databuff}") String database,
-            @Value("${ingest.doris.log-table:log_dc_record}") String table) {
-        return new DorisStreamLoadSink(logBatchWriter, loader, database, table);
+            @Value("${ingest.doris.log-table:log_dc_record}") String table,
+            @Value("${ingest.doris.stream-load-max-failures:3}") int streamLoadMaxFailures) {
+        return new DorisStreamLoadSink(logBatchWriter, loader, database, table, streamLoadMaxFailures);
     }
 
     @Bean
     MetricTableWriterRegistry metricTableWriterRegistry(
             DorisStreamLoader loader,
-            @Value("${ingest.doris.metric-database:databuff}") String database) {
-        return MetricTableWriterRegistry.create(loader, database);
+            @Value("${ingest.doris.metric-database:databuff}") String database,
+            @Value("${ingest.doris.stream-load-max-failures:3}") int streamLoadMaxFailures) {
+        return MetricTableWriterRegistry.create(loader, database, streamLoadMaxFailures);
     }
 
     @Bean
