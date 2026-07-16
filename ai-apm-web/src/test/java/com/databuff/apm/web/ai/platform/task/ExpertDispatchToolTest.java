@@ -117,4 +117,84 @@ class ExpertDispatchToolTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("sessionId unavailable");
     }
+
+    @Test
+    void dispatchToSameTargetIsSerialWhileInFlight() {
+        String sessionId = "s-serial";
+        ExpertChatScopeRegistry.register(new ExpertChatContext.State(
+                sessionId, "admin", "brain", null, false, null));
+        try {
+            String first = ExpertTaskContext.run(sessionId, "brain", ignored -> {}, () ->
+                    dispatchTool.dispatchExpertTask("data", "count spans", "{}", null));
+            String second = ExpertTaskContext.run(sessionId, "brain", ignored -> {}, () ->
+                    dispatchTool.dispatchExpertTask("data", "count spans again", "{}", null));
+            String otherExpert = ExpertTaskContext.run(sessionId, "brain", ignored -> {}, () ->
+                    dispatchTool.dispatchExpertTask("inspection", "inspect service-a", "{}", null));
+
+            assertThat(first).contains("异步任务已受理").contains("targetExpertId=data");
+            assertThat(second).contains("禁止并行重复派发").contains("targetExpertId=data");
+            assertThat(otherExpert).contains("异步任务已受理").contains("targetExpertId=inspection");
+            assertThat(taskService.listBySession(sessionId).stream()
+                    .filter(t -> "data".equals(t.targetExpertId()))
+                    .count()).isEqualTo(1);
+            assertThat(taskService.listBySession(sessionId).stream()
+                    .filter(t -> "inspection".equals(t.targetExpertId()))
+                    .count()).isEqualTo(1);
+            assertThat(taskService.listBySession(sessionId))
+                    .allMatch(t -> "brain".equals(t.sourceExpertId()));
+        } finally {
+            ExpertChatScopeRegistry.unregister(sessionId);
+        }
+    }
+
+    @Test
+    void dispatchAllowsSameTargetAgainAfterInFlightCompletes() throws Exception {
+        String sessionId = "s-serial-again";
+        ExpertChatScopeRegistry.register(new ExpertChatContext.State(
+                sessionId, "admin", "brain", null, false, null));
+        try {
+            String first = ExpertTaskContext.run(sessionId, "brain", ignored -> {}, () ->
+                    dispatchTool.dispatchExpertTask("data", "count spans", "{}", null));
+            ExpertTask firstTask = taskService.listBySession(sessionId).stream()
+                    .filter(t -> "data".equals(t.targetExpertId()))
+                    .findFirst()
+                    .orElseThrow();
+            ExpertTask finished = taskService.waitFor(firstTask.taskId(), Duration.ofSeconds(30));
+            assertThat(finished.status().isTerminal())
+                    .as("first data task must finish before serial re-dispatch")
+                    .isTrue();
+
+            String second = ExpertTaskContext.run(sessionId, "brain", ignored -> {}, () ->
+                    dispatchTool.dispatchExpertTask("data", "count spans again", "{}", null));
+
+            assertThat(first).contains("异步任务已受理");
+            assertThat(second).contains("异步任务已受理");
+            assertThat(taskService.listBySession(sessionId).stream()
+                    .filter(t -> "data".equals(t.targetExpertId()))
+                    .count()).isEqualTo(2);
+            assertThat(taskService.listBySession(sessionId))
+                    .allMatch(t -> "brain".equals(t.sourceExpertId()));
+        } finally {
+            ExpertChatScopeRegistry.unregister(sessionId);
+        }
+    }
+
+    @Test
+    void dispatchRecordsBrainSourceEvenWhenNestedTargetChatScopePresent() {
+        String sessionId = "s-source-edge";
+        // Simulate historical bug: subtask overwrote parent chat-scope expertId to target (qa).
+        ExpertChatScopeRegistry.register(new ExpertChatContext.State(
+                sessionId, "admin", "qa", null, true, null));
+        try {
+            String result = dispatchTool.dispatchExpertTask("qa", "explain architecture", "{}", null);
+            ExpertTask created = taskService.listBySession(sessionId).stream()
+                    .findFirst()
+                    .orElseThrow();
+            assertThat(result).contains("异步任务已受理").contains("targetExpertId=qa");
+            assertThat(created.sourceExpertId()).isEqualTo("brain");
+            assertThat(created.targetExpertId()).isEqualTo("qa");
+        } finally {
+            ExpertChatScopeRegistry.unregister(sessionId);
+        }
+    }
 }

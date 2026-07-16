@@ -42,15 +42,7 @@ public final class ExpertSessionResolver {
     }
 
     public static String normalizeChatSessionId(String sessionId) {
-        if (sessionId == null || sessionId.isBlank()) {
-            return null;
-        }
-        String normalized = sessionId.trim();
-        int taskSuffix = normalized.indexOf("#task:");
-        if (taskSuffix > 0) {
-            normalized = normalized.substring(0, taskSuffix).trim();
-        }
-        return ExpertChatScopeRegistry.validSessionId(normalized) ? normalized : null;
+        return ExpertChatScopeRegistry.parentSessionId(sessionId);
     }
 
     private static Optional<String> optionalChatSessionId(String sessionId) {

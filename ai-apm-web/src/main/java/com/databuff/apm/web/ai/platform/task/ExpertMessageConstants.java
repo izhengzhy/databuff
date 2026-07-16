@@ -30,6 +30,14 @@ public final class ExpertMessageConstants {
                 + "。请静静等待，完成后将通过内部通道回传结果。";
     }
 
+    /** Returned when a second dispatch to the same target is rejected while one is still in flight. */
+    public static String serialDispatchBusyMessage(String taskId, String targetExpertId) {
+        return "该专家已有进行中的任务，禁止并行重复派发。"
+                + " taskId=" + taskId
+                + ", targetExpertId=" + targetExpertId
+                + "。请等待系统注入该任务的回调结果后，再决定是否串行再次派发。";
+    }
+
     public static String expertResultContinueHint(boolean failure) {
         if (failure) {
             return "\n---\n[系统] 异步子任务失败。请说明原因并在可行时调整方案，继续完成整体任务。"

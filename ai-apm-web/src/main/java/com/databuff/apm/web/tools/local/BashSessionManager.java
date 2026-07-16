@@ -1,5 +1,6 @@
 package com.databuff.apm.web.tools.local;
 
+import com.databuff.apm.web.ai.platform.runtime.ExpertChatContext;
 import com.databuff.apm.web.ai.platform.runtime.ExpertChatScopeRegistry;
 import com.databuff.apm.web.ai.platform.task.ExpertTaskContext;
 import org.springframework.stereotype.Component;
@@ -39,8 +40,10 @@ public class BashSessionManager {
     }
 
     public String resolveSessionId() {
+        // Prefer exact runtime scope (sessionId#task:…) so parallel experts do not share a bash session.
         return ExpertTaskContext.sessionId()
                 .filter(ExpertChatScopeRegistry::validSessionId)
+                .or(() -> ExpertChatScopeRegistry.soleActiveState().map(ExpertChatContext.State::sessionId))
                 .or(() -> ExpertChatScopeRegistry.soleSessionId())
                 .orElse("default");
     }

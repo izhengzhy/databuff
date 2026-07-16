@@ -183,7 +183,11 @@ public class SessionWorkspaceTools {
     }
 
     private static String requireSessionId() {
+        // Workspace is keyed by logical parent session; strip #task: if only a subtask scope is active.
         return ExpertChatScopeRegistry.soleSessionId()
+                .or(() -> ExpertChatScopeRegistry.soleActiveState()
+                        .map(state -> ExpertChatScopeRegistry.parentSessionId(state.sessionId())))
+                .filter(id -> id != null && !id.isBlank())
                 .orElseThrow(() -> new IllegalStateException("session workspace is unavailable outside chat context"));
     }
 

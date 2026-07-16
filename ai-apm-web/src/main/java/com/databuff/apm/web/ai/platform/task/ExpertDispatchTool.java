@@ -31,7 +31,9 @@ public class ExpertDispatchTool {
         this.sessionStore = sessionStore;
     }
 
-    @Tool(description = "Dispatch a subtask to another digital expert asynchronously")
+    @Tool(description = "Dispatch a subtask to another digital expert asynchronously. "
+            + "Same targetExpertId must be serial (wait for callback before dispatching again); "
+            + "different targetExpertId values may run in parallel.")
     public String dispatchExpertTask(
             @ToolParam(name = "targetExpertId", description = "Target expert id from the brain's available digital experts catalog")
             String targetExpertId,
@@ -41,18 +43,49 @@ public class ExpertDispatchTool {
             String contextJson,
             RuntimeContext runtimeContext) {
         String sessionId = resolveDispatchSessionId(contextJson, runtimeContext);
-        String sourceExpertId = ExpertChatScopeRegistry.find(sessionId)
-                .map(ExpertChatContext.State::expertId)
+        String normalizedTarget = targetExpertId == null ? "" : targetExpertId.trim();
+        String sourceExpertId = resolveSourceExpertId(sessionId, normalizedTarget);
+        ExpertTaskService service = expertTaskService.getObject();
+        var inFlight = service.findInFlightForTarget(sessionId, normalizedTarget);
+        if (inFlight.isPresent()) {
+            ExpertTask busy = inFlight.get();
+            return ExpertMessageConstants.serialDispatchBusyMessage(busy.taskId(), busy.targetExpertId());
+        }
+        try {
+            ExpertTask created = service.submit(new ExpertTaskRequest(
+                    sessionId,
+                    sourceExpertId,
+                    normalizedTarget,
+                    task,
+                    null,
+                    enrichDispatchContext(contextJson, sessionId, sourceExpertId)));
+            return ExpertMessageConstants.asyncWaitMessage(created.taskId(), created.targetExpertId());
+        } catch (SerialExpertDispatchException e) {
+            ExpertTask busy = e.inFlightTask();
+            return ExpertMessageConstants.serialDispatchBusyMessage(
+                    busy == null ? "?" : busy.taskId(),
+                    busy == null ? normalizedTarget : busy.targetExpertId());
+        }
+    }
+
+    /**
+     * Record the real dispatcher (usually brain). Never attribute source as the target
+     * (e.g. qa→qa) when a nested subtask chat-scope overwrote expertId.
+     */
+    private static String resolveSourceExpertId(String sessionId, String targetExpertId) {
+        String source = ExpertTaskContext.outermostSourceExpertId(sessionId)
                 .or(() -> ExpertTaskContext.sourceExpertId())
+                .or(() -> ExpertChatScopeRegistry.findParent(sessionId)
+                        .map(ExpertChatContext.State::expertId))
                 .orElse("brain");
-        ExpertTask created = expertTaskService.getObject().submit(new ExpertTaskRequest(
-                sessionId,
-                sourceExpertId,
-                targetExpertId,
-                task,
-                null,
-                enrichDispatchContext(contextJson, sessionId, sourceExpertId)));
-        return ExpertMessageConstants.asyncWaitMessage(created.taskId(), created.targetExpertId());
+        if (targetExpertId != null
+                && !targetExpertId.isBlank()
+                && targetExpertId.equals(source)) {
+            return ExpertTaskContext.outermostSourceExpertId(sessionId)
+                    .filter(id -> !targetExpertId.equals(id))
+                    .orElse("brain");
+        }
+        return source;
     }
 
     private String resolveDispatchSessionId(String contextJson, RuntimeContext runtimeContext) {
@@ -68,8 +101,8 @@ public class ExpertDispatchTool {
             String sourceExpertId) {
         Map<String, Object> context = parseContext(contextJson);
         Map<String, Object> enriched = new LinkedHashMap<>(context);
-        enriched.putIfAbsent(ExpertMessageConstants.META_SESSION_ID, sessionId);
-        enriched.putIfAbsent(ExpertMessageConstants.META_SOURCE_EXPERT_ID, sourceExpertId);
+        enriched.put(ExpertMessageConstants.META_SESSION_ID, sessionId);
+        enriched.put(ExpertMessageConstants.META_SOURCE_EXPERT_ID, sourceExpertId);
         AiSessionStore store = sessionStore.getIfAvailable();
         if (store != null && sessionId != null && !sessionId.isBlank()) {
             enriched.putIfAbsent(ExpertMessageConstants.META_ROUND_INDEX, store.peekCurrentRoundIndex(sessionId));

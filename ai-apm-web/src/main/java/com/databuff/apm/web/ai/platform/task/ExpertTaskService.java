@@ -67,6 +67,18 @@ public class ExpertTaskService {
 
     public ExpertTask submit(ExpertTaskRequest request) {
         validateRequest(request);
+        // Same targetExpertId is serial per session: refuse parallel create (no dedupe / reuse).
+        Optional<ExpertTask> inFlight = findInFlightForTarget(request.sessionId(), request.targetExpertId());
+        if (inFlight.isPresent()) {
+            ExpertTask busy = inFlight.get();
+            throw new SerialExpertDispatchException(busy);
+        }
+        String sourceExpertId = request.sourceExpertId() == null ? "" : request.sourceExpertId().trim();
+        String targetExpertId = request.targetExpertId().trim();
+        // Never persist self-dispatch edges like qa→qa; fall back to brain as dispatcher.
+        if (sourceExpertId.isBlank() || sourceExpertId.equals(targetExpertId)) {
+            sourceExpertId = "brain";
+        }
         int roundIndex = resolveRoundIndex(request);
         String userName = metadataString(request.metadata(), "userName");
         if (userName == null) {
@@ -74,20 +86,21 @@ public class ExpertTaskService {
         }
         sessionStore.ensureSession(
                 request.sessionId(),
-                request.sourceExpertId(),
+                sourceExpertId,
                 null,
                 null,
                 userName);
         Map<String, Object> metadata = new LinkedHashMap<>(request.metadata());
         metadata.putIfAbsent("userName", userName);
         metadata.put(ExpertMessageConstants.META_ROUND_INDEX, roundIndex);
+        metadata.put(ExpertMessageConstants.META_SOURCE_EXPERT_ID, sourceExpertId);
         Instant now = Instant.now();
         ExpertTask created = new ExpertTask(
                 UUID.randomUUID().toString(),
                 request.parentTaskId(),
                 request.sessionId(),
-                request.sourceExpertId(),
-                request.targetExpertId(),
+                sourceExpertId,
+                targetExpertId,
                 ExpertTaskStatus.CREATED,
                 request.input(),
                 null,
@@ -106,6 +119,22 @@ public class ExpertTaskService {
         Future<?> future = taskExecutor.submit(() -> runTask(created.taskId()));
         pendingRegistry.registerTaskFuture(created.sessionId(), created.taskId(), future);
         return created;
+    }
+
+    /**
+     * In-flight (non-terminal) task for the same session + target expert, if any.
+     * Used to enforce serial dispatch per expert.
+     */
+    public Optional<ExpertTask> findInFlightForTarget(String sessionId, String targetExpertId) {
+        if (sessionId == null || sessionId.isBlank() || targetExpertId == null || targetExpertId.isBlank()) {
+            return Optional.empty();
+        }
+        String sid = sessionId.trim();
+        String target = targetExpertId.trim();
+        return listBySession(sid).stream()
+                .filter(task -> target.equals(task.targetExpertId()))
+                .filter(task -> task.status() != null && !task.status().isTerminal())
+                .findFirst();
     }
 
     public Optional<ExpertTask> get(String taskId) {
@@ -225,7 +254,8 @@ public class ExpertTaskService {
             int roundIndex = metadataInt(current.metadata(), ExpertMessageConstants.META_ROUND_INDEX,
                     sessionStore.peekCurrentRoundIndex(current.sessionId()));
             String userName = metadataString(current.metadata(), "userName");
-            String runtimeSessionId = current.sessionId() + "#task:" + current.taskId();
+            String runtimeSessionId = ExpertChatScopeRegistry.taskScopedSessionId(
+                    current.sessionId(), current.taskId());
             Map<String, Object> context = ExpertMessageContext.taskMetadata(
                     current.sessionId(),
                     roundIndex,
@@ -238,14 +268,15 @@ public class ExpertTaskService {
                     current.taskId(),
                     current.sourceExpertId(),
                     current.input());
+            // ChatScope/AgentScope + TaskContext stack all key by runtimeSessionId — never touch parent brain scope.
             ExpertChatInput input = new ExpertChatInput(
                     wrappedInput,
-                    current.sessionId(),
+                    runtimeSessionId,
                     userName,
                     null,
                     context);
             ExpertChatContext.State chatContext = new ExpertChatContext.State(
-                    current.sessionId(),
+                    runtimeSessionId,
                     userName,
                     current.targetExpertId(),
                     null,
@@ -254,14 +285,14 @@ public class ExpertTaskService {
                     current.taskId());
             ExpertTask runningTask = current;
             StringBuilder content = new StringBuilder();
-            ExpertTaskContext.enterScope(runningTask.sessionId(), runningTask.sourceExpertId(), event -> {});
+            ExpertTaskContext.enterScope(runtimeSessionId, runningTask.sourceExpertId(), event -> {});
             ExpertChatScopeRegistry.register(chatContext);
             Flux<ExpertRuntimeEvent> events = runtime.stream(input);
             Disposable disposable = events
                     .doOnNext(event -> appendStreamContent(content, event))
                     .doFinally(signal -> {
-                        ExpertChatScopeRegistry.unregister(chatContext.sessionId());
-                        ExpertTaskContext.leaveScope(runningTask.sessionId());
+                        ExpertChatScopeRegistry.unregister(runtimeSessionId);
+                        ExpertTaskContext.leaveScope(runtimeSessionId);
                         pendingRegistry.removeTaskDisposable(runningTask.sessionId(), runningTask.taskId());
                     })
                     .subscribe(

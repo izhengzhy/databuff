@@ -60,7 +60,8 @@ public class BrainRoutingCatalog {
         section.append("""
                 路由提示：
                 - 先阅读各专家的职责与分类，再选择最匹配的 targetExpertId。
-                - 问题跨多个领域时，可并发派发多个子任务。
+                - 对同一 targetExpertId 必须串行：进行中的异步任务未回调前禁止再次派发；回调后可多次再派（不做去重），但仍须串行。
+                - 问题跨多个领域时，可对不同专家并发派发；同一专家不可并行。
                 - 不要编造 targetExpertId，只能使用上面列出的 id。
                 - dispatchExpertTask 的 task 须忠实转述用户原意，不要扩大需求或擅自追加指标与字段。
                 """);
