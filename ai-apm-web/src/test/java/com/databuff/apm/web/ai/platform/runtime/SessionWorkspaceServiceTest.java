@@ -60,8 +60,22 @@ class SessionWorkspaceServiceTest {
 
         String message = service.enrichMessage("分析这个文件", saved);
 
+        // Model-only context: callers must persist the original user text separately.
         assertThat(message).contains("uploads/metrics.csv");
         assertThat(message).contains("readWorkspaceFile");
+        assertThat(message).startsWith("分析这个文件");
+    }
+
+    @Test
+    void enrichMessageNotesImagesAreVisuallyAttached() {
+        List<SessionWorkspaceService.SavedAttachment> saved = List.of(
+                new SessionWorkspaceService.SavedAttachment(
+                        "chart.png", "image", "image/png", 128, "uploads/chart.png"));
+
+        String message = service.enrichMessage("请描述图片", saved);
+
+        assertThat(message).contains("uploads/chart.png");
+        assertThat(message).contains("Image attachments are included in this message for visual analysis");
     }
 
     @Test

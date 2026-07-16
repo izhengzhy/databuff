@@ -1,6 +1,9 @@
 package com.databuff.apm.web.ai.platform.runtime;
 
 import com.databuff.apm.web.ai.agent.AgentRuntimeConfig;
+import io.agentscope.core.message.ImageBlock;
+import io.agentscope.core.message.TextBlock;
+import io.agentscope.core.message.ToolResultBlock;
 import io.agentscope.core.tool.Tool;
 import io.agentscope.core.tool.ToolParam;
 import org.springframework.context.annotation.Lazy;
@@ -64,17 +67,20 @@ public class SessionWorkspaceTools {
         }
     }
 
-    @Tool(description = "Read a text file from the current chat session workspace")
-    public String readWorkspaceFile(
-            @ToolParam(name = "filePath", description = "Relative file path, e.g. uploads/report.csv")
+    @Tool(description = "Read a text or image file from the current chat session workspace")
+    public ToolResultBlock readWorkspaceFile(
+            @ToolParam(name = "filePath", description = "Relative file path, e.g. uploads/report.csv or uploads/chart.png")
             String filePath,
-            @ToolParam(name = "lineRange", description = "Optional line range, e.g. 1-200")
+            @ToolParam(name = "lineRange", description = "Optional line range for text files, e.g. 1-200")
             String lineRange) {
         String sessionId = requireSessionId();
         try {
             Path file = workspaceService.resolveRelativePath(sessionId, filePath);
             if (!Files.isRegularFile(file)) {
-                return "not a file: " + filePath;
+                return ToolResultBlock.text("not a file: " + filePath);
+            }
+            if (WorkspaceImageSupport.isImageFile(file)) {
+                return readWorkspaceImage(sessionId, filePath);
             }
             List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
             int[] range = parseLineRange(lineRange, lines.size());
@@ -82,10 +88,18 @@ public class SessionWorkspaceTools {
             for (int i = range[0]; i <= range[1]; i++) {
                 builder.append(i + 1).append(": ").append(lines.get(i)).append('\n');
             }
-            return builder.toString().trim();
+            return ToolResultBlock.text(builder.toString().trim());
         } catch (Exception e) {
-            return "readWorkspaceFile failed: " + e.getMessage();
+            return ToolResultBlock.text("readWorkspaceFile failed: " + e.getMessage());
         }
+    }
+
+    private ToolResultBlock readWorkspaceImage(String sessionId, String filePath) {
+        return WorkspaceImageSupport.readImageBlock(workspaceService, sessionId, filePath)
+                .map(imageBlock -> ToolResultBlock.of(List.of(
+                        TextBlock.builder().text("Image file: " + filePath).build(),
+                        imageBlock)))
+                .orElse(ToolResultBlock.text("readWorkspaceFile failed: unsupported or unreadable image: " + filePath));
     }
 
     @Tool(description = "Write a text file to outputs/ in the current session workspace for user download")

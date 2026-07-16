@@ -5,9 +5,13 @@ import com.databuff.apm.web.ai.platform.task.ExpertMessageConstants;
 import io.agentscope.core.ReActAgent;
 import io.agentscope.core.agent.RuntimeContext;
 import io.agentscope.core.event.AgentEvent;
+import io.agentscope.core.message.ContentBlock;
+import io.agentscope.core.message.ImageBlock;
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.message.MsgRole;
 import io.agentscope.core.tool.mcp.McpClientWrapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -18,11 +22,14 @@ import java.util.Map;
 
 public class AgentScopeExpertRuntime implements ExpertRuntime {
 
+    private static final Logger log = LoggerFactory.getLogger(AgentScopeExpertRuntime.class);
+
     private final AiExpertDefinition expert;
     private final ReActAgent agent;
     private final RuntimeCacheKey cacheKey;
     private final Instant loadedAt;
     private final AgentScopeSessionHook sessionHook;
+    private final SessionWorkspaceService sessionWorkspaceService;
     private final List<McpClientWrapper> mcpClients;
 
     public AgentScopeExpertRuntime(
@@ -31,12 +38,14 @@ public class AgentScopeExpertRuntime implements ExpertRuntime {
             RuntimeCacheKey cacheKey,
             Instant loadedAt,
             AgentScopeSessionHook sessionHook,
+            SessionWorkspaceService sessionWorkspaceService,
             List<McpClientWrapper> mcpClients) {
         this.expert = expert;
         this.agent = agent;
         this.cacheKey = cacheKey;
         this.loadedAt = loadedAt;
         this.sessionHook = sessionHook;
+        this.sessionWorkspaceService = sessionWorkspaceService;
         this.mcpClients = mcpClients == null ? List.of() : List.copyOf(mcpClients);
     }
 
@@ -171,12 +180,29 @@ public class AgentScopeExpertRuntime implements ExpertRuntime {
             metadata.put("assistantMessageId", input.assistantMessageId());
         }
         metadata.putAll(input.context());
-        return Msg.builder()
+        Msg.Builder builder = Msg.builder()
                 .role(MsgRole.USER)
                 .name(input.userName() == null || input.userName().isBlank() ? "user" : input.userName())
-                .textContent(input.message().trim())
-                .metadata(metadata)
-                .build();
+                .metadata(metadata);
+        List<ImageBlock> imageBlocks = WorkspaceImageSupport.readImageAttachments(
+                sessionWorkspaceService,
+                input.sessionId(),
+                input.context().get("attachments"));
+        if (imageBlocks.isEmpty()) {
+            Object rawAttachments = input.context().get("attachments");
+            int attachmentCount = rawAttachments instanceof List<?> list ? list.size() : 0;
+            if (attachmentCount > 0) {
+                log.warn("Session {} has {} attachments but no ImageBlocks were built for the LLM message",
+                        input.sessionId(), attachmentCount);
+            }
+            return builder.textContent(input.message().trim()).build();
+        }
+        List<ContentBlock> contentBlocks = WorkspaceImageSupport.buildUserContentBlocks(
+                input.message(),
+                imageBlocks);
+        log.info("Session {} injecting {} image block(s) into user message for vision",
+                input.sessionId(), imageBlocks.size());
+        return builder.content(contentBlocks).build();
     }
 
     private static String stringMetadata(Map<String, Object> metadata, String key) {

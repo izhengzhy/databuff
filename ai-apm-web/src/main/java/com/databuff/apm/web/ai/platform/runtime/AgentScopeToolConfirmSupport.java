@@ -34,12 +34,13 @@ final class AgentScopeToolConfirmSupport {
             metadata.putAll(userMessage.getMetadata());
         }
         metadata.put(Msg.METADATA_CONFIRM_RESULTS, pending);
+        // Keep existing content blocks (including ImageBlock). Do not call textContent(),
+        // which replaces the whole content list with a single TextBlock.
         return Msg.builder()
                 .id(userMessage.getId())
                 .name(userMessage.getName())
                 .role(userMessage.getRole())
                 .content(userMessage.getContent())
-                .textContent(userMessage.getTextContent())
                 .metadata(metadata)
                 .timestamp(userMessage.getTimestamp())
                 .usage(userMessage.getUsage())

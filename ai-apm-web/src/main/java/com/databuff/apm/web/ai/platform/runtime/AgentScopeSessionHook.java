@@ -19,6 +19,7 @@ import io.agentscope.core.message.Base64Source;
 import io.agentscope.core.message.ContentBlock;
 import io.agentscope.core.message.DataBlock;
 import io.agentscope.core.message.Source;
+import io.agentscope.core.message.ImageBlock;
 import io.agentscope.core.message.TextBlock;
 import io.agentscope.core.message.ToolResultBlock;
 import io.agentscope.core.message.ToolResultState;
@@ -302,6 +303,9 @@ public class AgentScopeSessionHook {
         if (block instanceof TextBlock textBlock) {
             return nullToEmpty(textBlock.getText());
         }
+        if (block instanceof ImageBlock imageBlock) {
+            return imageBlockSummary(imageBlock);
+        }
         if (block instanceof DataBlock dataBlock) {
             return dataBlockText(dataBlock);
         }
@@ -328,6 +332,20 @@ public class AgentScopeSessionHook {
         } catch (Exception ignored) {
             return String.valueOf(value);
         }
+    }
+
+    private static String imageBlockSummary(ImageBlock block) {
+        if (block == null || block.getSource() == null) {
+            return "[image]";
+        }
+        Source source = block.getSource();
+        if (source instanceof Base64Source base64Source) {
+            String mediaType = nullToEmpty(base64Source.getMediaType());
+            if (!mediaType.isBlank()) {
+                return "[image:" + mediaType + "]";
+            }
+        }
+        return "[image]";
     }
 
     private static String dataBlockText(DataBlock block) {

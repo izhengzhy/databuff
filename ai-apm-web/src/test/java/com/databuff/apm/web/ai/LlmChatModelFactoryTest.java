@@ -41,6 +41,22 @@ class LlmChatModelFactoryTest {
     }
 
     @Test
+    void normalizeAnthropicSdkBaseUrlStripsTrailingV1ForKimiCoding() {
+        assertThat(LlmChatModelFactory.normalizeAnthropicSdkBaseUrl("https://api.kimi.com/coding/v1"))
+                .isEqualTo("https://api.kimi.com/coding");
+        assertThat(LlmChatModelFactory.buildAnthropicMessagesUrl("https://api.kimi.com/coding/v1"))
+                .isEqualTo("https://api.kimi.com/coding/v1/messages");
+    }
+
+    @Test
+    void normalizeAnthropicSdkBaseUrlKeepsAnthropicStyleHosts() {
+        assertThat(LlmChatModelFactory.normalizeAnthropicSdkBaseUrl("https://api.minimaxi.com/anthropic"))
+                .isEqualTo("https://api.minimaxi.com/anthropic");
+        assertThat(LlmChatModelFactory.normalizeAnthropicSdkBaseUrl("https://api.moonshot.cn/anthropic"))
+                .isEqualTo("https://api.moonshot.cn/anthropic");
+    }
+
+    @Test
     void buildsAnthropicMessagesUrlForCommonProviders() {
         assertThat(LlmChatModelFactory.buildAnthropicMessagesUrl("https://api.deepseek.com/anthropic"))
                 .isEqualTo("https://api.deepseek.com/anthropic/v1/messages");

@@ -9,6 +9,8 @@ import com.databuff.apm.web.ai.tool.ApmToolkit;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -69,6 +71,52 @@ class AiChatOrchestratorTest {
         assertThat(response.expertId()).isEqualTo("inspection");
         assertThat(service.listSessions(0, 20).get("data")).asList().singleElement()
                 .satisfies(summary -> assertThat(((AiSessionStore.SessionSummary) summary).expertId()).isEqualTo("inspection"));
+    }
+
+    @Test
+    void persistsUserVisibleMessageAndKeepsAttachmentsOffAssistant() throws Exception {
+        AiSessionStore store = new AiSessionStore();
+        AgentBrainService service = TestAiSupport.aiFixture().agentBrain(mock(ApmToolkit.class), store);
+        String pngBytes = "fake-png";
+        String dataUrl = "data:image/png;base64," + Base64.getEncoder().encodeToString(pngBytes.getBytes());
+
+        AgentBrainService.ChatSubmitResponse submitted = service.submitChat(new AgentBrainService.ChatRequest(
+                null,
+                "inspection",
+                "请看这张图",
+                false,
+                Map.of("attachments", List.of(Map.of(
+                        "type", "image",
+                        "name", "image.png",
+                        "mimeType", "image/png",
+                        "size", pngBytes.length(),
+                        "dataUrl", dataUrl))),
+                null));
+
+        AiSessionStore.MessagePollResponse poll = null;
+        for (int i = 0; i < 80; i++) {
+            poll = service.pollMessages(submitted.sessionId(), null);
+            if (!poll.running()) {
+                break;
+            }
+            Thread.sleep(50L);
+        }
+        assertThat(poll).isNotNull();
+        assertThat(poll.running()).isFalse();
+
+        AiSessionStore.ChatMessage userMessage = poll.messages().stream()
+                .filter(message -> "user".equals(message.role()))
+                .findFirst()
+                .orElseThrow();
+        assertThat(userMessage.content()).isEqualTo("请看这张图");
+        assertThat(userMessage.content()).doesNotContain("[Session workspace attachments]");
+        assertThat(userMessage.metadata()).containsKey("attachments");
+
+        AiSessionStore.ChatMessage assistantMessage = poll.messages().stream()
+                .filter(message -> submitted.assistantMessageId().equals(message.messageId()))
+                .findFirst()
+                .orElseThrow();
+        assertThat(assistantMessage.metadata()).doesNotContainKey("attachments");
     }
 
     @Test

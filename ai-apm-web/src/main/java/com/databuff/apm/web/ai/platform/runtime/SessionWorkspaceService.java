@@ -212,6 +212,10 @@ public class SessionWorkspaceService {
         return Map.copyOf(merged);
     }
 
+    /**
+     * Builds model-facing prompt text with workspace attachment hints.
+     * Callers must persist the original user message separately for UI display.
+     */
     public String enrichMessage(String message, List<SavedAttachment> saved) {
         if (saved.isEmpty()) {
             return message == null ? "" : message;
@@ -225,14 +229,37 @@ public class SessionWorkspaceService {
                     .append(attachment.name())
                     .append(")\n");
         }
-        builder.append("""
-                Use workspace tools to inspect them:
-                - listWorkspaceFiles: list uploaded files (relativePath=uploads)
-                - readWorkspaceFile: read a text file (filePath, optional lineRange like 1-200)
-                - writeWorkspaceFile: write deliverables to outputs/ for user download
-                - executeWorkspaceShell: run allowed shell commands in the session workspace
-                """);
+        boolean hasImages = saved.stream().anyMatch(this::isImageAttachment);
+        if (hasImages) {
+            builder.append("""
+                    Image attachments are included in this message for visual analysis.
+                    For text files, use workspace tools to inspect them:
+                    - listWorkspaceFiles: list uploaded files (relativePath=uploads)
+                    - readWorkspaceFile: read a text or image file (filePath, optional lineRange like 1-200)
+                    - writeWorkspaceFile: write deliverables to outputs/ for user download
+                    - executeWorkspaceShell: run allowed shell commands in the session workspace
+                    """);
+        } else {
+            builder.append("""
+                    Use workspace tools to inspect them:
+                    - listWorkspaceFiles: list uploaded files (relativePath=uploads)
+                    - readWorkspaceFile: read a text or image file (filePath, optional lineRange like 1-200)
+                    - writeWorkspaceFile: write deliverables to outputs/ for user download
+                    - executeWorkspaceShell: run allowed shell commands in the session workspace
+                    """);
+        }
         return builder.toString().trim();
+    }
+
+    private boolean isImageAttachment(SavedAttachment attachment) {
+        if (attachment == null) {
+            return false;
+        }
+        if ("image".equalsIgnoreCase(attachment.type())) {
+            return true;
+        }
+        String mimeType = attachment.mimeType();
+        return mimeType != null && mimeType.toLowerCase(Locale.ROOT).startsWith("image/");
     }
 
     private SavedAttachment saveOneAttachment(Path uploadsDir, Map<?, ?> map) throws IOException {

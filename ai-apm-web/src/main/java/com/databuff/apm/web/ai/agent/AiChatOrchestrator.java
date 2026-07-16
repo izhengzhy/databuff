@@ -292,7 +292,7 @@ public class AiChatOrchestrator implements BrainRoundContinuer {
                 if (sessionStore.isAbortRequested(sessionId)) {
                     return null;
                 }
-                Map<String, Object> metadata = withChatMetadata(
+                Map<String, Object> metadata = withModelMetadata(
                         buildAssistantMetadata(sessionId, expertId, outputsBefore), chatContext);
                 finishAssistantReply(
                         sessionId,
@@ -524,7 +524,7 @@ public class AiChatOrchestrator implements BrainRoundContinuer {
         String userName = requireUserName(request);
         Set<String> outputsBefore = sessionWorkspaceService.snapshotOutputPaths(sessionId);
         ExpertChatInput input = new ExpertChatInput(
-                chatContext.message(), sessionId, userName, assistantMessageId, chatContext.context());
+                chatContext.modelMessage(), sessionId, userName, assistantMessageId, chatContext.context());
         submitStreamReply(sessionId, expertId, assistantMessageId, request, chatContext, input, outputsBefore, emitter);
         return emitter;
     }
@@ -737,11 +737,12 @@ public class AiChatOrchestrator implements BrainRoundContinuer {
             AgentBrainService.ChatRequest request) {
         List<SessionWorkspaceService.SavedAttachment> saved = sessionWorkspaceService.saveAttachments(sessionId, request.context());
         Map<String, Object> context = sessionWorkspaceService.buildPersistedContext(request.context(), saved);
-        String message = sessionWorkspaceService.enrichMessage(request.message(), saved);
+        String userVisible = request.message() == null ? "" : request.message();
+        String modelMessage = sessionWorkspaceService.enrichMessage(userVisible, saved);
         Map<String, Object> enriched = new LinkedHashMap<>(context);
         putIfNotBlank(enriched, "modelProviderCode", request.modelProviderCode());
         putIfNotBlank(enriched, "modelName", request.modelName());
-        return new ChatMessageContext(message, Map.copyOf(enriched));
+        return new ChatMessageContext(userVisible, modelMessage, Map.copyOf(enriched));
     }
 
     private void validateRequest(AgentBrainService.ChatRequest request) {
@@ -764,7 +765,7 @@ public class AiChatOrchestrator implements BrainRoundContinuer {
             String assistantMessageId,
             ChatMessageContext chatContext) {
         return new ExpertChatInput(
-                chatContext.message(),
+                chatContext.modelMessage(),
                 sessionId,
                 userName,
                 assistantMessageId,
@@ -931,7 +932,10 @@ public class AiChatOrchestrator implements BrainRoundContinuer {
         return text.length() <= max ? text : text.substring(0, max) + "...";
     }
 
-    private record ChatMessageContext(String message, Map<String, Object> context) {
+    private record ChatMessageContext(String message, String modelMessage, Map<String, Object> context) {
+        private ChatMessageContext(String message, Map<String, Object> context) {
+            this(message, message, context);
+        }
     }
 
     private static AiExpertDefinition withRequestModel(AiExpertDefinition expert, AgentBrainService.ChatRequest request) {
@@ -975,18 +979,6 @@ public class AiChatOrchestrator implements BrainRoundContinuer {
             putIfNotBlank(merged, "modelName", stringValue(context.context().get("modelName")));
         }
         return Map.copyOf(merged);
-    }
-
-    private static Map<String, Object> withChatMetadata(Map<String, Object> metadata, ChatMessageContext context) {
-        Map<String, Object> merged = new LinkedHashMap<>(metadata);
-        if (context != null && context.context() != null) {
-            context.context().forEach((key, value) -> {
-                if (value != null) {
-                    merged.put(key, value);
-                }
-            });
-        }
-        return withModelMetadata(merged, context);
     }
 
     private boolean shouldKeepSessionRunning(String sessionId) {

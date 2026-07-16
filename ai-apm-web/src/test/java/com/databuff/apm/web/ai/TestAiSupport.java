@@ -203,6 +203,7 @@ public final class TestAiSupport {
                     sessionHook,
                     skillFileSyncService,
                     sessionWorkspaceTools,
+                    sessionWorkspaceService,
                     brainRoutingCatalog);
             SessionExpertRuntimeRegistry sessionExpertRuntimeRegistry = new SessionExpertRuntimeRegistry(
                     skillManagementService,

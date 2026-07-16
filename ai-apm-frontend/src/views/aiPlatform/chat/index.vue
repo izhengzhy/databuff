@@ -106,11 +106,11 @@
                       class="message-attachment-item"
                     >
                       <el-image
-                        v-if="att.type === 'image' && att.dataUrl"
-                        :src="att.dataUrl"
+                        v-if="isImageAttachment(att) && attachmentPreviewSrc(att)"
+                        :src="attachmentPreviewSrc(att)"
                         fit="cover"
                         class="message-attachment-image"
-                        :preview-src-list="[att.dataUrl]"
+                        :preview-src-list="[attachmentPreviewSrc(att)]"
                       />
                       <div v-else class="message-attachment-file">
                         <i class="el-icon-document"></i>
@@ -613,6 +613,8 @@ export default class AiPlatformChat extends Vue {
   private headerLogo = headerLogo
   private chatStarIcon = chatStarIcon
   private chatTextarea: HTMLTextAreaElement | null = null
+  private attachmentPreviewUrls: Record<string, string> = {}
+  private attachmentPreviewLoading = new Set<string>()
 
   private sessions: AiSessionSummary[] = []
   private sessionTotal = 0
@@ -1057,6 +1059,7 @@ export default class AiPlatformChat extends Vue {
     Object.values(this.typewriterTimers).forEach(timer => window.clearInterval(timer))
     this.typewriterTimers = {}
     this.clearUploadItems()
+    this.clearAttachmentPreviews()
     if (this.greetingTimer) {
       window.clearInterval(this.greetingTimer)
       this.greetingTimer = null
@@ -1234,11 +1237,89 @@ export default class AiPlatformChat extends Vue {
   }
 
   private messageAttachments (msg: AiChatMessage): AttachmentMeta[] {
+    if (msg.role !== 'user') {
+      return []
+    }
     const raw = msg.metadata?.attachments
     if (!Array.isArray(raw)) {
       return []
     }
     return raw.filter(item => item && typeof item === 'object') as AttachmentMeta[]
+  }
+
+  private isImageAttachment (att: AttachmentMeta): boolean {
+    if (att.type === 'image') {
+      return true
+    }
+    if (String(att.mimeType || '').toLowerCase().startsWith('image/')) {
+      return true
+    }
+    const name = String(att.name || att.filePath || '').toLowerCase()
+    return /\.(png|jpe?g|gif|webp|bmp|svg)$/.test(name)
+  }
+
+  private attachmentPreviewKey (att: AttachmentMeta): string {
+    return `${this.activeSessionId}|${att.filePath || ''}`
+  }
+
+  private attachmentPreviewSrc (att: AttachmentMeta): string {
+    if (att.dataUrl) {
+      return att.dataUrl
+    }
+    if (!att.filePath || !this.activeSessionId) {
+      return ''
+    }
+    return this.attachmentPreviewUrls[this.attachmentPreviewKey(att)] || ''
+  }
+
+  private clearAttachmentPreviews () {
+    Object.values(this.attachmentPreviewUrls).forEach(url => {
+      if (url && url.startsWith('blob:')) {
+        URL.revokeObjectURL(url)
+      }
+    })
+    this.attachmentPreviewUrls = {}
+    this.attachmentPreviewLoading.clear()
+  }
+
+  private ensureAttachmentPreviews () {
+    if (!this.activeSessionId) {
+      return
+    }
+    this.messages.forEach(msg => {
+      this.messageAttachments(msg).forEach(att => {
+        if (!this.isImageAttachment(att) || att.dataUrl || !att.filePath) {
+          return
+        }
+        this.loadAttachmentPreview(att)
+      })
+    })
+  }
+
+  private async loadAttachmentPreview (att: AttachmentMeta) {
+    const filePath = String(att.filePath || '').trim()
+    if (!filePath || !this.activeSessionId) {
+      return
+    }
+    const key = this.attachmentPreviewKey(att)
+    if (this.attachmentPreviewUrls[key] || this.attachmentPreviewLoading.has(key)) {
+      return
+    }
+    this.attachmentPreviewLoading.add(key)
+    const sessionId = this.activeSessionId
+    try {
+      const response: any = await AiPlatformApi.downloadWorkspaceFile(sessionId, filePath)
+      if (sessionId !== this.activeSessionId) {
+        return
+      }
+      const blob = response?.data instanceof Blob ? response.data : new Blob([response?.data || ''])
+      const url = URL.createObjectURL(blob)
+      this.$set(this.attachmentPreviewUrls, key, url)
+    } catch {
+      // Keep file-chip fallback when preview fetch fails.
+    } finally {
+      this.attachmentPreviewLoading.delete(key)
+    }
   }
 
   private messageGeneratedFiles (msg: AiChatMessage): GeneratedFileMeta[] {
@@ -1358,6 +1439,7 @@ export default class AiPlatformChat extends Vue {
 
   private newSession () {
     this.stopPollLoop()
+    this.clearAttachmentPreviews()
     this.activeSessionId = uuidv4()
     this.lastPollMessageId = ''
     this.messages = []
@@ -1373,6 +1455,7 @@ export default class AiPlatformChat extends Vue {
 
   private async selectSession (sessionId: string, syncRoute = true) {
     this.stopPollLoop()
+    this.clearAttachmentPreviews()
     this.activeSessionId = sessionId
     this.lastPollMessageId = ''
     await Promise.all([
@@ -1402,6 +1485,7 @@ export default class AiPlatformChat extends Vue {
       }
       this.collectEvent(item)
     })
+    this.ensureAttachmentPreviews()
     this.lastPollMessageId = this.resolveLastMessageId(this.messages)
     const lastExpert = [...this.messages].reverse().find(item => item.expertId)?.expertId
     this.expertId = lastExpert || DEFAULT_EXPERT_ID
@@ -1536,6 +1620,7 @@ export default class AiPlatformChat extends Vue {
   private applyPollResult (incoming: AiChatMessage[], running: boolean) {
     this.serverRunning = running
     incoming.forEach(item => this.mergeMessage(item))
+    this.ensureAttachmentPreviews()
     if (this.serverRunning && this.activeSessionId) {
       this.loadSessionTasks(this.activeSessionId)
     }

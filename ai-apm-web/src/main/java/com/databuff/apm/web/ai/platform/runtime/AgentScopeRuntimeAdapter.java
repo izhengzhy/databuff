@@ -45,6 +45,7 @@ public class AgentScopeRuntimeAdapter {
     private final AgentScopeSessionHook sessionHook;
     private final SkillFileSyncService skillFileSyncService;
     private final SessionWorkspaceTools sessionWorkspaceTools;
+    private final SessionWorkspaceService sessionWorkspaceService;
     private final BrainRoutingCatalog brainRoutingCatalog;
     private final InMemoryAgentStateStore sharedAgentStateStore = new InMemoryAgentStateStore();
 
@@ -59,6 +60,7 @@ public class AgentScopeRuntimeAdapter {
             AgentScopeSessionHook sessionHook,
             SkillFileSyncService skillFileSyncService,
             SessionWorkspaceTools sessionWorkspaceTools,
+            SessionWorkspaceService sessionWorkspaceService,
             BrainRoutingCatalog brainRoutingCatalog) {
         this.agentRuntimeConfig = agentRuntimeConfig;
         this.expertManagementService = expertManagementService;
@@ -70,6 +72,7 @@ public class AgentScopeRuntimeAdapter {
         this.sessionHook = sessionHook;
         this.skillFileSyncService = skillFileSyncService;
         this.sessionWorkspaceTools = sessionWorkspaceTools;
+        this.sessionWorkspaceService = sessionWorkspaceService;
         this.brainRoutingCatalog = brainRoutingCatalog;
     }
 
@@ -96,7 +99,13 @@ public class AgentScopeRuntimeAdapter {
 
         ReActAgentBuildResult buildResult = buildReActAgent(expert, provider, tools, expert.skillIds(), null);
         return new AgentScopeExpertRuntime(
-                expert, buildResult.agent(), cacheKey, Instant.now(), sessionHook, buildResult.mcpClients());
+                expert,
+                buildResult.agent(),
+                cacheKey,
+                Instant.now(),
+                sessionHook,
+                sessionWorkspaceService,
+                buildResult.mcpClients());
     }
 
     public ExpertRuntime buildSessionRuntime(AiExpertDefinition expert, String chatSessionId) {
@@ -126,7 +135,13 @@ public class AgentScopeRuntimeAdapter {
         ReActAgentBuildResult buildResult = buildReActAgent(
                 expert, provider, tools, expert.skillIds(), chatSessionId.trim());
         return new AgentScopeExpertRuntime(
-                expert, buildResult.agent(), cacheKey, Instant.now(), sessionHook, buildResult.mcpClients());
+                expert,
+                buildResult.agent(),
+                cacheKey,
+                Instant.now(),
+                sessionHook,
+                sessionWorkspaceService,
+                buildResult.mcpClients());
     }
 
     ReActAgentBuildResult buildReActAgent(

@@ -1,6 +1,0 @@
-# Local-only override for gate B verify: let ops Bash drive Docker via sock.
-# Not required for normal develop; safe to delete after testing.
-services:
-  ai-apm-web:
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
