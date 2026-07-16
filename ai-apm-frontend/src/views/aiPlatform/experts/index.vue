@@ -274,7 +274,7 @@ export default class AiPlatformExperts extends Vue {
       type: 'CUSTOM',
       systemPrompt: '',
       toolIds: [] as string[],
-      skillIds: [] as string[],
+      skillIds: ['skill.summary.html'] as string[],
       options: this.defaultOptions(),
       enabled: true,
     }

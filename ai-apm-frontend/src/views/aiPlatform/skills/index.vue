@@ -637,6 +637,7 @@ export default class AiPlatformSkills extends Vue {
   private guessCategoryKey (id: string, name = '') {
     const text = `${id || ''} ${name || ''}`.toLowerCase()
     if (text.includes('brain') || text.includes('大脑') || text.includes('routing')) return 'modules.views.aiPlatform.skills.s_2106237c'
+    if (text.includes('summary') || text.includes('总结')) return 'modules.views.aiPlatform.skills.s_b0fdef01'
     if (text.includes('data') || text.includes('metric') || text.includes('问数')) return 'modules.views.aiPlatform.experts.s_6450d843'
     if (text.includes('inspection') || text.includes('health') || text.includes('巡检')) return 'modules.views.aiPlatform.experts.s_21e5c5fa'
     return 'modules.views.aiPlatform.experts.s_d4296303'

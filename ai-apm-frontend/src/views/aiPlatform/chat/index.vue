@@ -131,11 +131,18 @@
                       v-for="(file, fileIndex) in messageGeneratedFiles(msg)"
                       :key="`${msg.messageId}_gen_${fileIndex}`"
                       class="generated-file-item cp"
-                      @click="downloadWorkspaceFile(file)"
+                      @click="openGeneratedFilePreview(file)"
                     >
-                      <i class="el-icon-download"></i>
+                      <i class="el-icon-document"></i>
                       <span class="generated-file-name">{{ file.name || file.filePath }}</span>
                       <span v-if="file.size" class="generated-file-size">{{ formatFileSize(file.size) }}</span>
+                      <el-button
+                        type="text"
+                        size="mini"
+                        icon="el-icon-download"
+                        class="generated-file-download"
+                        @click.stop="downloadWorkspaceFile(file)"
+                      />
                     </div>
                   </div>
                 </div>
@@ -379,6 +386,16 @@
       </div>
     </div>
 
+    <workspace-file-preview
+      v-if="activeSessionId"
+      :visible.sync="previewVisible"
+      :session-id="activeSessionId"
+      :file-path="previewFilePath"
+      :file-name="previewFileName"
+      @download="downloadPreviewFile"
+      @close="closeGeneratedFilePreview"
+    />
+
     <el-drawer
       :visible.sync="showSessionDrawer"
       append-to-body
@@ -481,6 +498,7 @@ import MarkedView from '@/components/marked-view.vue';
 import ChatUploadPreview from './ChatUploadPreview.vue';
 import ThinkingProcess from './components/ThinkingProcess.vue';
 import AiTrendCharts from './components/AiTrendCharts.vue';
+import WorkspaceFilePreview from './components/WorkspaceFilePreview.vue';
 import { buildThinkingDetailItems, formatToolDurationText } from './utils/thinking-detail';
 import {
   formatTerminalToolDisplay,
@@ -577,7 +595,7 @@ const DEFAULT_SUGGESTIONS: ChatSuggestion[] = [
 ];
 
 @Component({
-  components: { MarkedView, ChatUploadPreview, ThinkingProcess, AiTrendCharts },
+  components: { MarkedView, ChatUploadPreview, ThinkingProcess, AiTrendCharts, WorkspaceFilePreview },
 })
 export default class AiPlatformChat extends Vue {
   public $refs!: {
@@ -602,6 +620,8 @@ export default class AiPlatformChat extends Vue {
   private lastScrollTop = 0
   private chatPageEl: HTMLElement | null = null
   private showSessionDrawer = false
+  private previewFile: GeneratedFileMeta | null = null
+  private previewVisible = false
   private suggestionCursor = 0
   private greetingNowTs = Date.now()
   private greetingTimer: number | null = null
@@ -1365,6 +1385,37 @@ export default class AiPlatformChat extends Vue {
     }
   }
 
+  private openGeneratedFilePreview (file: GeneratedFileMeta) {
+    const filePath = String(file.filePath || '').trim()
+    if (!filePath) {
+      return
+    }
+    this.previewFile = {
+      ...file,
+      filePath,
+      name: file.name || filePath.split('/').pop() || filePath,
+    }
+    this.previewVisible = true
+  }
+
+  private closeGeneratedFilePreview () {
+    this.previewVisible = false
+  }
+
+  private get previewFilePath (): string {
+    return this.previewFile?.filePath || ''
+  }
+
+  private get previewFileName (): string {
+    return this.previewFile?.name || this.previewFile?.filePath || ''
+  }
+
+  private downloadPreviewFile () {
+    if (this.previewFile) {
+      this.downloadWorkspaceFile(this.previewFile)
+    }
+  }
+
   private changeSuggestionBatch () {
     this.suggestionCursor = (this.suggestionCursor + 4) % DEFAULT_SUGGESTIONS.length
   }
@@ -1440,6 +1491,8 @@ export default class AiPlatformChat extends Vue {
   private newSession () {
     this.stopPollLoop()
     this.clearAttachmentPreviews()
+    this.previewVisible = false
+    this.previewFile = null
     this.activeSessionId = uuidv4()
     this.lastPollMessageId = ''
     this.messages = []
@@ -1456,6 +1509,8 @@ export default class AiPlatformChat extends Vue {
   private async selectSession (sessionId: string, syncRoute = true) {
     this.stopPollLoop()
     this.clearAttachmentPreviews()
+    this.previewVisible = false
+    this.previewFile = null
     this.activeSessionId = sessionId
     this.lastPollMessageId = ''
     await Promise.all([
@@ -2600,6 +2655,12 @@ export default class AiPlatformChat extends Vue {
 .generated-file-size {
   font-size: 12px;
   color: #6b7280;
+}
+
+.generated-file-download {
+  flex: none;
+  padding: 0 !important;
+  margin-left: 4px;
 }
 
 .plain-text {

@@ -94,7 +94,7 @@ class ExpertManagementServiceTest {
                 data.updatedAt())));
 
         assertThat(service.find("data").orElseThrow().skillIds())
-                .containsExactly("skill.data.metrics");
+                .containsExactly("skill.data.metrics", "skill.summary.html");
     }
 
     @Test

@@ -14,7 +14,7 @@ class SkillManagementServiceTest {
     void seedsBuiltInSkillsWithContentUriAndProtectsDelete() {
         SkillManagementService service = TestBeanSupport.skillManagementService();
         assertThat(service.list()).extracting(AiSkillDefinition::skillId)
-                .contains("skill.brain.routing", "skill.data.metrics", "skill.inspection.health");
+                .contains("skill.brain.routing", "skill.data.metrics", "skill.inspection.health", "skill.summary.html");
         assertThat(service.find("skill.data.metrics")).get()
                 .extracting(AiSkillDefinition::contentUri)
                 .asString()

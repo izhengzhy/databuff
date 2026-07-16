@@ -77,4 +77,32 @@ class BashToolsTest {
         String result = bashTools.bash("  ", null, null, null);
         assertThat(result).contains("command is required");
     }
+
+    @Test
+    void rejectsRmCommand() {
+        String result = bashTools.bash("rm -rf /tmp/foo", "Remove temp dir", null, null);
+        assertThat(result).contains("Command rejected: rm is not allowed");
+    }
+
+    @Test
+    void rejectsRmInChainedCommand() {
+        String result = bashTools.bash("echo ok && rm file.txt", "Chain with rm", null, null);
+        assertThat(result).contains("Command rejected: rm is not allowed");
+    }
+
+    @Test
+    void rejectsRmInBackgroundCommand() {
+        String result = bashTools.bash("rm -rf /tmp/foo", "Remove in background", null, true);
+        assertThat(result).contains("Command rejected: rm is not allowed");
+    }
+
+    @Test
+    void allowsCommandWithoutRmSpace() {
+        ExpertChatScopeRegistry.register(new com.databuff.apm.web.ai.platform.runtime.ExpertChatContext.State(
+                "chat-1", "tester", "ops", "msg-1", false, null, null));
+
+        String result = bashTools.bash("echo harmless", "Echo harmless", null, null);
+        assertThat(result).contains("Exit code: 0");
+        assertThat(result).contains("harmless");
+    }
 }

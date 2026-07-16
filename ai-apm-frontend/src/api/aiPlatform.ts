@@ -178,9 +178,17 @@ export default {
   abortChat: (sessionId: string) =>
     http.post(`/api/v1/ai/sessions/${encodeURIComponent(sessionId)}/abort`),
 
-  downloadWorkspaceFile: (sessionId: string, path: string) =>
+  downloadWorkspaceFile: (
+    sessionId: string,
+    path: string,
+    options?: { preview?: boolean; embed?: boolean },
+  ) =>
     http.get(`/api/v1/ai/sessions/${encodeURIComponent(sessionId)}/workspace/files`, {
-      params: { path },
+      params: {
+        path,
+        ...(options?.preview ? { preview: true } : {}),
+        ...(options?.embed ? { embed: true } : {}),
+      },
       responseType: 'blob',
     }),
 

@@ -121,4 +121,27 @@ class SessionWorkspaceServiceTest {
         assertThatThrownBy(() -> service.resolveDownloadPath("session-test-005", "secret.txt"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    void resolvesSkillResourceTemplates(@TempDir Path skillsDir) throws Exception {
+        Path skillDir = skillsDir.resolve("skill.summary.html");
+        Files.createDirectories(skillDir.resolve("templates"));
+        Files.writeString(skillDir.resolve("SKILL.md"), "---\nname: skill.summary.html\n---\nbody");
+        Files.writeString(skillDir.resolve("templates/README.md"), "# templates");
+
+        AgentRuntimeConfig config = new AgentRuntimeConfig();
+        config.setWorkspaceDir(tempDir.toString());
+        config.setBuiltinSkillsDir(skillsDir.toString());
+        config.setCustomSkillsDir(tempDir.resolve("custom-skills").toString());
+        SessionWorkspaceService resourceService = new SessionWorkspaceService(config);
+
+        Path readme = resourceService.resolveRelativePath(
+                "session-test-006",
+                "resources/skill.summary.html/templates/README.md");
+        assertThat(Files.readString(readme)).contains("# templates");
+        assertThat(resourceService.isResourcesPath("resources/skill.summary.html/templates")).isTrue();
+        assertThatThrownBy(() -> resourceService.resolveOutputWritePath(
+                "resources/skill.summary.html/templates/x.html"))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
 }

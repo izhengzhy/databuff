@@ -27,12 +27,17 @@ public class SessionWorkspaceService {
     private static final Logger log = LoggerFactory.getLogger(SessionWorkspaceService.class);
     private static final Pattern SAFE_SESSION_ID = Pattern.compile("^[a-zA-Z0-9_-]{8,128}$");
     private static final Pattern UNSAFE_FILENAME = Pattern.compile("[^a-zA-Z0-9._-]");
+    private static final Pattern SAFE_SKILL_ID = Pattern.compile("^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$");
     public static final String OUTPUTS_PREFIX = "outputs/";
     public static final String UPLOADS_PREFIX = "uploads/";
+    /** Read-only mount of skill packages: resources/{skillId}/... */
+    public static final String RESOURCES_PREFIX = "resources/";
 
     private final Path workspaceRoot;
+    private final AgentRuntimeConfig agentRuntimeConfig;
 
     public SessionWorkspaceService(AgentRuntimeConfig agentRuntimeConfig) {
+        this.agentRuntimeConfig = agentRuntimeConfig;
         this.workspaceRoot = agentRuntimeConfig.workspaceDirectory();
     }
 
@@ -60,6 +65,9 @@ public class SessionWorkspaceService {
         String normalized = normalizeRelativePath(fileName);
         if (normalized.startsWith(UPLOADS_PREFIX)) {
             throw new IllegalArgumentException("cannot write into uploads/: " + fileName);
+        }
+        if (normalized.startsWith(RESOURCES_PREFIX)) {
+            throw new IllegalArgumentException("cannot write into resources/: " + fileName);
         }
         if (!normalized.startsWith(OUTPUTS_PREFIX)) {
             normalized = OUTPUTS_PREFIX + sanitizeFilename(normalized, "file");
@@ -147,6 +155,9 @@ public class SessionWorkspaceService {
             // fall through
         }
         String lower = fileName.toLowerCase(Locale.ROOT);
+        if (lower.endsWith(".html") || lower.endsWith(".htm")) {
+            return "text/html";
+        }
         if (lower.endsWith(".csv")) {
             return "text/csv";
         }
@@ -163,14 +174,62 @@ public class SessionWorkspaceService {
     }
 
     public Path resolveRelativePath(String sessionId, String relativePath) {
+        String normalized = normalizeRelativePath(relativePath);
+        if (normalized.startsWith(RESOURCES_PREFIX)) {
+            return resolveSkillResourcePath(normalized);
+        }
         validateSessionId(sessionId);
         Path base = sessionDir(sessionId);
-        String normalized = normalizeRelativePath(relativePath);
         Path resolved = base.resolve(normalized).normalize();
         if (!resolved.startsWith(base)) {
             throw new IllegalArgumentException("path escapes session workspace: " + relativePath);
         }
         return resolved;
+    }
+
+    /**
+     * Maps {@code resources/{skillId}/...} onto a skill package under custom or built-in skills dirs.
+     * Read-only for agents; not a writable session path.
+     */
+    public Path resolveSkillResourcePath(String normalizedResourcesPath) {
+        String remainder = normalizedResourcesPath.substring(RESOURCES_PREFIX.length());
+        if (remainder.isBlank() || remainder.contains("..")) {
+            throw new IllegalArgumentException("invalid skill resource path: " + normalizedResourcesPath);
+        }
+        int slash = remainder.indexOf('/');
+        String skillId = slash < 0 ? remainder : remainder.substring(0, slash);
+        String subPath = slash < 0 ? "" : remainder.substring(slash + 1);
+        if (!SAFE_SKILL_ID.matcher(skillId).matches()) {
+            throw new IllegalArgumentException("invalid skill id in resource path: " + skillId);
+        }
+        Path skillRoot = findSkillPackageDir(skillId);
+        if (skillRoot == null) {
+            throw new IllegalArgumentException("skill package not found: " + skillId);
+        }
+        Path resolved = subPath.isBlank()
+                ? skillRoot
+                : skillRoot.resolve(subPath).normalize();
+        if (!resolved.startsWith(skillRoot)) {
+            throw new IllegalArgumentException("path escapes skill package: " + normalizedResourcesPath);
+        }
+        return resolved;
+    }
+
+    private Path findSkillPackageDir(String skillId) {
+        for (Path root : agentRuntimeConfig.skillSearchDirectories()) {
+            Path candidate = root.resolve(skillId).normalize();
+            if (Files.isDirectory(candidate) && Files.isRegularFile(candidate.resolve("SKILL.md"))) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
+    public boolean isResourcesPath(String relativePath) {
+        if (relativePath == null || relativePath.isBlank()) {
+            return false;
+        }
+        return normalizeRelativePath(relativePath).startsWith(RESOURCES_PREFIX);
     }
 
     public List<SavedAttachment> saveAttachments(String sessionId, Map<String, Object> context) {

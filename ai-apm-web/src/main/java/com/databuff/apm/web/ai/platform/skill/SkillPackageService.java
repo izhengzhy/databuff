@@ -183,6 +183,15 @@ public class SkillPackageService {
     }
 
     Path resolveSkillDirectory(String skillId) {
+        if (skillId == null || skillId.isBlank()) {
+            throw AiPlatformApiException.badRequest("skillId is required");
+        }
+        for (Path root : agentRuntimeConfig.skillSearchDirectories()) {
+            Path candidate = root.resolve(skillId).normalize();
+            if (Files.isDirectory(candidate) && Files.isRegularFile(candidate.resolve("SKILL.md"))) {
+                return candidate;
+            }
+        }
         return agentRuntimeConfig.customSkillsDirectory().resolve(skillId).normalize();
     }
 

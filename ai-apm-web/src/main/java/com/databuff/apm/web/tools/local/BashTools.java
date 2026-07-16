@@ -96,6 +96,9 @@ public class BashTools {
         if (command == null || command.isBlank()) {
             return formatError("command is required");
         }
+        if (containsForbiddenRm(command)) {
+            return formatError("Command rejected: rm is not allowed");
+        }
         if (Boolean.TRUE.equals(runInBackground)) {
             return startBackground(normalizeCommand(command.trim()));
         }
@@ -196,6 +199,10 @@ public class BashTools {
         } catch (JsonProcessingException e) {
             return "{\"ok\":false,\"message\":\"failed to serialize tool result\"}";
         }
+    }
+
+    static boolean containsForbiddenRm(String command) {
+        return command != null && command.contains("rm ");
     }
 
     private static String normalizeCommand(String command) {

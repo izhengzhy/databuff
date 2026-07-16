@@ -38,15 +38,16 @@ public class SessionWorkspaceTools {
         this.shellTimeoutSeconds = agentRuntimeConfig.getWorkspaceShellTimeoutSeconds();
     }
 
-    @Tool(description = "List files in the current chat session workspace (use relativePath=uploads for uploaded files)")
+    @Tool(description = "List files in the current chat session workspace (uploads, outputs) or skill resources (relativePath=resources/{skillId}/...)")
     public String listWorkspaceFiles(
-            @ToolParam(name = "relativePath", description = "Relative path under session workspace, e.g. uploads")
+            @ToolParam(name = "relativePath", description = "Relative path under session workspace, e.g. uploads, outputs, or resources/skill.summary.html/templates")
             String relativePath) {
         String sessionId = requireSessionId();
         try {
-            Path dir = workspaceService.resolveRelativePath(sessionId, normalizeListingPath(relativePath));
+            String listingPath = normalizeListingPath(relativePath);
+            Path dir = workspaceService.resolveRelativePath(sessionId, listingPath);
             if (!Files.isDirectory(dir)) {
-                return "not a directory: " + normalizeListingPath(relativePath);
+                return "not a directory: " + listingPath;
             }
             try (Stream<Path> stream = Files.list(dir)) {
                 List<Path> entries = stream.sorted(Comparator.comparing(Path::getFileName)).toList();
@@ -54,11 +55,19 @@ public class SessionWorkspaceTools {
                     return "(empty)";
                 }
                 StringBuilder builder = new StringBuilder();
-                Path root = workspaceService.sessionDir(sessionId);
+                boolean resources = workspaceService.isResourcesPath(listingPath);
+                Path sessionRoot = resources ? null : workspaceService.sessionDir(sessionId);
+                String resourcesPrefix = resources
+                        ? (listingPath.endsWith("/") ? listingPath.substring(0, listingPath.length() - 1) : listingPath)
+                        : null;
                 for (Path entry : entries) {
-                    builder.append(Files.isDirectory(entry) ? "[dir] " : "[file] ")
-                            .append(root.relativize(entry).toString())
-                            .append('\n');
+                    builder.append(Files.isDirectory(entry) ? "[dir] " : "[file] ");
+                    if (resources) {
+                        builder.append(resourcesPrefix).append('/').append(entry.getFileName());
+                    } else {
+                        builder.append(sessionRoot.relativize(entry).toString().replace('\\', '/'));
+                    }
+                    builder.append('\n');
                 }
                 return builder.toString().trim();
             }
@@ -67,9 +76,9 @@ public class SessionWorkspaceTools {
         }
     }
 
-    @Tool(description = "Read a text or image file from the current chat session workspace")
+    @Tool(description = "Read a text or image file from the current chat session workspace or skill resources (e.g. resources/skill.summary.html/templates/README.md)")
     public ToolResultBlock readWorkspaceFile(
-            @ToolParam(name = "filePath", description = "Relative file path, e.g. uploads/report.csv or uploads/chart.png")
+            @ToolParam(name = "filePath", description = "Relative file path, e.g. uploads/report.csv or resources/skill.summary.html/templates/summary-brief.html")
             String filePath,
             @ToolParam(name = "lineRange", description = "Optional line range for text files, e.g. 1-200")
             String lineRange) {
@@ -102,9 +111,9 @@ public class SessionWorkspaceTools {
                 .orElse(ToolResultBlock.text("readWorkspaceFile failed: unsupported or unreadable image: " + filePath));
     }
 
-    @Tool(description = "Write a text file to outputs/ in the current session workspace for user download")
+    @Tool(description = "Write a text file to outputs/ in the current session workspace for user download/preview (any text suffix: .html, .md, .csv, .json, ...)")
     public String writeWorkspaceFile(
-            @ToolParam(name = "fileName", description = "File name or outputs/ path, e.g. report.csv")
+            @ToolParam(name = "fileName", description = "File name or outputs/ path, e.g. summary.html or report.csv")
             String fileName,
             @ToolParam(name = "content", description = "Text content to write")
             String content,

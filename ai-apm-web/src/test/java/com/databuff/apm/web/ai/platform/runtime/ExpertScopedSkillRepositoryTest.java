@@ -34,7 +34,7 @@ class ExpertScopedSkillRepositoryTest {
         }
         repository = new FileSystemSkillRepository(runtimeConfig.builtinSkillsDirectory());
         assertThat(repository.getAllSkillNames())
-                .contains("skill.brain.routing", "skill.data.metrics", "skill.inspection.health");
+                .contains("skill.brain.routing", "skill.data.metrics", "skill.inspection.health", "skill.summary.html");
     }
 
     @Test

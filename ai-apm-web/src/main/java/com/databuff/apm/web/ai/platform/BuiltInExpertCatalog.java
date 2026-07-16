@@ -63,12 +63,16 @@ public final class BuiltInExpertCatalog {
                         "expertDispatchTool.dispatchExpertTask", now));
     }
 
+    /** Shared summary/HTML deliverable skill — bound to every built-in expert. */
+    public static final String SUMMARY_HTML_SKILL_ID = "skill.summary.html";
+
     public static List<AiSkillDefinition> skills() {
         Instant now = Instant.now();
         return List.of(
                 skill("skill.brain.routing", "大脑路由", "AI 大脑路由与专家派发规则", now),
                 skill("skill.data.metrics", "问数口径", "APM 指标、Trace、日志与告警查询规则", now),
-                skill("skill.inspection.health", "巡检流程", "服务健康巡检与异常诊断流程", now));
+                skill("skill.inspection.health", "巡检流程", "服务健康巡检与异常诊断流程", now),
+                skill(SUMMARY_HTML_SKILL_ID, "总结产出", "总结与报告 HTML 产出规范（共享风格参考模版）", now));
     }
 
     public static List<AiExpertDefinition> experts() {
@@ -76,7 +80,7 @@ public final class BuiltInExpertCatalog {
         return List.of(
                 expert("brain", "AI大脑", "理解用户问题并分派给合适的数字专家", ExpertType.BRAIN,
                         List.of("brain.dispatchExpertTask"),
-                        List.of("skill.brain.routing"), now),
+                        List.of("skill.brain.routing", SUMMARY_HTML_SKILL_ID), now),
                 expert("data", "智能问数", "查询 APM 指标、Trace、拓扑与告警", ExpertType.SPECIALIST,
                         List.of(
                                 "common.getCurrentTimeRange",
@@ -93,7 +97,7 @@ public final class BuiltInExpertCatalog {
                                 "log.queryLogDetail",
                                 "log.queryLogsByTraceId",
                                 "log.queryLogsBySpanId"),
-                        List.of("skill.data.metrics"), now),
+                        List.of("skill.data.metrics", SUMMARY_HTML_SKILL_ID), now),
                 expert("inspection", "巡检", "服务健康巡检与异常诊断", ExpertType.SPECIALIST,
                         List.of(
                                 "common.getCurrentTimeRange",
@@ -107,7 +111,7 @@ public final class BuiltInExpertCatalog {
                                 "log.queryLogDetail",
                                 "log.queryLogsByTraceId",
                                 "inspect.inspectService"),
-                        List.of("skill.inspection.health"), now),
+                        List.of("skill.inspection.health", SUMMARY_HTML_SKILL_ID), now),
                 expert("ops", "运维专家", "在本机执行 shell 命令排查系统与部署；远程通过 ssh/sshpass 写在命令中", ExpertType.SPECIALIST,
                         List.of(
                                 "Bash",
@@ -116,7 +120,7 @@ public final class BuiltInExpertCatalog {
                                 "data.queryMetricData",
                                 "data.queryServiceAlarms",
                                 "inspect.inspectService"),
-                        List.of(), now));
+                        List.of(SUMMARY_HTML_SKILL_ID), now));
     }
 
     private static AiToolDefinition tool(
@@ -161,6 +165,7 @@ public final class BuiltInExpertCatalog {
             case "skill.brain.routing" -> "大脑路由";
             case "skill.data.metrics" -> "数据分析";
             case "skill.inspection.health" -> "健康巡检";
+            case SUMMARY_HTML_SKILL_ID -> "总结产出";
             default -> "默认分类";
         };
     }

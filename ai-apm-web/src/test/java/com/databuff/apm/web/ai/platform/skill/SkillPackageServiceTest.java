@@ -89,6 +89,32 @@ class SkillPackageServiceTest {
         assertThat(content.content()).contains("echo hi");
     }
 
+    @Test
+    void listsBuiltinSkillPackageFilesIncludingTemplates() {
+        AgentRuntimeConfig runtimeConfig = new AgentRuntimeConfig();
+        runtimeConfig.setCustomSkillsDir(tempDir.resolve("custom-skills").toString());
+        Path builtin = Path.of("../deploy/common/skills").toAbsolutePath().normalize();
+        if (!Files.isDirectory(builtin.resolve("skill.summary.html"))) {
+            builtin = Path.of("deploy/common/skills").toAbsolutePath().normalize();
+        }
+        runtimeConfig.setBuiltinSkillsDir(builtin.toString());
+        SkillPackageService listingService = new SkillPackageService(
+                runtimeConfig,
+                skillManagementService,
+                new SkillFileSyncService(
+                        runtimeConfig,
+                        skillManagementService,
+                        new org.springframework.core.io.DefaultResourceLoader()));
+
+        assertThat(listingService.listFiles("skill.summary.html"))
+                .extracting(SkillPackageService.SkillFileEntry::path)
+                .contains(
+                        "SKILL.md",
+                        "templates/README.md",
+                        "templates/summary-brief.html",
+                        "templates/report-analysis.html");
+    }
+
     private static byte[] buildZip(String skillMarkdown, String extraPath, String extraContent) throws Exception {
         Path zipPath = Files.createTempFile("skill-test-", ".zip");
         try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(zipPath))) {

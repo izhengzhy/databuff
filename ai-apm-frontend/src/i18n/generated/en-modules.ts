@@ -487,7 +487,8 @@ export default {
         "s_2106237c": "Brain Routing",
         "s_ab6d9907": "Delete Skill {value0}?",
         "s_5ed0e1e6": "Data Query Guidelines",
-        "s_18d679e1": "Inspection Workflow"
+        "s_18d679e1": "Inspection Workflow",
+        "s_b0fdef01": "Summary Deliverable"
       },
       "tools": {
         "s_5f7df379": "Tool Management",
