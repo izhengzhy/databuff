@@ -22,15 +22,17 @@ You ask; it queries data, analyzes, and delivers conclusions.
 
 ---
 
-## Three Digital Experts
+## Digital Experts
 
 ```mermaid
 flowchart LR
   Brain["AI Brain<br/>Understand + dispatch"]
   Data["Query Expert<br/>Fetch data"]
   Insp["Inspection Expert<br/>Find anomalies"]
+  Qa["Product Q&A<br/>How to use"]
   Brain --> Data
   Brain --> Insp
+  Brain --> Qa
 ```
 
 | Expert | Strength | Example |
@@ -38,6 +40,7 @@ flowchart LR
 | **AI Brain** | Understands your question and routes to the right expert | "How is the payment service doing lately?" |
 | **Query Expert** | Queries metrics, traces, topology, and alerts | "QPS trend for order service" |
 | **Inspection Expert** | Proactively finds service anomalies | "Inspect the inventory service" |
+| **Product Q&A** | Product usage, feature explainers, config meaning | "Where do I configure alert rules?" |
 
 > In daily use, talk directly to the **AI Brain** — it routes automatically.
 

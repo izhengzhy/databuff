@@ -6,7 +6,7 @@
 
 # User Guide · Custom Digital Experts
 
-Beyond the built-in **AI Brain, Query Expert, and Inspection Expert**, you can create **custom digital experts**, bind remote MCP tools, and connect external systems such as SkyWalking, Prometheus, and Zabbix into the conversation flow.
+Beyond the built-in **AI Brain, Query Expert, Inspection, Ops, and Product Q&A**, you can create **custom digital experts**, bind remote MCP tools, and connect external systems such as SkyWalking, Prometheus, and Zabbix into the conversation flow.
 
 **Four steps:** Register MCP → Create expert → Bind tools → Verify in chat
 

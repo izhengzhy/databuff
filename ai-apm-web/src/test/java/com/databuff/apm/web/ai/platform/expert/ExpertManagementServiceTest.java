@@ -19,13 +19,16 @@ class ExpertManagementServiceTest {
     void seedsBuiltInExpertsAndProtectsDelete() {
         ExpertManagementService service = service();
         assertThat(service.list()).extracting(AiExpertDefinition::expertId)
-                .contains("brain", "data", "inspection", "ops");
+                .contains("brain", "data", "inspection", "ops", "qa");
         assertThat(service.find("data")).get()
                 .extracting(AiExpertDefinition::name)
                 .isEqualTo("智能问数");
         assertThat(service.find("brain")).get()
                 .extracting(AiExpertDefinition::name)
                 .isEqualTo("AI大脑");
+        assertThat(service.find("qa")).get()
+                .extracting(AiExpertDefinition::name)
+                .isEqualTo("产品答疑");
         assertThat(service.find("brain").orElseThrow().toolIds())
                 .containsExactly("brain.dispatchExpertTask");
         assertThat(service.find("data").orElseThrow().toolIds())
@@ -35,6 +38,10 @@ class ExpertManagementServiceTest {
                 .contains("common.getCurrentTimeRange", "data.queryMetricData", "inspect.inspectService");
         assertThat(service.find("ops").orElseThrow().toolIds())
                 .contains("Bash", "BashOutput", "KillShell", "inspect.inspectService");
+        assertThat(service.find("qa").orElseThrow().toolIds())
+                .containsExactly("Bash", "BashOutput", "KillShell");
+        assertThat(service.find("qa").orElseThrow().skillIds())
+                .contains("skill.qa.product");
         assertThat(service.delete("brain")).isFalse();
     }
 

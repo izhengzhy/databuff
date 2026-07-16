@@ -4,6 +4,7 @@ WORKDIR /app
 
 COPY start.sh application.yml ./
 COPY skills/ ./skills/
+COPY databuff/ ./databuff/
 COPY *.jar ./
 
 RUN printf 'Acquire::Retries "5";\nAcquire::http::Timeout "120";\n' > /etc/apt/apt.conf.d/80-retries \
@@ -14,6 +15,7 @@ RUN printf 'Acquire::Retries "5";\nAcquire::http::Timeout "120";\n' > /etc/apt/a
         procps \
         iproute2 \
         nmap \
+        ripgrep \
     && rm -rf /var/lib/apt/lists/* \
     && printf 'Host *\n  GSSAPIAuthentication no\n  PreferredAuthentications publickey,password\n  ConnectTimeout 10\n' \
         > /etc/ssh/ssh_config.d/99-databuff.conf \

@@ -72,6 +72,7 @@ public final class BuiltInExpertCatalog {
                 skill("skill.brain.routing", "大脑路由", "AI 大脑路由与专家派发规则", now),
                 skill("skill.data.metrics", "问数口径", "APM 指标、Trace、日志与告警查询规则", now),
                 skill("skill.inspection.health", "巡检流程", "服务健康巡检与异常诊断流程", now),
+                skill("skill.qa.product", "产品答疑", "产品使用、功能说明与配置含义答疑规则", now),
                 skill(SUMMARY_HTML_SKILL_ID, "总结产出", "总结与报告 HTML 产出规范（共享风格参考模版）", now));
     }
 
@@ -120,7 +121,10 @@ public final class BuiltInExpertCatalog {
                                 "data.queryMetricData",
                                 "data.queryServiceAlarms",
                                 "inspect.inspectService"),
-                        List.of(SUMMARY_HTML_SKILL_ID), now));
+                        List.of(SUMMARY_HTML_SKILL_ID), now),
+                expert("qa", "产品答疑", "解答产品使用、功能说明与配置含义", ExpertType.SPECIALIST,
+                        List.of("Bash", "BashOutput", "KillShell"),
+                        List.of("skill.qa.product", SUMMARY_HTML_SKILL_ID), now));
     }
 
     private static AiToolDefinition tool(
@@ -165,6 +169,7 @@ public final class BuiltInExpertCatalog {
             case "skill.brain.routing" -> "大脑路由";
             case "skill.data.metrics" -> "数据分析";
             case "skill.inspection.health" -> "健康巡检";
+            case "skill.qa.product" -> "产品答疑";
             case SUMMARY_HTML_SKILL_ID -> "总结产出";
             default -> "默认分类";
         };
@@ -176,6 +181,7 @@ public final class BuiltInExpertCatalog {
             case "data" -> "数据分析";
             case "inspection" -> "健康巡检";
             case "ops" -> "运维排查";
+            case "qa" -> "产品答疑";
             default -> "默认分类";
         };
     }
@@ -207,6 +213,28 @@ public final class BuiltInExpertCatalog {
                     默认 Docker 安装于 /opt/databuff-ai-apm；启动顺序 Doris → init SQL → migrate-schema → ingest/web。Doris 4.1.1（FE 9030/8030，BE 8040），数据在 data/。健康检查：27403/health、4318/health；Doris 不可达时 web 进入排障模式（JDBC 快速失败，AI 平台仍可用），约每分钟自动重探，Doris 恢复后无需重启 web 即可退出排障模式。
 
                     必须基于命令真实输出回答，不要编造。用中文回答。
+                    """;
+            case "qa" -> """
+                    你是 DataBuff 产品答疑专家。用户问产品怎么用、某功能怎么实现、配置/接口含义、模块职责等日常问题时，你通过 Bash 在 /app/databuff 目录内检索源码与文档后回答。
+                    回复前先调用 load_skill_through_path(skillId="skill.qa.product", path="SKILL.md") 加载答疑规则，再开始检索。
+
+                    工作范围：
+                    1. 只围绕 DataBuff 源码与仓库内文档答疑；知识根目录固定为 /app/databuff。
+                    2. 不负责查 APM 指标/Trace/告警（交给问数专家），不做服务巡检（交给巡检专家），不排查主机/Docker/磁盘等运行环境（交给运维专家）。
+                    3. 若问题本质是线上数据或环境故障，明确说明应转给对应专家，不要硬查源码凑答案。
+
+                    检索原则：
+                    1. 用 rg 在 /app/databuff 内定位相关代码与文档；可结合 find、ls、head、sed 阅读关键文件片段。
+                    2. 先定位再下结论：回答须能对应到具体路径或符号（类/方法/配置键/文档段落），禁止凭记忆编造实现细节。
+                    3. 源码与文档冲突时，以源码为准，并说明差异点。
+                    4. 找不到依据时如实说明「未找到相关依据」，不要猜测。
+                    5. 命令仅用于只读检索与阅读；不要改文件、不要重启服务、不要执行破坏性操作。
+
+                    回答要求：
+                    1. 用中文，先给结论，再列关键证据（文件路径、关键片段摘要）。
+                    2. 面向日常使用：解释清楚「是什么 / 在哪 / 怎么配或怎么用」，避免堆砌无关代码。
+                    3. 必须基于本次检索到的真实内容回答。
+                    4. 对用户说话时以产品能力与使用说明为主，不要强调「我在读源码」；需要引用时用路径与配置键即可。
                     """;
             default -> "你是 DataBuff APM 数字专家。用中文回答。";
         };

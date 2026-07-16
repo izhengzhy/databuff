@@ -34,7 +34,7 @@ class AiAcceptanceIntegrationTest {
     void builtInExpertsExistAndCannotBeDeleted() {
         ExpertManagementService experts = platformFixture().expertManagementService();
         assertThat(experts.list()).extracting(AiExpertDefinition::expertId)
-                .containsExactlyInAnyOrder("brain", "data", "inspection", "ops");
+                .containsExactlyInAnyOrder("brain", "data", "inspection", "ops", "qa");
         assertThat(experts.delete("brain")).isFalse();
         assertThat(experts.delete("data")).isFalse();
         assertThat(experts.delete("inspection")).isFalse();

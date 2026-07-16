@@ -16,6 +16,7 @@ export interface QuickExpertOption {
 export const QUICK_EXPERTS: QuickExpertOption[] = [
   { expertId: 'data', icon: 'el-icon-data-analysis' },
   { expertId: 'inspection', icon: 'el-icon-view' },
+  { expertId: 'qa', icon: 'el-icon-question' },
 ]
 
 /** 聊天页默认路由的数字专家（AI 大脑） */
@@ -89,4 +90,5 @@ export const EXPERT_NAME_KEYS: Record<string, string> = {
   brain: 'modules.views.aiPlatform.chat.s_16ffc5ac',
   data: 'modules.views.aiPlatform.chat.s_6e8ecff0',
   inspection: 'modules.views.aiPlatform.chat.s_4dabf8a7',
+  qa: 'modules.views.aiPlatform.chat.s_10dab24b',
 }

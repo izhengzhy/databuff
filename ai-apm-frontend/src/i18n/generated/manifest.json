@@ -474,6 +474,7 @@
   "亚洲/北京（UTC+8）": "views.configManage.alarm.s_c262a4ea",
   "交换字节总数": "views.infrastructure.hostDetail.s_a519e251",
   "产品名称": "views.sysManage.license.s_ff685527",
+  "产品答疑": "views.aiPlatform.chat.s_10dab24b",
   "产品版本": "views.sysManage.license.s_1ba29ed6",
   "产生流量。": "views.deployInstall.apm.s_c6df4586",
   "仅Administrator角色可以管理全部管理域": "views.sysManage.role.s_b0237386",

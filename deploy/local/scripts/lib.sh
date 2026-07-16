@@ -59,6 +59,8 @@ sync_web_run_dir() {
   cp -f "${APM_DOCKER_IMAGE_SRC}/web/start.sh" "${APM_DOCKER_IMAGE_SRC}/web/application.yml" "$dest/"
   cp -f "$jar" "$dest/"
   chmod +x "${dest}/start.sh"
+  # Same git-visible tree as production web image (/app/databuff).
+  prepare_web_databuff_tree "${dest}/databuff"
 }
 
 sync_demo_run_dir() {

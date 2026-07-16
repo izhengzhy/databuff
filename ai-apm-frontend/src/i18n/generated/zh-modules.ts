@@ -368,6 +368,7 @@ export default {
         "s_6e8ecff0": "智能问数",
         "s_16ffc5ac": "AI大脑",
         "s_4dabf8a7": "智能巡检",
+        "s_10dab24b": "产品答疑",
         "s_79d3abe9": "复制",
         "s_694fc5ef": "刷新"
       },

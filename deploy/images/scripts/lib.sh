@@ -764,9 +764,34 @@ prepare_image_build_context() {
   if [[ "$svc" == "web" ]]; then
     mkdir -p "${ctx}/skills"
     cp -R "${APM_COMMON_SRC}/skills/." "${ctx}/skills/"
+    prepare_web_databuff_tree "${ctx}/databuff"
   fi
 
   printf '%s\n' "$ctx"
+}
+
+# Git-visible repo snapshot for product-QA expert (/app/databuff).
+# Only paths Git cares about: tracked + untracked non-ignored (never gitignored artifacts).
+prepare_web_databuff_tree() {
+  local dest="$1"
+
+  if [[ ! -d "${APM_REPO_ROOT}/.git" ]]; then
+    echo "[build] prepare_web_databuff_tree: ${APM_REPO_ROOT} is not a git checkout" >&2
+    exit 1
+  fi
+  if ! command -v git >/dev/null 2>&1; then
+    echo "[build] prepare_web_databuff_tree: git is required" >&2
+    exit 1
+  fi
+
+  rm -rf "$dest"
+  mkdir -p "$dest"
+  (
+    cd "${APM_REPO_ROOT}" || exit 1
+    git ls-files -c -o --exclude-standard -z \
+      | tar --null -T - -cf - \
+      | tar -C "$dest" -xf -
+  )
 }
 
 buildx_image() {

@@ -368,6 +368,7 @@ export default {
         "s_6e8ecff0": "Intelligent Data Query",
         "s_16ffc5ac": "AI Brain",
         "s_4dabf8a7": "Smart Inspection",
+        "s_10dab24b": "Product Q&A",
         "s_79d3abe9": "Copy",
         "s_694fc5ef": "Refresh"
       },
