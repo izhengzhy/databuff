@@ -883,6 +883,7 @@ public final class DcSpanUtil {
             tags.put("service_id", nullToEmpty(span.serviceId));
             tags.put("service_instance", nullToEmpty(span.serviceInstance));
         }
+        // Outbound caller: fill sets src*=self; inbound: src*=peer when known.
         tags.put("srcService", nullToEmpty(span.srcService));
         tags.put("srcServiceId", normalizeMetricServiceId(span.srcServiceId, span.srcService));
         tags.put("srcServiceInstance", nullToEmpty(span.srcServiceInstance));

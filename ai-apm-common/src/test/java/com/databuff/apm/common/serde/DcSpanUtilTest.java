@@ -569,6 +569,35 @@ class DcSpanUtilTest {
     }
 
     @Test
+    void rootRpcClientMetricUsesLocalServiceAsSrcWhenRemappedToCallee() {
+        DcSpan span = baseSpan();
+        span.service = "fraud-detection";
+        span.serviceId = "fraud-detection-id";
+        span.serviceInstance = "fraud-inst-1";
+        span.type = "SPAN_KIND_CLIENT";
+        span.isOut = 1;
+        // Fill contract: outbound caller src*=self
+        span.srcService = "fraud-detection";
+        span.srcServiceId = "fraud-detection-id";
+        span.srcServiceInstance = "fraud-inst-1";
+        span.dstService = "flagd";
+        span.dstServiceId = "flagd-id";
+        span.dstServiceInstance = "flagd-inst-1";
+        span.meta = "{\"rpc.system\":\"grpc\",\"rpc.method\":\"EventStream\"}";
+
+        OptimizedMetric rpc = DcSpanUtil.parseSpanData(span).stream()
+                .filter(m -> "service.rpc".equals(m.measurement()))
+                .findFirst()
+                .orElseThrow();
+        assertThat(tagValue(rpc, "service")).isEqualTo("flagd");
+        assertThat(tagValue(rpc, "srcService")).isEqualTo("fraud-detection");
+        assertThat(tagValue(rpc, "srcServiceId")).isEqualTo(
+                com.databuff.apm.common.util.ServiceKeyUtil.of("fraud-detection"));
+        assertThat(tagValue(rpc, "srcServiceInstance")).isEqualTo("fraud-inst-1");
+        assertThat(tagValue(rpc, "isOut")).isEqualTo("1");
+    }
+
+    @Test
     void buildsServiceInstanceTagsFromResourceAttributes() {
         DcSpan span = baseSpan();
         span.service = "demo-order";

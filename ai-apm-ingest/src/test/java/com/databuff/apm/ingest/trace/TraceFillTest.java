@@ -493,7 +493,7 @@ class TraceFillTest {
     }
 
     @Test
-    void rootGrpcClientGetsOutboundDirectionAndServerPeerMeta() {
+    void rootGrpcClientGetsOutboundDirectionAndServerPeerMeta() throws Exception {
         DcSpan client = span("trace-grpc-root", "client", "", "fraud-detection");
         client.type = "SPAN_KIND_CLIENT";
         client.serviceInstance = "04a51076-5d42-4d91-a699-9375590ad835";
@@ -514,7 +514,9 @@ class TraceFillTest {
         FillPathAndRelationUtil.fillRelations(List.of(client, server));
 
         assertThat(client.isOut).isEqualTo(1);
-        assertThat(client.srcService).isNull();
+        assertThat(client.srcService).isEqualTo("fraud-detection");
+        assertThat(client.srcServiceId).isEqualTo("fraud-detection-id");
+        assertThat(client.srcServiceInstance).isEqualTo("04a51076-5d42-4d91-a699-9375590ad835");
         assertThat(client.dstService).isEqualTo("flagd");
         Map<String, String> clientMeta = OtelAttributeMaps.parse(client);
         assertThat(clientMeta.get("server.service")).isEqualTo("flagd");
@@ -524,7 +526,23 @@ class TraceFillTest {
         assertThat(server.srcService).isEqualTo("fraud-detection");
         Map<String, String> serverMeta = OtelAttributeMaps.parse(server);
         assertThat(serverMeta.get("client.service")).isEqualTo("fraud-detection");
-        assertThat(serverMeta.get("client.ip")).isEqualTo("172.20.0.21");
+        assertThat(serverMeta.get("client.ip")).isEqualTo("04a51076-5d42-4d91-a699-9375590ad835");
+
+        TraceFillProcessor.FillResult result = new TraceFillProcessor().processTrace(List.of(client, server));
+        OptimizedMetric rpcOut = result.metrics().stream()
+                .filter(m -> "service.rpc".equals(m.measurement()))
+                .filter(m -> "1".equals(tagValue(m, "isOut")))
+                .findFirst()
+                .orElseThrow();
+        assertThat(tagValue(rpcOut, "service")).isEqualTo("flagd");
+        assertThat(tagValue(rpcOut, "srcService")).isEqualTo("fraud-detection");
+        OptimizedMetric rpcIn = result.metrics().stream()
+                .filter(m -> "service.rpc".equals(m.measurement()))
+                .filter(m -> "1".equals(tagValue(m, "isIn")))
+                .findFirst()
+                .orElseThrow();
+        assertThat(tagValue(rpcIn, "service")).isEqualTo("flagd");
+        assertThat(tagValue(rpcIn, "srcService")).isEqualTo("fraud-detection");
     }
 
     private static DcSpan span(String traceId, String spanId, String parentId, String service) {

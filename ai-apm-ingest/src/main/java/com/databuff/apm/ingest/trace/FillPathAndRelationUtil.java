@@ -61,16 +61,21 @@ public final class FillPathAndRelationUtil {
             SpanDirectionUtil.applyNameBasedDirection(span);
             if (TraceParentUtil.isRootParentId(span.parent_id)) {
                 span.is_parent = 1;
-                // Root entry has no in-trace caller; leave src* empty instead of self-placeholder.
-                span.srcService = null;
-                span.srcServiceId = null;
-                span.srcServiceInstance = null;
+                if (isOutboundCaller(span)) {
+                    // 调用别人：src=自身（含 root CLIENT / EventStream）
+                    applyOutboundCallerSrc(span);
+                } else {
+                    // 接收请求且无对端信息：不填
+                    span.srcService = null;
+                    span.srcServiceId = null;
+                    span.srcServiceInstance = null;
+                }
                 continue;
             }
             span.is_parent = 0;
             DcSpan parent = bySpanId.get(span.parent_id);
             if (parent != null) {
-                // 子 span：src=父服务，dst=本服务 → 产生 service.flow 边
+                // 子 span 默认：src=父服务（入口侧「别人」），dst=本服务
                 span.srcService = parent.service;
                 span.srcServiceId = parent.serviceId;
                 span.srcServiceInstance = parent.serviceInstance;
@@ -83,17 +88,9 @@ public final class FillPathAndRelationUtil {
                     parent.isOut = 1;
                 }
             }
-            // CLIENT / PRODUCER（DB/HTTP/RPC/MQ 等出站）标记 isOut，供组件指标与虚拟服务提取
-            if ("SPAN_KIND_CLIENT".equals(span.type) || "SPAN_KIND_PRODUCER".equals(span.type)) {
-                span.isOut = 1;
-                // DB 出站：dst=下游 DB，src=发起应用，isIn/isOut 均为 1（与 legacy service.db 口径一致）
-                if (DcSpanUtil.isDbSpan(span)) {
-                    String peer = DcSpanUtil.resolveDbPeer(span, OtelAttributeMaps.parse(span));
-                    span.dstService = peer;
-                    span.dstServiceId = ServiceKeyUtil.of(peer);
-                    span.dstServiceInstance = "";
-                    span.isIn = 1;
-                }
+            // CLIENT / PRODUCER：调用别人 → src 覆盖为自身；并标 isOut
+            if (isOutboundCaller(span)) {
+                applyOutboundCallerSrc(span);
             }
         }
         Set<String> tracedServices = collectTracedServices(spans);
@@ -191,8 +188,11 @@ public final class FillPathAndRelationUtil {
             changed = true;
         }
         if (OtelAttributeMaps.firstNonBlank(meta, "client.ip") == null) {
-            String clientIp = OtelAttributeMaps.firstNonBlank(
-                    meta, "net.peer.name", "network.peer.address", "client.address");
+            // Prefer caller instance (UI「客户端服务实例」), then peer address tags.
+            String clientIp = firstNonBlank(
+                    parent.serviceInstance,
+                    OtelAttributeMaps.firstNonBlank(
+                            meta, "net.peer.name", "network.peer.address", "client.address"));
             if (clientIp != null) {
                 meta.put("client.ip", clientIp);
                 changed = true;
@@ -227,6 +227,28 @@ public final class FillPathAndRelationUtil {
         }
         if (changed) {
             OtelAttributeMaps.replace(client, meta);
+        }
+    }
+
+    private static boolean isOutboundCaller(DcSpan span) {
+        return span != null
+                && ("SPAN_KIND_CLIENT".equals(span.type) || "SPAN_KIND_PRODUCER".equals(span.type));
+    }
+
+    /** 调用别人：src=自身，并标记 isOut；DB 出站额外填 dst。 */
+    private static void applyOutboundCallerSrc(DcSpan span) {
+        span.isOut = 1;
+        if (span.service != null && !span.service.isBlank()) {
+            span.srcService = span.service;
+            span.srcServiceId = span.serviceId;
+            span.srcServiceInstance = span.serviceInstance;
+        }
+        if (DcSpanUtil.isDbSpan(span)) {
+            String peer = DcSpanUtil.resolveDbPeer(span, OtelAttributeMaps.parse(span));
+            span.dstService = peer;
+            span.dstServiceId = ServiceKeyUtil.of(peer);
+            span.dstServiceInstance = "";
+            span.isIn = 1;
         }
     }
 

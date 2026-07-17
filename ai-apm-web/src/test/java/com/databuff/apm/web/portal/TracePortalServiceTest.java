@@ -496,6 +496,29 @@ class TracePortalServiceTest {
     }
 
     @Test
+    void traceDetailEntrySpanMapsClientPeerFromMeta() {
+        TraceQueryService traceQuery = mock(TraceQueryService.class);
+        long rootStartNs = 1_000_000_000_000_000_000L;
+        when(traceQuery.traceDetail(any())).thenReturn(List.of(
+                new SpanDetail(
+                        "t1", "s1", "0", "flagd", null, "EventStream", "2026-06-01 12:00:00",
+                        rootStartNs, 2_000_000L, 0, "flagd-host", "flagd-instance-1",
+                        "flagd.evaluation.v1.Service/EventStream", "SPAN_KIND_SERVER",
+                        1, 0,
+                        "{\"client.service\":\"fraud-detection\",\"client.ip\":\"fraud-inst-1\",\"rpc.system\":\"grpc\"}",
+                        null, null, null, null, null)));
+
+        TracePortalService service = new TracePortalService(
+                traceQuery, mock(ServiceFlowService.class), mock(ApmReadRepository.class), TestStorageSupport.storage());
+        Map<String, Object> resp = service.traceSpans(Map.of("traceId", "t1", "size", 100));
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> spans = (List<Map<String, Object>>) resp.get("data");
+        assertThat(spans.get(0).get("clientService")).isEqualTo("fraud-detection");
+        assertThat(spans.get(0).get("clientServiceInstance")).isEqualTo("fraud-inst-1");
+    }
+
+    @Test
     void traceDetailSpansResolveComponentServiceTypes() {
         TraceQueryService traceQuery = mock(TraceQueryService.class);
         long rootStartNs = 1_000_000_000_000_000_000L;

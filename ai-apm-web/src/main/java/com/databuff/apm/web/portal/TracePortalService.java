@@ -1186,6 +1186,9 @@ public class TracePortalService {
         row.put("isIn", span.isIn());
         row.put("isOut", span.isOut());
         row.put("hasInner", false);
+        // Entry-span UI reads clientService / clientServiceInstance (not meta keys).
+        row.put("clientService", OtelAttributeMaps.firstNonBlank(meta, "client.service"));
+        row.put("clientServiceInstance", OtelAttributeMaps.firstNonBlank(meta, "client.ip"));
         row.put("meta", meta);
         row.put("metrics", metrics);
         row.put("_start", String.valueOf(startMs));

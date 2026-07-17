@@ -135,8 +135,8 @@ export default class SpanDetailBaseinfo extends Vue {
 
     if (isIn === 1) {
       info.list.push(
-        { key: 'clientService', label: i18n.t('modules.views.appMonitor.traceDetail.s_35a59e33') as string, labelKey: 'modules.views.appMonitor.traceDetail.s_35a59e33', value: spanInfo.clientService },
-        { key: 'clientServiceInstance', label: i18n.t('modules.views.appMonitor.serviceCallDetail.s_d706f6d9') as string, labelKey: 'modules.views.appMonitor.serviceCallDetail.s_d706f6d9', value: spanInfo.clientServiceInstance },
+        { key: 'clientService', label: i18n.t('modules.views.appMonitor.traceDetail.s_35a59e33') as string, labelKey: 'modules.views.appMonitor.traceDetail.s_35a59e33', value: spanInfo.clientService || meta['client.service'] },
+        { key: 'clientServiceInstance', label: i18n.t('modules.views.appMonitor.serviceCallDetail.s_d706f6d9') as string, labelKey: 'modules.views.appMonitor.serviceCallDetail.s_d706f6d9', value: spanInfo.clientServiceInstance || meta['client.ip'] },
       );
     } else if (isOut === 1) {
       info.list.push(
@@ -187,6 +187,8 @@ export default class SpanDetailBaseinfo extends Vue {
       'agent.source',
       'server.service',
       'server.ip',
+      'client.service',
+      'client.ip',
       'thread.name',
       'requestHeader',
       'responseHeader',
