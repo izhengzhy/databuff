@@ -66,6 +66,11 @@ apm:
     workspace-dir: ${APM_DATA_DIR:./data}/ai-workspaces
     workspace-shell-commands: cat,head,tail,grep,wc,ls,file,python3
     workspace-shell-timeout-seconds: 60
+    # 在内置危险命令 denylist 之外追加拦截。逗号分隔，两种写法：
+    #   1) 直接写命令名 → 整词拦截该命令（任何形态），如 nc、tcpdump
+    #   2) 以 re: 开头 → 按正则匹配，用于只禁某种形态不禁整条命令，如 re:\bchmod\s+777\b
+    # 示例: nc,tcpdump,re:\bchmod\s+777\b,re:\bkill\s+-9\s+-1\b
+    shell-command-denylist: ${APM_AGENT_SHELL_DENYLIST:}
     max-iters: ${APM_AGENT_MAX_ITERS:1000}
     llm-http-timeout-seconds: ${APM_AGENT_LLM_HTTP_TIMEOUT_SECONDS:300}
     expert-round-timeout-seconds: ${APM_AGENT_EXPERT_ROUND_TIMEOUT_SECONDS:1200}

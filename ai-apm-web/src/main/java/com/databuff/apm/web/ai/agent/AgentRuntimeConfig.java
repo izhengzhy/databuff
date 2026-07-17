@@ -46,6 +46,12 @@ public class AgentRuntimeConfig {
     private String workspaceDir = "./data/ai-workspaces";
     private String workspaceShellCommands = "cat,head,tail,grep,wc,ls,file,python3";
     private int workspaceShellTimeoutSeconds = 60;
+    /**
+     * Extra command names to block in addition to the built-in dangerous-command denylist.
+     * Comma-separated plain names, e.g. {@code nc,tcpdump,iftop}. Matched as whole command
+     * tokens (case-insensitive), so {@code rm} blocks {@code rm -rf /tmp} but not {@code echo warm}.
+     */
+    private String shellCommandDenylist = "";
     /** Max ReAct reasoning-tool loop iterations per expert turn. */
     private int maxIters = 1000;
     /** Per-request LLM HTTP timeout (OpenAI-compatible and AgentScope model calls). */
@@ -184,6 +190,19 @@ public class AgentRuntimeConfig {
 
     public void setWorkspaceShellTimeoutSeconds(int workspaceShellTimeoutSeconds) {
         this.workspaceShellTimeoutSeconds = workspaceShellTimeoutSeconds;
+    }
+
+    public String getShellCommandDenylist() {
+        return shellCommandDenylist;
+    }
+
+    public void setShellCommandDenylist(String shellCommandDenylist) {
+        this.shellCommandDenylist = shellCommandDenylist;
+    }
+
+    /** Build the shared {@link ShellCommandPolicy} from current config. */
+    public ShellCommandPolicy shellCommandPolicy() {
+        return new ShellCommandPolicy(ShellCommandPolicy.parseList(shellCommandDenylist));
     }
 
     public int getMaxIters() {

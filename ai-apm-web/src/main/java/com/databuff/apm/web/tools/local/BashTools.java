@@ -1,5 +1,7 @@
 package com.databuff.apm.web.tools.local;
 
+import com.databuff.apm.web.ai.agent.AgentRuntimeConfig;
+import com.databuff.apm.web.ai.agent.ShellCommandPolicy;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.agentscope.core.tool.Tool;
@@ -72,14 +74,17 @@ public class BashTools {
     private final BashSessionManager sessionManager;
     private final BashBackgroundTaskManager backgroundTaskManager;
     private final ObjectMapper objectMapper;
+    private final ShellCommandPolicy shellPolicy;
 
     public BashTools(
             BashSessionManager sessionManager,
             BashBackgroundTaskManager backgroundTaskManager,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            AgentRuntimeConfig agentRuntimeConfig) {
         this.sessionManager = sessionManager;
         this.backgroundTaskManager = backgroundTaskManager;
         this.objectMapper = objectMapper;
+        this.shellPolicy = agentRuntimeConfig.shellCommandPolicy();
     }
 
     @Tool(name = "Bash", converter = PlainTextToolResultConverter.class, description = TOOL_DESCRIPTION)
@@ -96,8 +101,9 @@ public class BashTools {
         if (command == null || command.isBlank()) {
             return formatError("command is required");
         }
-        if (containsForbiddenRm(command)) {
-            return formatError("Command rejected: rm is not allowed");
+        String denied = shellPolicy.check(command);
+        if (denied != null) {
+            return formatError("Command rejected: " + denied);
         }
         if (Boolean.TRUE.equals(runInBackground)) {
             return startBackground(normalizeCommand(command.trim()));
@@ -199,10 +205,6 @@ public class BashTools {
         } catch (JsonProcessingException e) {
             return "{\"ok\":false,\"message\":\"failed to serialize tool result\"}";
         }
-    }
-
-    static boolean containsForbiddenRm(String command) {
-        return command != null && command.contains("rm ");
     }
 
     private static String normalizeCommand(String command) {

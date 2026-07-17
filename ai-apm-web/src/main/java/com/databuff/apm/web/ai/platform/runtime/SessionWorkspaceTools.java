@@ -1,6 +1,7 @@
 package com.databuff.apm.web.ai.platform.runtime;
 
 import com.databuff.apm.web.ai.agent.AgentRuntimeConfig;
+import com.databuff.apm.web.ai.agent.ShellCommandPolicy;
 import io.agentscope.core.message.ImageBlock;
 import io.agentscope.core.message.TextBlock;
 import io.agentscope.core.message.ToolResultBlock;
@@ -29,6 +30,7 @@ public class SessionWorkspaceTools {
     private final SessionWorkspaceService workspaceService;
     private final Set<String> allowedShellCommands;
     private final int shellTimeoutSeconds;
+    private final ShellCommandPolicy shellPolicy;
 
     public SessionWorkspaceTools(
             SessionWorkspaceService workspaceService,
@@ -36,6 +38,7 @@ public class SessionWorkspaceTools {
         this.workspaceService = workspaceService;
         this.allowedShellCommands = agentRuntimeConfig.workspaceShellCommands();
         this.shellTimeoutSeconds = agentRuntimeConfig.getWorkspaceShellTimeoutSeconds();
+        this.shellPolicy = agentRuntimeConfig.shellCommandPolicy();
     }
 
     @Tool(description = "List files in the current chat session workspace (uploads, outputs) or skill resources (relativePath=resources/{skillId}/...)")
@@ -158,6 +161,10 @@ public class SessionWorkspaceTools {
         String rootCommand = normalized.split("\\s+", 2)[0];
         if (!allowedShellCommands.contains(rootCommand)) {
             return "command is not allowed: " + rootCommand;
+        }
+        String denied = shellPolicy.check(normalized);
+        if (denied != null) {
+            return "command is not allowed: " + denied;
         }
         int timeout = timeoutSeconds == null || timeoutSeconds <= 0
                 ? shellTimeoutSeconds
