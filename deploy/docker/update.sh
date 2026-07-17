@@ -23,8 +23,20 @@
 
 set -e
 
-ROOT="$(cd "$(dirname "$0")" && pwd)"
+# 自保护：拷贝自身到 temp 并 re-exec，使 apm_sync_deploy_bundle 覆盖磁盘上的
+# update.sh 时，bash 仍从 temp 副本读取，避免运行中覆盖导致解析错位。
+if [[ "${APM_UPDATE_REEXECED:-0}" != "1" ]]; then
+  _orig_dir="$(cd "$(dirname "$0")" && pwd)"
+  _runner="$(mktemp "${TMPDIR:-/tmp}/apm-update-runner.XXXXXX.sh")"
+  cp -f "${_orig_dir}/update.sh" "$_runner"
+  chmod +x "$_runner"
+  APM_UPDATE_REEXECED=1 APM_UPDATE_ORIG_DIR="$_orig_dir" exec "$_runner" "$@"
+fi
+
+# re-exec 后 $0 是 temp 副本，从保存的原始目录恢复 ROOT
+ROOT="${APM_UPDATE_ORIG_DIR}"
 INSTALL_DIR="${APM_INSTALL_DIR:-$ROOT}"
+trap 'rm -f "$0"' EXIT
 
 PKG_BASE="${APM_PKG_BASE:-}"
 if [[ -f "${ROOT}/env.sh" ]]; then
