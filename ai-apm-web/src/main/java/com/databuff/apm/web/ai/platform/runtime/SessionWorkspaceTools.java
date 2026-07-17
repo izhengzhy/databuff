@@ -76,7 +76,7 @@ public class SessionWorkspaceTools {
         }
     }
 
-    @Tool(description = "Read a text or image file from the current chat session workspace or skill resources (e.g. resources/skill.summary.html/templates/README.md)")
+    @Tool(description = "Read a text or image file from the current chat session workspace or skill resources (e.g. resources/skill.summary.html/templates/inspection-report.html)")
     public ToolResultBlock readWorkspaceFile(
             @ToolParam(name = "filePath", description = "Relative file path, e.g. uploads/report.csv or resources/skill.summary.html/templates/summary-brief.html")
             String filePath,

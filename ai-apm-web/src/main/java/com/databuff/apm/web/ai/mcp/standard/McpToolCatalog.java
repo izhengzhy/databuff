@@ -102,7 +102,7 @@ public class McpToolCatalog {
                                 "size", integerProp("Page size, max 200")),
                         List.of("spanId"))),
                 tool("inspectService",
-                        "Run threshold-free preliminary anomaly inspection for one service",
+                        "Inspect one service: entry metrics, ERROR/WARN/keyword logs, alarms, dependencies, error traces, instances; web also checks exception/JVM/CPU/memory",
                         schema(Map.of("serviceName", stringProp("Service name to inspect")),
                         List.of("serviceName"))));
     }

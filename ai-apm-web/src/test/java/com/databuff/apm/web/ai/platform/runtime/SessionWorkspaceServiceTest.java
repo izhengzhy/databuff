@@ -127,7 +127,7 @@ class SessionWorkspaceServiceTest {
         Path skillDir = skillsDir.resolve("skill.summary.html");
         Files.createDirectories(skillDir.resolve("templates"));
         Files.writeString(skillDir.resolve("SKILL.md"), "---\nname: skill.summary.html\n---\nbody");
-        Files.writeString(skillDir.resolve("templates/README.md"), "# templates");
+        Files.writeString(skillDir.resolve("templates/summary-brief.html"), "<html>brief</html>");
 
         AgentRuntimeConfig config = new AgentRuntimeConfig();
         config.setWorkspaceDir(tempDir.toString());
@@ -135,10 +135,10 @@ class SessionWorkspaceServiceTest {
         config.setCustomSkillsDir(tempDir.resolve("custom-skills").toString());
         SessionWorkspaceService resourceService = new SessionWorkspaceService(config);
 
-        Path readme = resourceService.resolveRelativePath(
+        Path template = resourceService.resolveRelativePath(
                 "session-test-006",
-                "resources/skill.summary.html/templates/README.md");
-        assertThat(Files.readString(readme)).contains("# templates");
+                "resources/skill.summary.html/templates/summary-brief.html");
+        assertThat(Files.readString(template)).contains("<html>brief</html>");
         assertThat(resourceService.isResourcesPath("resources/skill.summary.html/templates")).isTrue();
         assertThatThrownBy(() -> resourceService.resolveOutputWritePath(
                 "resources/skill.summary.html/templates/x.html"))

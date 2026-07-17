@@ -3,8 +3,14 @@ package com.databuff.apm.web.tools.local;
 import com.databuff.apm.common.time.ApmTimeZones;
 import com.databuff.apm.common.storage.ApmReadRepository;
 import com.databuff.apm.common.storage.MetricQueryBuilder;
+import com.databuff.apm.common.util.PortalServiceIdResolver;
 import com.databuff.apm.web.config.ApmStorageProperties;
+import com.databuff.apm.web.monitor.Alarm;
+import com.databuff.apm.web.monitor.AlarmStore;
+import com.databuff.apm.web.monitor.service.AlarmService;
+import com.databuff.apm.web.portal.LogPortalService;
 import com.databuff.apm.web.portal.ServicePortalService;
+import com.databuff.apm.web.portal.TracePortalService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.agentscope.core.tool.Tool;
@@ -18,14 +24,34 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 @Component
 @Lazy
 public class InspectTools {
 
+    private static final int ALARM_SAMPLE_SIZE = 10;
+    private static final int LOG_SAMPLE_SIZE = 5;
+    private static final int TRACE_SAMPLE_SIZE = 8;
+    private static final int DEPENDENCY_SAMPLE_SIZE = 8;
+    private static final double DEPENDENCY_ERR_RATE_THRESHOLD = 0.05;
+    private static final Set<String> ERROR_SEVERITIES = Set.of("ERROR", "FATAL", "error", "fatal");
+    private static final Set<String> WARN_SEVERITIES = Set.of("WARN", "WARNING", "warn", "warning");
+    private static final List<String> LOG_KEYWORDS = List.of(
+            "OutOfMemory", "OOM", "timeout", "Timed out", "Connection refused", "Deadlock", "NullPointerException");
+
     @Autowired
     private ServicePortalService servicePortalService;
+    @Autowired
+    private LogPortalService logPortalService;
+    @Autowired
+    private TracePortalService tracePortalService;
+    @Autowired
+    private AlarmService alarmService;
+    @Autowired
+    private AlarmStore alarmStore;
     @Autowired
     private ApmReadRepository readRepository;
     @Autowired
@@ -39,7 +65,7 @@ public class InspectTools {
         metricDatabase = storageProperties == null ? "databuff" : storageProperties.metricDatabase();
     }
 
-    @Tool(converter = PlainTextToolResultConverter.class, description = "Inspect one service by serviceName. No time range input is required. It queries entry service metrics, runs threshold-free anomaly detection, and for web services also checks exception and JVM GC signals.")
+    @Tool(converter = PlainTextToolResultConverter.class, description = "Inspect one service by serviceName. No time range input is required. Covers entry metrics, ERROR/WARN logs, keyword logs, alarms, dependencies, error traces, instances; web services also check exception, JVM GC, CPU and memory.")
     public String inspectService(
             @ToolParam(name = "serviceName", description = "Service name to inspect")
             String serviceName) {
@@ -47,11 +73,15 @@ public class InspectTools {
             return json(Map.of("ok", false, "message", "serviceName is required"));
         }
         String service = serviceName.trim();
-        String from = ApmTimeZones.WALL_CLOCK.format(Instant.ofEpochMilli(System.currentTimeMillis() - 3_600_000L));
-        String to = ApmTimeZones.WALL_CLOCK.format(Instant.now());
+        long nowMillis = System.currentTimeMillis();
+        String from = ApmTimeZones.WALL_CLOCK.format(Instant.ofEpochMilli(nowMillis - 3_600_000L));
+        String to = ApmTimeZones.WALL_CLOCK.format(Instant.ofEpochMilli(nowMillis));
+        String prevFrom = ApmTimeZones.WALL_CLOCK.format(Instant.ofEpochMilli(nowMillis - 7_200_000L));
+        String prevTo = from;
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("serviceId", service);
+        body.put("serviceName", service);
         body.put("fromTime", from);
         body.put("toTime", to);
         body.put("interval", 60);
@@ -66,10 +96,17 @@ public class InspectTools {
         result.put("fromTime", from);
         result.put("toTime", to);
         result.put("entryMetrics", inspectEntryMetrics(body));
+        result.put("logMetrics", inspectLogMetrics(service, from, to));
+        result.put("logKeywordMetrics", inspectLogKeywords(service, from, to));
+        result.put("alarmMetrics", inspectAlarmMetrics(service, serviceInfo, from, to));
+        result.put("dependencyMetrics", inspectDependencyMetrics(service, from, to));
+        result.put("traceMetrics", inspectErrorTraces(service, from, to));
+        result.put("instanceMetrics", inspectInstanceMetrics(service, from, to, prevFrom, prevTo));
 
         if (isWebService(serviceType, serviceInfo)) {
             result.put("exceptionMetrics", inspectExceptionMetrics(body));
             result.put("jvmMetrics", inspectJvmMetrics(service, from, to));
+            result.put("resourceMetrics", inspectResourceMetrics(service, from, to));
         }
         result.put("summary", summarize(result));
         return json(result);
@@ -116,6 +153,175 @@ public class InspectTools {
                 "detection", detectAnomaly(values));
     }
 
+    private Map<String, Object> inspectLogMetrics(String serviceName, String fromTime, String toTime) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("errorLogs", inspectLogSeverityTrend(
+                serviceName, fromTime, toTime, ERROR_SEVERITIES, "ERROR 日志量"));
+        result.put("warnLogs", inspectLogSeverityTrend(
+                serviceName, fromTime, toTime, WARN_SEVERITIES, "WARN 日志量"));
+        result.put("errorSamples", sampleErrorLogs(serviceName, fromTime, toTime));
+        return result;
+    }
+
+    private Map<String, Object> inspectLogSeverityTrend(
+            String serviceName,
+            String fromTime,
+            String toTime,
+            Set<String> severities,
+            String label) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("label", label);
+        if (logPortalService == null) {
+            result.put("data", Map.of());
+            result.put("detection", detectAnomaly(List.of()));
+            result.put("error", "logPortalService is not ready");
+            return result;
+        }
+        try {
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("fromTime", fromTime);
+            body.put("toTime", toTime);
+            body.put("services", List.of(serviceName));
+            body.put("interval", 60);
+            Map<String, Object> response = logPortalService.trend(body);
+            Object dataNode = response == null ? null : response.get("data");
+            Map<?, ?> data = dataNode instanceof Map<?, ?> map ? map : Map.of();
+            List<Double> values = extractSeveritySeries(data.get("severityCnts"), severities);
+            result.put("data", Map.of(
+                    "severityCnts", data.get("severityCnts") == null ? Map.of() : data.get("severityCnts"),
+                    "total", values.stream().mapToDouble(Double::doubleValue).sum()));
+            result.put("detection", detectAnomaly(values));
+            return result;
+        } catch (Exception e) {
+            result.put("data", Map.of());
+            result.put("detection", detectAnomaly(List.of()));
+            result.put("error", e.getMessage() == null ? "log trend query failed" : e.getMessage());
+            return result;
+        }
+    }
+
+    private List<Map<String, Object>> sampleErrorLogs(String serviceName, String fromTime, String toTime) {
+        if (logPortalService == null) {
+            return List.of();
+        }
+        try {
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("fromTime", fromTime);
+            body.put("toTime", toTime);
+            body.put("services", List.of(serviceName));
+            body.put("severities", List.of("ERROR", "FATAL"));
+            body.put("offset", 0);
+            body.put("size", LOG_SAMPLE_SIZE);
+            Map<String, Object> response = logPortalService.search(body);
+            Object data = response == null ? null : response.get("data");
+            if (!(data instanceof List<?> rows)) {
+                return List.of();
+            }
+            List<Map<String, Object>> samples = new ArrayList<>();
+            for (Object row : rows) {
+                if (!(row instanceof Map<?, ?> map)) {
+                    continue;
+                }
+                Map<String, Object> sample = new LinkedHashMap<>();
+                sample.put("timestamp", map.get("timestamp"));
+                sample.put("severity", map.get("severity"));
+                sample.put("message", map.get("message") != null ? map.get("message") : map.get("body"));
+                sample.put("traceId", map.get("traceId"));
+                samples.add(sample);
+                if (samples.size() >= LOG_SAMPLE_SIZE) {
+                    break;
+                }
+            }
+            return samples;
+        } catch (Exception ignored) {
+            return List.of();
+        }
+    }
+
+    private Map<String, Object> inspectAlarmMetrics(
+            String serviceName,
+            Map<String, Object> serviceInfo,
+            String fromTime,
+            String toTime) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("label", "服务告警");
+        List<String> aliases = serviceAliases(serviceName, serviceInfo);
+        long recentTotal = 0L;
+        List<Map<String, Object>> samples = new ArrayList<>();
+        if (alarmService != null) {
+            try {
+                Map<String, Object> body = new LinkedHashMap<>();
+                body.put("serviceId", serviceName);
+                body.put("fromTime", fromTime);
+                body.put("toTime", toTime);
+                body.put("offset", 0);
+                body.put("size", ALARM_SAMPLE_SIZE);
+                body.put("pageSize", ALARM_SAMPLE_SIZE);
+                body.put("pageNum", 1);
+                Map<String, Object> response = alarmService.list(body);
+                Object dataNode = response == null ? null : response.get("data");
+                if (dataNode instanceof Map<?, ?> data) {
+                    recentTotal = (long) numberValue(data.get("total"));
+                    Object list = data.get("list");
+                    if (list instanceof Iterable<?> rows) {
+                        for (Object row : rows) {
+                            if (!(row instanceof Map<?, ?> map)) {
+                                continue;
+                            }
+                            Map<String, Object> sample = new LinkedHashMap<>();
+                            sample.put("id", map.get("id"));
+                            sample.put("description", map.get("description"));
+                            sample.put("level", map.get("level"));
+                            sample.put("ruleName", map.get("ruleName"));
+                            sample.put("startTriggerTime", map.get("startTriggerTime"));
+                            samples.add(sample);
+                            if (samples.size() >= ALARM_SAMPLE_SIZE) {
+                                break;
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                result.put("error", e.getMessage() == null ? "alarm query failed" : e.getMessage());
+            }
+        }
+        long openCount = 0L;
+        List<Map<String, Object>> openSamples = new ArrayList<>();
+        if (alarmStore != null) {
+            for (Alarm alarm : alarmStore.listOpen()) {
+                if (!matchesAnyAlias(alarm.service(), aliases)) {
+                    continue;
+                }
+                openCount++;
+                if (openSamples.size() < ALARM_SAMPLE_SIZE) {
+                    Map<String, Object> sample = new LinkedHashMap<>();
+                    sample.put("id", alarm.id());
+                    sample.put("description", alarm.message());
+                    sample.put("level", alarm.level());
+                    sample.put("status", alarm.status());
+                    sample.put("triggeredAt", alarm.triggeredAt() == null ? null : alarm.triggeredAt().toEpochMilli());
+                    openSamples.add(sample);
+                }
+            }
+        }
+        result.put("recentTotal", recentTotal);
+        result.put("openCount", openCount);
+        result.put("recentSamples", samples);
+        result.put("openSamples", openSamples);
+        boolean anomaly = openCount > 0 || recentTotal > 0;
+        Map<String, Object> detection = new LinkedHashMap<>();
+        detection.put("anomaly", anomaly);
+        detection.put("openCount", openCount);
+        detection.put("recentTotal", recentTotal);
+        detection.put("reason", anomaly
+                ? (openCount > 0
+                ? "存在未恢复告警 " + openCount + " 条"
+                : "近1小时内触发告警 " + recentTotal + " 条")
+                : "未发现告警");
+        result.put("detection", detection);
+        return result;
+    }
+
     private Map<String, Object> inspectJvmMetrics(String serviceName, String fromTime, String toTime) {
         Map<String, Object> result = new LinkedHashMap<>();
         if (readRepository == null) {
@@ -132,6 +338,329 @@ public class InspectTools {
         result.put("threadCount", inspectJvmSqlMetric(
                 serviceName, fromMillis, toMillis, "metric_jvm", "thread_count", "JVM 线程数"));
         return result;
+    }
+
+    private Map<String, Object> inspectResourceMetrics(String serviceName, String fromTime, String toTime) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        if (readRepository == null) {
+            result.put("available", false);
+            result.put("message", "readRepository is not ready");
+            return result;
+        }
+        long fromMillis = ApmTimeZones.wallClockToEpochMilli(fromTime);
+        long toMillis = ApmTimeZones.wallClockToEpochMilli(toTime);
+        result.put("cpuUsage", inspectJvmSqlMetric(
+                serviceName, fromMillis, toMillis, "metric_service_cpu", "usage_pct", "服务 CPU 使用率"));
+        result.put("memUsage", inspectJvmSqlMetric(
+                serviceName, fromMillis, toMillis, "metric_service_mem", "usage_pct", "服务内存使用率"));
+        return result;
+    }
+
+    private Map<String, Object> inspectLogKeywords(String serviceName, String fromTime, String toTime) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("label", "日志关键词");
+        List<Map<String, Object>> hits = new ArrayList<>();
+        List<Map<String, Object>> samples = new ArrayList<>();
+        long totalHits = 0L;
+        if (logPortalService != null) {
+            for (String keyword : LOG_KEYWORDS) {
+                try {
+                    Map<String, Object> body = new LinkedHashMap<>();
+                    body.put("fromTime", fromTime);
+                    body.put("toTime", toTime);
+                    body.put("services", List.of(serviceName));
+                    body.put("query", keyword);
+                    body.put("offset", 0);
+                    body.put("size", 3);
+                    Map<String, Object> response = logPortalService.search(body);
+                    long total = response == null ? 0L : (long) numberValue(response.get("total"));
+                    if (total <= 0) {
+                        continue;
+                    }
+                    totalHits += total;
+                    Map<String, Object> hit = new LinkedHashMap<>();
+                    hit.put("keyword", keyword);
+                    hit.put("total", total);
+                    hits.add(hit);
+                    Object data = response.get("data");
+                    if (data instanceof List<?> rows) {
+                        for (Object row : rows) {
+                            if (!(row instanceof Map<?, ?> map) || samples.size() >= LOG_SAMPLE_SIZE) {
+                                continue;
+                            }
+                            Map<String, Object> sample = new LinkedHashMap<>();
+                            sample.put("keyword", keyword);
+                            sample.put("timestamp", map.get("timestamp"));
+                            sample.put("severity", map.get("severity"));
+                            sample.put("message", map.get("message") != null ? map.get("message") : map.get("body"));
+                            sample.put("traceId", map.get("traceId"));
+                            samples.add(sample);
+                        }
+                    }
+                } catch (Exception ignored) {
+                    // keep scanning other keywords
+                }
+            }
+        }
+        result.put("hits", hits);
+        result.put("totalHits", totalHits);
+        result.put("samples", samples);
+        Map<String, Object> detection = new LinkedHashMap<>();
+        detection.put("anomaly", totalHits > 0);
+        detection.put("totalHits", totalHits);
+        detection.put("reason", totalHits > 0
+                ? "命中异常关键词日志 " + totalHits + " 条"
+                : "未命中 OOM/timeout 等关键词");
+        result.put("detection", detection);
+        return result;
+    }
+
+    private Map<String, Object> inspectDependencyMetrics(String serviceName, String fromTime, String toTime) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("label", "上下游依赖");
+        List<Map<String, Object>> suspicious = new ArrayList<>();
+        List<Map<String, Object>> downstream = new ArrayList<>();
+        List<Map<String, Object>> upstream = new ArrayList<>();
+        try {
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("serviceId", serviceName);
+            body.put("serviceName", serviceName);
+            body.put("fromTime", fromTime);
+            body.put("toTime", toTime);
+            Map<String, Object> topology = servicePortalService.getServiceInstanceRelations(body);
+            Map<String, String> nameById = peerNameIndex(topology == null ? null : topology.get("serviceId2Name"));
+            downstream = summarizePeers(topology == null ? null : topology.get("downflowServiceStats"), nameById, "downstream");
+            upstream = summarizePeers(topology == null ? null : topology.get("upflowServiceStats"), nameById, "upstream");
+            for (Map<String, Object> peer : downstream) {
+                if (Boolean.TRUE.equals(peer.get("suspicious"))) {
+                    suspicious.add(peer);
+                }
+            }
+            for (Map<String, Object> peer : upstream) {
+                if (Boolean.TRUE.equals(peer.get("suspicious")) && suspicious.size() < DEPENDENCY_SAMPLE_SIZE) {
+                    suspicious.add(peer);
+                }
+            }
+        } catch (Exception e) {
+            result.put("error", e.getMessage() == null ? "dependency query failed" : e.getMessage());
+        }
+        result.put("downstream", downstream.stream().limit(DEPENDENCY_SAMPLE_SIZE).toList());
+        result.put("upstream", upstream.stream().limit(DEPENDENCY_SAMPLE_SIZE).toList());
+        result.put("suspicious", suspicious.stream().limit(DEPENDENCY_SAMPLE_SIZE).toList());
+        Map<String, Object> detection = new LinkedHashMap<>();
+        detection.put("anomaly", !suspicious.isEmpty());
+        detection.put("suspiciousCount", suspicious.size());
+        detection.put("reason", suspicious.isEmpty()
+                ? "上下游依赖未发现明显错误放大"
+                : "发现可疑依赖 " + suspicious.size() + " 个（错误率偏高）");
+        result.put("detection", detection);
+        return result;
+    }
+
+    private Map<String, Object> inspectErrorTraces(String serviceName, String fromTime, String toTime) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("label", "失败 Trace");
+        long total = 0L;
+        List<Map<String, Object>> samples = new ArrayList<>();
+        if (tracePortalService != null) {
+            try {
+                Map<String, Object> body = new LinkedHashMap<>();
+                body.put("serviceId", serviceName);
+                body.put("serviceName", serviceName);
+                body.put("fromTime", fromTime);
+                body.put("toTime", toTime);
+                body.put("offset", 0);
+                body.put("size", TRACE_SAMPLE_SIZE);
+                body.put("error", 1);
+                Map<String, Object> response = tracePortalService.errorSpanList(body);
+                Object dataNode = response == null ? null : response.get("data");
+                if (dataNode instanceof Map<?, ?> data) {
+                    total = (long) numberValue(data.get("total"));
+                    Object list = data.get("list");
+                    if (list instanceof Iterable<?> rows) {
+                        for (Object row : rows) {
+                            if (!(row instanceof Map<?, ?> map)) {
+                                continue;
+                            }
+                            Map<String, Object> sample = new LinkedHashMap<>();
+                            sample.put("traceId", map.get("traceId"));
+                            sample.put("spanId", map.get("spanId"));
+                            sample.put("resource", firstNonBlank(
+                                    stringValue(map.get("resource"), ""),
+                                    stringValue(map.get("operationName"), "")));
+                            sample.put("errorType", map.get("errorType"));
+                            sample.put("startTime", map.get("startTime"));
+                            sample.put("duration", map.get("duration"));
+                            samples.add(sample);
+                            if (samples.size() >= TRACE_SAMPLE_SIZE) {
+                                break;
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                result.put("error", e.getMessage() == null ? "error trace query failed" : e.getMessage());
+            }
+        }
+        result.put("total", total);
+        result.put("samples", samples);
+        Map<String, Object> detection = new LinkedHashMap<>();
+        detection.put("anomaly", total > 0);
+        detection.put("total", total);
+        detection.put("reason", total > 0
+                ? "近1小时失败 Trace " + total + " 条"
+                : "未发现失败 Trace");
+        result.put("detection", detection);
+        return result;
+    }
+
+    private Map<String, Object> inspectInstanceMetrics(
+            String serviceName,
+            String fromTime,
+            String toTime,
+            String prevFrom,
+            String prevTo) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("label", "服务实例");
+        List<Map<String, Object>> current = listInstances(serviceName, fromTime, toTime);
+        List<Map<String, Object>> previous = listInstances(serviceName, prevFrom, prevTo);
+        int currentCount = current.size();
+        int previousCount = previous.size();
+        Set<String> previousIds = new java.util.HashSet<>();
+        for (Map<String, Object> row : previous) {
+            previousIds.add(stringValue(row.get("serviceInstance"), ""));
+        }
+        List<String> disappeared = new ArrayList<>();
+        Set<String> currentIds = new java.util.HashSet<>();
+        for (Map<String, Object> row : current) {
+            String id = stringValue(row.get("serviceInstance"), "");
+            currentIds.add(id);
+        }
+        for (String id : previousIds) {
+            if (!id.isBlank() && !currentIds.contains(id)) {
+                disappeared.add(id);
+            }
+        }
+        boolean dropped = previousCount >= 2 && currentCount * 2 < previousCount;
+        boolean vanished = previousCount > 0 && currentCount == 0;
+        boolean anomaly = vanished || dropped || !disappeared.isEmpty();
+        result.put("currentCount", currentCount);
+        result.put("previousCount", previousCount);
+        result.put("instances", current.stream().limit(20).toList());
+        result.put("disappeared", disappeared.stream().limit(20).toList());
+        Map<String, Object> detection = new LinkedHashMap<>();
+        detection.put("anomaly", anomaly);
+        detection.put("currentCount", currentCount);
+        detection.put("previousCount", previousCount);
+        detection.put("disappearedCount", disappeared.size());
+        String reason;
+        if (vanished) {
+            reason = "当前窗口无活跃实例，上一窗口有 " + previousCount + " 个";
+        } else if (dropped) {
+            reason = "实例数明显下降：" + previousCount + " → " + currentCount;
+        } else if (!disappeared.isEmpty()) {
+            reason = "有实例消失：" + disappeared.size() + " 个";
+        } else {
+            reason = "实例数稳定（当前 " + currentCount + "）";
+        }
+        detection.put("reason", reason);
+        result.put("detection", detection);
+        return result;
+    }
+
+    private List<Map<String, Object>> listInstances(String serviceName, String fromTime, String toTime) {
+        if (servicePortalService == null) {
+            return List.of();
+        }
+        try {
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("serviceId", serviceName);
+            body.put("serviceName", serviceName);
+            body.put("fromTime", fromTime);
+            body.put("toTime", toTime);
+            List<Map<String, Object>> rows = servicePortalService.getServiceInstance(body);
+            if (rows == null) {
+                return List.of();
+            }
+            List<Map<String, Object>> compact = new ArrayList<>();
+            for (Map<String, Object> row : rows) {
+                Map<String, Object> item = new LinkedHashMap<>();
+                item.put("serviceInstance", row.get("serviceInstance"));
+                item.put("hostName", row.get("hostName"));
+                item.put("hostIp", row.get("hostIp"));
+                item.put("serviceCall", row.get("serviceCall"));
+                compact.add(item);
+            }
+            return compact;
+        } catch (Exception ignored) {
+            return List.of();
+        }
+    }
+
+    private static Map<String, String> peerNameIndex(Object serviceId2Name) {
+        Map<String, String> names = new LinkedHashMap<>();
+        if (!(serviceId2Name instanceof Iterable<?> rows)) {
+            return names;
+        }
+        for (Object row : rows) {
+            if (!(row instanceof Map<?, ?> map)) {
+                continue;
+            }
+            String id = stringValue(map.get("serviceId"), "");
+            String name = firstNonBlank(stringValue(map.get("name"), ""), stringValue(map.get("service"), ""));
+            if (!id.isBlank() && !name.isBlank()) {
+                names.put(id, name);
+            }
+        }
+        return names;
+    }
+
+    private static List<Map<String, Object>> summarizePeers(
+            Object peers,
+            Map<String, String> nameById,
+            String direction) {
+        if (!(peers instanceof Iterable<?> rows)) {
+            return List.of();
+        }
+        List<Map<String, Object>> summarized = new ArrayList<>();
+        for (Object row : rows) {
+            if (!(row instanceof Map<?, ?> map)) {
+                continue;
+            }
+            long outCnt = (long) numberValueStatic(map.get("reqOutCnt"));
+            long outErr = (long) numberValueStatic(map.get("reqOutErrCnt"));
+            long inCnt = (long) numberValueStatic(map.get("reqInCnt"));
+            long inErr = (long) numberValueStatic(map.get("reqInErrCnt"));
+            long callCnt = Math.max(outCnt, inCnt);
+            long errCnt = Math.max(outErr, inErr);
+            if (callCnt <= 0 && errCnt <= 0) {
+                continue;
+            }
+            double errRate = callCnt > 0 ? (double) errCnt / callCnt : 0;
+            String serviceId = stringValue(map.get("serviceId"), "");
+            Map<String, Object> peer = new LinkedHashMap<>();
+            peer.put("direction", direction);
+            peer.put("serviceId", serviceId);
+            peer.put("service", nameById.getOrDefault(serviceId, serviceId));
+            peer.put("componentType", map.get("componentType"));
+            peer.put("callCnt", callCnt);
+            peer.put("errCnt", errCnt);
+            peer.put("errRate", errRate);
+            boolean suspicious = (callCnt >= 5 && errRate >= DEPENDENCY_ERR_RATE_THRESHOLD) || errCnt >= 20;
+            peer.put("suspicious", suspicious);
+            summarized.add(peer);
+        }
+        summarized.sort((left, right) -> Double.compare(
+                numberValueStatic(right.get("errRate")),
+                numberValueStatic(left.get("errRate"))));
+        return summarized;
+    }
+
+    private static String firstNonBlank(String first, String second) {
+        if (first != null && !first.isBlank()) {
+            return first;
+        }
+        return second == null ? "" : second;
     }
 
     private Map<String, Object> inspectJvmSqlMetric(
@@ -218,12 +747,88 @@ public class InspectTools {
     private static String summarize(Map<String, Object> result) {
         List<String> abnormal = new ArrayList<>();
         collectAbnormalLabels(result.get("entryMetrics"), abnormal);
+        collectAbnormalLabels(result.get("logMetrics"), abnormal);
+        collectAbnormalLabels(result.get("logKeywordMetrics"), abnormal);
+        collectAbnormalLabels(result.get("alarmMetrics"), abnormal);
+        collectAbnormalLabels(result.get("dependencyMetrics"), abnormal);
+        collectAbnormalLabels(result.get("traceMetrics"), abnormal);
+        collectAbnormalLabels(result.get("instanceMetrics"), abnormal);
         collectAbnormalLabels(result.get("exceptionMetrics"), abnormal);
         collectAbnormalLabels(result.get("jvmMetrics"), abnormal);
+        collectAbnormalLabels(result.get("resourceMetrics"), abnormal);
         if (abnormal.isEmpty()) {
             return "初步巡检未发现明显异常。";
         }
         return "初步巡检发现可疑异常：" + String.join("、", abnormal);
+    }
+
+    private static List<Double> extractSeveritySeries(Object severityCnts, Set<String> severities) {
+        if (!(severityCnts instanceof Map<?, ?> buckets) || buckets.isEmpty()) {
+            return List.of();
+        }
+        List<Map.Entry<?, ?>> ordered = new ArrayList<>(buckets.entrySet());
+        ordered.sort((left, right) -> String.valueOf(left.getKey()).compareTo(String.valueOf(right.getKey())));
+        List<Double> values = new ArrayList<>(ordered.size());
+        for (Map.Entry<?, ?> entry : ordered) {
+            double sum = 0;
+            if (entry.getValue() instanceof Map<?, ?> severityMap) {
+                for (Map.Entry<?, ?> severityEntry : severityMap.entrySet()) {
+                    if (matchesSeverity(String.valueOf(severityEntry.getKey()), severities)) {
+                        sum += numberValueStatic(severityEntry.getValue());
+                    }
+                }
+            }
+            values.add(sum);
+        }
+        return values;
+    }
+
+    private static boolean matchesSeverity(String severity, Set<String> targets) {
+        if (severity == null || severity.isBlank()) {
+            return false;
+        }
+        if (targets.contains(severity)) {
+            return true;
+        }
+        return targets.contains(severity.toUpperCase(Locale.ROOT))
+                || targets.contains(severity.toLowerCase(Locale.ROOT));
+    }
+
+    private static List<String> serviceAliases(String serviceName, Map<String, Object> serviceInfo) {
+        List<String> aliases = new ArrayList<>();
+        aliases.add(serviceName);
+        if (serviceInfo != null) {
+            for (String key : List.of("service", "name", "serviceId")) {
+                String value = stringValue(serviceInfo.get(key), "");
+                if (!value.isBlank() && aliases.stream().noneMatch(value::equals)) {
+                    aliases.add(value);
+                }
+            }
+        }
+        return aliases;
+    }
+
+    private static boolean matchesAnyAlias(String candidate, List<String> aliases) {
+        if (candidate == null || candidate.isBlank() || aliases == null) {
+            return false;
+        }
+        for (String alias : aliases) {
+            if (PortalServiceIdResolver.matches(alias, candidate)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static double numberValueStatic(Object value) {
+        if (value instanceof Number number) {
+            return number.doubleValue();
+        }
+        try {
+            return Double.parseDouble(String.valueOf(value));
+        } catch (Exception ignored) {
+            return 0;
+        }
     }
 
     private static void collectAbnormalLabels(Object node, List<String> labels) {

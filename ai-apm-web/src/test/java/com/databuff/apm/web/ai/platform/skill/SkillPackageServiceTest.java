@@ -110,9 +110,9 @@ class SkillPackageServiceTest {
                 .extracting(SkillPackageService.SkillFileEntry::path)
                 .contains(
                         "SKILL.md",
-                        "templates/README.md",
                         "templates/summary-brief.html",
-                        "templates/report-analysis.html");
+                        "templates/report-analysis.html",
+                        "templates/inspection-report.html");
     }
 
     private static byte[] buildZip(String skillMarkdown, String extraPath, String extraContent) throws Exception {
