@@ -354,7 +354,13 @@ public class CockpitPortalService {
         return count;
     }
 
-    /** Alarm active interval is half-open {@code [triggeredAt, resolvedAt or queryEnd)}. */
+    /**
+     * Alarm active interval is half-open {@code [triggeredAt, resolvedAt or queryEnd)}.
+     * One-shot alarms (resolved at the same instant they trigger, produced by
+     * {@code AlarmStore.openResolved}) have zero duration, so the half-open interval
+     * is empty and would never overlap any bucket; such alarms are counted in the
+     * minute bucket that contains {@code triggeredAt}.
+     */
     private static boolean alarmOverlapsMinute(
             Alarm alarm,
             long bucketStart,
@@ -364,7 +370,10 @@ public class CockpitPortalService {
         Instant alarmEnd = alarmEndExclusive(alarm, queryEnd);
         Instant bucketStartInstant = Instant.ofEpochMilli(bucketStart);
         Instant bucketEndInstant = Instant.ofEpochMilli(bucketEnd);
-        return alarmStart.isBefore(bucketEndInstant) && alarmEnd.isAfter(bucketStartInstant);
+        if (alarmEnd.isAfter(alarmStart)) {
+            return alarmStart.isBefore(bucketEndInstant) && alarmEnd.isAfter(bucketStartInstant);
+        }
+        return !alarmStart.isBefore(bucketStartInstant) && alarmStart.isBefore(bucketEndInstant);
     }
 
     private static boolean alarmOverlapsRange(Alarm alarm, long from, long to, Instant queryEnd) {
@@ -372,7 +381,10 @@ public class CockpitPortalService {
         Instant rangeEnd = Instant.ofEpochMilli(to);
         Instant alarmStart = alarm.triggeredAt();
         Instant alarmEnd = alarmEndExclusive(alarm, queryEnd);
-        return alarmStart.isBefore(rangeEnd) && alarmEnd.isAfter(rangeStart);
+        if (alarmEnd.isAfter(alarmStart)) {
+            return alarmStart.isBefore(rangeEnd) && alarmEnd.isAfter(rangeStart);
+        }
+        return !alarmStart.isBefore(rangeStart) && alarmStart.isBefore(rangeEnd);
     }
 
     private static Instant alarmEndExclusive(Alarm alarm, Instant queryEnd) {

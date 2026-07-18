@@ -291,4 +291,68 @@ class CockpitPortalServiceTest {
         assertThat(data.get("total")).isEqualTo(1);
         assertThat(data.get("healthRangeScoreList")).isInstanceOf(List.class);
     }
+
+    @Test
+    void servicesHealthCountsOneShotAlarmsInTriggeredMinute() {
+        String serviceId = PortalServiceIdResolver.normalize("checkout");
+        when(servicePortalService.basicServices(any())).thenReturn(List.of(
+                Map.of("id", serviceId, "name", "checkout", "service", "checkout")));
+
+        TrafficLightService spyTrafficLight = mock(TrafficLightService.class);
+        when(spyTrafficLight.getConfig()).thenReturn(Map.of("alarmRed", 1, "alarmYellow", 1, "showServiceNumber", 20));
+        CockpitPortalService service = new CockpitPortalService(
+                spyTrafficLight, servicePortalService, alarmStore);
+
+        long minuteOne = ApmTimeZones.wallClockToEpochMilli("2026-06-09 14:53:00");
+        long minuteTwo = minuteOne + 60_000L;
+        long minuteThree = minuteTwo + 60_000L;
+        // One-shot alarm (resolvedAt == triggeredAt), as produced by AlarmStore.openResolved.
+        Instant triggered = Instant.ofEpochMilli(minuteOne + 10_000L);
+        alarmStore.persistExisting(new Alarm(
+                "A1", 2L, "checkout", EventRule.WAY_THRESHOLD, "critical", "alarm",
+                Alarm.STATUS_RESOLVED, triggered, triggered));
+
+        List<Map<String, Object>> rows = service.servicesHealth(Map.of(
+                "fromTime", minuteOne,
+                "toTime", minuteThree + 60_000L,
+                "orderBy", "alarm"));
+
+        assertThat(rows).hasSize(3);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> firstOrders = (List<Map<String, Object>>) rows.get(0).get("serviceOrders");
+        assertThat(firstOrders).hasSize(1);
+        assertThat(firstOrders.get(0).get("name")).isEqualTo("checkout");
+        assertThat(firstOrders.get(0).get("value")).isEqualTo(1L);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> laterOrders = (List<Map<String, Object>>) rows.get(1).get("serviceOrders");
+        assertThat(laterOrders.get(0).get("value")).isEqualTo(0L);
+    }
+
+    @Test
+    void countServiceAlarmsTotalCountsOneShotAlarmsInDisplayWindow() {
+        String serviceId = PortalServiceIdResolver.normalize("checkout");
+        when(servicePortalService.basicServices(any())).thenReturn(List.of(
+                Map.of("id", serviceId, "name", "checkout", "service", "checkout")));
+
+        TrafficLightService spyTrafficLight = mock(TrafficLightService.class);
+        when(spyTrafficLight.getConfig()).thenReturn(Map.of(
+                "alarmRed", 1, "alarmYellow", 1, "showServiceNumber", 20));
+        CockpitPortalService service = new CockpitPortalService(
+                spyTrafficLight, servicePortalService, alarmStore);
+
+        long minuteOne = ApmTimeZones.wallClockToEpochMilli("2026-06-09 14:53:00");
+        long minuteTwo = minuteOne + 60_000L;
+        long windowEnd = minuteTwo;
+        Instant triggered = Instant.ofEpochMilli(minuteOne + 10_000L);
+        alarmStore.persistExisting(new Alarm(
+                "A1", 2L, "checkout", EventRule.WAY_THRESHOLD, "critical", "alarm",
+                Alarm.STATUS_RESOLVED, triggered, triggered));
+
+        Map<String, Object> data = service.countServiceAlarmsTotal(Map.of(
+                "fromTime", minuteOne,
+                "toTime", windowEnd,
+                "windowEnd", windowEnd));
+
+        assertThat(data.get("alarmCount")).isEqualTo(1L);
+    }
 }
