@@ -53,51 +53,7 @@ DataBuff 是一款面向 AI 智能体、微服务、云原生场景的 **AI 原�
 
 <p align="center">先看一眼路线图，再逐个展开。整条弧线是 AIOps 从「能看」走到「能动手」再到「会陪伴」的完整闭环。</p>
 
-<table align="center" cellpadding="0" cellspacing="0" style="border:none;border-collapse:separate;border-spacing:3px;">
-<tr>
-<td align="center" style="background:#ede9fe;border:1px solid #c4b5fd;border-radius:10px;padding:12px 6px;width:104px;vertical-align:top;height:92px;">
-  <div style="display:inline-block;width:24px;height:24px;border-radius:50%;background:#7c3aed;color:#fff;font-size:12px;font-weight:700;line-height:24px;">1</div>
-  <div style="font-size:13px;font-weight:700;color:#5b21b6;margin-top:4px;">看得见</div>
-  <div style="font-size:11px;color:#6d28d9;margin-top:2px;line-height:1.4;min-height:32px;">自然语言问系统</div>
-</td>
-<td align="center" style="border:none;background:transparent;color:#93c5fd;font-size:20px;font-weight:700;padding:0 1px;vertical-align:middle;">→</td>
-<td align="center" style="background:#ffe4e6;border:1px solid #fda4af;border-radius:10px;padding:12px 6px;width:104px;vertical-align:top;height:92px;">
-  <div style="display:inline-block;width:24px;height:24px;border-radius:50%;background:#e11d48;color:#fff;font-size:12px;font-weight:700;line-height:24px;">2</div>
-  <div style="font-size:13px;font-weight:700;color:#9f1239;margin-top:4px;">军团协同</div>
-  <div style="font-size:11px;color:#be123c;margin-top:2px;line-height:1.4;min-height:32px;">多Agent协同</div>
-</td>
-<td align="center" style="border:none;background:transparent;color:#93c5fd;font-size:20px;font-weight:700;padding:0 1px;vertical-align:middle;">→</td>
-<td align="center" style="background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:12px 6px;width:104px;vertical-align:top;height:92px;">
-  <div style="display:inline-block;width:24px;height:24px;border-radius:50%;background:#d97706;color:#fff;font-size:12px;font-weight:700;line-height:24px;">3</div>
-  <div style="font-size:13px;font-weight:700;color:#92400e;margin-top:4px;">会巡检</div>
-  <div style="font-size:11px;color:#b45309;margin-top:2px;line-height:1.4;min-height:32px;">服务巡检报告</div>
-</td>
-<td align="center" style="border:none;background:transparent;color:#93c5fd;font-size:20px;font-weight:700;padding:0 1px;vertical-align:middle;">→</td>
-<td align="center" style="background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:12px 6px;width:104px;vertical-align:top;height:92px;">
-  <div style="display:inline-block;width:24px;height:24px;border-radius:50%;background:#d97706;color:#fff;font-size:12px;font-weight:700;line-height:24px;">4</div>
-  <div style="font-size:13px;font-weight:700;color:#92400e;margin-top:4px;">会诊断</div>
-  <div style="font-size:11px;color:#b45309;margin-top:2px;line-height:1.4;min-height:32px;">根因分析</div>
-</td>
-<td align="center" style="border:none;background:transparent;color:#93c5fd;font-size:20px;font-weight:700;padding:0 1px;vertical-align:middle;">→</td>
-<td align="center" style="background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:12px 6px;width:104px;vertical-align:top;height:92px;">
-  <div style="display:inline-block;width:24px;height:24px;border-radius:50%;background:#d97706;color:#fff;font-size:12px;font-weight:700;line-height:24px;">5</div>
-  <div style="font-size:13px;font-weight:700;color:#92400e;margin-top:4px;">会修</div>
-  <div style="font-size:11px;color:#b45309;margin-top:2px;line-height:1.4;min-height:32px;">自动修复</div>
-</td>
-<td align="center" style="border:none;background:transparent;color:#93c5fd;font-size:20px;font-weight:700;padding:0 1px;vertical-align:middle;">→</td>
-<td align="center" style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;padding:12px 6px;width:104px;vertical-align:top;height:92px;">
-  <div style="display:inline-block;width:24px;height:24px;border-radius:50%;background:#059669;color:#fff;font-size:12px;font-weight:700;line-height:24px;">6</div>
-  <div style="font-size:13px;font-weight:700;color:#065f46;margin-top:4px;">会预测</div>
-  <div style="font-size:11px;color:#047857;margin-top:2px;line-height:1.4;min-height:32px;">容量分析</div>
-</td>
-<td align="center" style="border:none;background:transparent;color:#93c5fd;font-size:20px;font-weight:700;padding:0 1px;vertical-align:middle;">→</td>
-<td align="center" style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:10px;padding:12px 6px;width:104px;vertical-align:top;height:92px;">
-  <div style="display:inline-block;width:24px;height:24px;border-radius:50%;background:#475569;color:#fff;font-size:12px;font-weight:700;line-height:24px;">7</div>
-  <div style="font-size:13px;font-weight:700;color:#334155;margin-top:4px;">会答疑</div>
-  <div style="font-size:11px;color:#475569;margin-top:2px;line-height:1.4;min-height:32px;">答疑专家</div>
-</td>
-</tr>
-</table>
+<p align="center"><img src="docs/images/screenshots/aiops-arc-zh.svg" alt="AIOps 路线图" width="920" /></p>
 
 <table align="center" cellpadding="0" cellspacing="0" style="border:none;border-collapse:separate;border-spacing:6px;margin-top:8px;">
 <tr>

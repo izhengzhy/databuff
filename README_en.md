@@ -59,51 +59,7 @@
 
 <p align="center">Read the roadmap first, then expand each step. The full arc is the closed loop of AIOps — from "can see" to "can act" to "can accompany".</p>
 
-<table align="center" cellpadding="0" cellspacing="0" style="border:none;border-collapse:separate;border-spacing:3px;">
-<tr>
-<td align="center" style="background:#ede9fe;border:1px solid #c4b5fd;border-radius:10px;padding:12px 6px;width:104px;vertical-align:top;height:92px;">
-  <div style="display:inline-block;width:24px;height:24px;border-radius:50%;background:#7c3aed;color:#fff;font-size:12px;font-weight:700;line-height:24px;">1</div>
-  <div style="font-size:13px;font-weight:700;color:#5b21b6;margin-top:4px;">Visible</div>
-  <div style="font-size:11px;color:#6d28d9;margin-top:2px;line-height:1.4;min-height:32px;">Natural language</div>
-</td>
-<td align="center" style="border:none;background:transparent;color:#93c5fd;font-size:20px;font-weight:700;padding:0 1px;vertical-align:middle;">→</td>
-<td align="center" style="background:#ffe4e6;border:1px solid #fda4af;border-radius:10px;padding:12px 6px;width:104px;vertical-align:top;height:92px;">
-  <div style="display:inline-block;width:24px;height:24px;border-radius:50%;background:#e11d48;color:#fff;font-size:12px;font-weight:700;line-height:24px;">2</div>
-  <div style="font-size:13px;font-weight:700;color:#9f1239;margin-top:4px;">Legion</div>
-  <div style="font-size:11px;color:#be123c;margin-top:2px;line-height:1.4;min-height:32px;">Multi-agent</div>
-</td>
-<td align="center" style="border:none;background:transparent;color:#93c5fd;font-size:20px;font-weight:700;padding:0 1px;vertical-align:middle;">→</td>
-<td align="center" style="background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:12px 6px;width:104px;vertical-align:top;height:92px;">
-  <div style="display:inline-block;width:24px;height:24px;border-radius:50%;background:#d97706;color:#fff;font-size:12px;font-weight:700;line-height:24px;">3</div>
-  <div style="font-size:13px;font-weight:700;color:#92400e;margin-top:4px;">Inspect</div>
-  <div style="font-size:11px;color:#b45309;margin-top:2px;line-height:1.4;min-height:32px;">Inspection</div>
-</td>
-<td align="center" style="border:none;background:transparent;color:#93c5fd;font-size:20px;font-weight:700;padding:0 1px;vertical-align:middle;">→</td>
-<td align="center" style="background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:12px 6px;width:104px;vertical-align:top;height:92px;">
-  <div style="display:inline-block;width:24px;height:24px;border-radius:50%;background:#d97706;color:#fff;font-size:12px;font-weight:700;line-height:24px;">4</div>
-  <div style="font-size:13px;font-weight:700;color:#92400e;margin-top:4px;">Diagnose</div>
-  <div style="font-size:11px;color:#b45309;margin-top:2px;line-height:1.4;min-height:32px;">Root cause</div>
-</td>
-<td align="center" style="border:none;background:transparent;color:#93c5fd;font-size:20px;font-weight:700;padding:0 1px;vertical-align:middle;">→</td>
-<td align="center" style="background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:12px 6px;width:104px;vertical-align:top;height:92px;">
-  <div style="display:inline-block;width:24px;height:24px;border-radius:50%;background:#d97706;color:#fff;font-size:12px;font-weight:700;line-height:24px;">5</div>
-  <div style="font-size:13px;font-weight:700;color:#92400e;margin-top:4px;">Repair</div>
-  <div style="font-size:11px;color:#b45309;margin-top:2px;line-height:1.4;min-height:32px;">Ops expert</div>
-</td>
-<td align="center" style="border:none;background:transparent;color:#93c5fd;font-size:20px;font-weight:700;padding:0 1px;vertical-align:middle;">→</td>
-<td align="center" style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;padding:12px 6px;width:104px;vertical-align:top;height:92px;">
-  <div style="display:inline-block;width:24px;height:24px;border-radius:50%;background:#059669;color:#fff;font-size:12px;font-weight:700;line-height:24px;">6</div>
-  <div style="font-size:13px;font-weight:700;color:#065f46;margin-top:4px;">Predict</div>
-  <div style="font-size:11px;color:#047857;margin-top:2px;line-height:1.4;min-height:32px;">Capacity</div>
-</td>
-<td align="center" style="border:none;background:transparent;color:#93c5fd;font-size:20px;font-weight:700;padding:0 1px;vertical-align:middle;">→</td>
-<td align="center" style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:10px;padding:12px 6px;width:104px;vertical-align:top;height:92px;">
-  <div style="display:inline-block;width:24px;height:24px;border-radius:50%;background:#475569;color:#fff;font-size:12px;font-weight:700;line-height:24px;">7</div>
-  <div style="font-size:13px;font-weight:700;color:#334155;margin-top:4px;">Answer</div>
-  <div style="font-size:11px;color:#475569;margin-top:2px;line-height:1.4;min-height:32px;">Q&A expert</div>
-</td>
-</tr>
-</table>
+<p align="center"><img src="docs/images/screenshots/aiops-arc-en.svg" alt="AIOps 路线图" width="920" /></p>
 
 <table align="center" cellpadding="0" cellspacing="0" style="border:none;border-collapse:separate;border-spacing:6px;margin-top:8px;">
 <tr>
