@@ -55,30 +55,11 @@
 
 ---
 
-<h2 align="center" id="aiops-roadmap">AIOps Roadmap: Visible → Legion → Inspect → Diagnose → Repair → Predict → Answer</h2>
+<p align="center" id="aiops-roadmap" style="font-size:18px;font-weight:700;margin:8px 0;">AIOps Roadmap: Visible → Legion → Inspect → Diagnose → Repair → Predict → Answer</p>
 
 <p align="center">Read the roadmap first, then expand each step. The full arc is the closed loop of AIOps — from "can see" to "can act" to "can accompany".</p>
 
-<p align="center"><img src="docs/images/screenshots/aiops-arc-en.svg" alt="AIOps 路线图" width="920" /></p>
-
-<table align="center" cellpadding="0" cellspacing="0" style="border:none;border-collapse:separate;border-spacing:6px;margin-top:8px;">
-<tr>
-<td align="center" style="border:none;background:transparent;font-size:11px;color:#64748b;padding:2px 8px;"><span style="display:inline-block;width:10px;height:10px;background:#c4b5fd;border-radius:3px;vertical-align:middle;"></span>&nbsp;Opener (lowest bar)</td>
-<td align="center" style="border:none;background:transparent;font-size:11px;color:#64748b;padding:2px 8px;"><span style="display:inline-block;width:10px;height:10px;background:#fda4af;border-radius:3px;vertical-align:middle;"></span>&nbsp;Legion</td>
-<td align="center" style="border:none;background:transparent;font-size:11px;color:#64748b;padding:2px 8px;"><span style="display:inline-block;width:10px;height:10px;background:#fcd34d;border-radius:3px;vertical-align:middle;"></span>&nbsp;Incident loop ③→④→⑤</td>
-<td align="center" style="border:none;background:transparent;font-size:11px;color:#64748b;padding:2px 8px;"><span style="display:inline-block;width:10px;height:10px;background:#a7f3d0;border-radius:3px;vertical-align:middle;"></span>&nbsp;Proactive prediction</td>
-<td align="center" style="border:none;background:transparent;font-size:11px;color:#64748b;padding:2px 8px;"><span style="display:inline-block;width:10px;height:10px;background:#cbd5e1;border-radius:3px;vertical-align:middle;"></span>&nbsp;Closing companion</td>
-</tr>
-</table>
-
-<table align="center" cellpadding="0" cellspacing="0" style="border:none;border-collapse:separate;border-spacing:0;max-width:760px;margin-top:14px;">
-<tr><td style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;font-size:13px;color:#78350f;line-height:1.7;">
-<b>Legion + incident loop:</b> ② makes clear it is not a single AI but a legion; then ③ inspection finds the anomaly → ④ root cause localization → ⑤ ops expert fixes it — a "detect → diagnose → repair" chain.
-</td></tr>
-<tr><td style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;padding:12px 16px;font-size:13px;color:#065f46;line-height:1.7;margin-top:8px;">
-<b>Proactive prediction + closing companion:</b> ⑥ moves from "post-incident firefighting" to "pre-incident prediction"; ⑦ the Q&A expert has your back — powerful features, plus someone to answer you.
-</td></tr>
-</table>
+<p align="center"><img src="docs/images/screenshots/aiops-arc-en.svg" alt="AIOps 路线图" width="980" /></p>
 
 ---
 
