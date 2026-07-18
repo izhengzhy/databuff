@@ -22,18 +22,7 @@
 <p align="center">
   Username:Admin, Password:Databuff@123
 </p>
-<h2>Features</h2>
 
-- 🤖 **AI-native, not a bolt-on chat box** — LLM queries traces, metrics, topology, and alerts directly from real data
-- 🧠 **Multi-agent collaboration** — AI Brain orchestrates query and inspection experts; complex tasks run in parallel
-- 🎯 **AI application observability** (Roadmap) — LLM call chains · token analytics · agent topology · skill/tool/model tracing
-- ⚡ **eBPF APM** (Roadmap) — kernel-level, non-intrusive collection without code changes
-- 📊 **OpenTelemetry APM foundation** — OTLP ingestion with troubleshooting, tracing, service metrics, and topology
-- 🚨 **Alerting loop** — threshold and change detection, scheduled evaluation, alert event history
-- 🔧 **Skill + Tool extensibility** — override built-in skills, add custom digital experts without touching core code
-- 🔌 **MCP both ways** — expose platform capabilities to Cursor / Claude; ingest external MCPs (Prometheus, SkyWalking, etc.)
-- 🐳 **Minimal 3-component stack** — Ingest + Doris + Web; one Docker / K8s command, no middleware sprawl
-- 🌐 **Bring your own model** — OpenAI-compatible + Anthropic Messages; Kimi, DeepSeek, GLM, Bailian, Qianfan, Ollama, and more
 </div>
 
 <br/>
@@ -51,38 +40,169 @@
 
 ---
 
-<h2 align="center">Why DataBuff?</h2>
+<h2>Features</h2>
 
-| | **DataBuff** | SigNoz | Datadog |
-|---|:---:|:---:|:---:|
-| AI multi-agent root cause | ✅ Built-in | ❌ | Add-on |
-| OpenTelemetry native | ✅ | ✅ | Partial |
-| Self-host · 5 min Docker | ✅ `curl \| bash` | ✅ | ❌ SaaS |
-| Distributed tracing + topology | ✅ | ✅ | ✅ |
-| Open source | ✅  | ✅ | ❌ |
-
-> **One-liner:** Open-source APM where an **AI brain** dispatches metric, trace, and inspection experts — not another chat box on top of dashboards.
+- 🤖 **AI-native, not a bolt-on chat box** — LLM queries traces, metrics, topology, and alerts directly from real data
+- 🧠 **Multi-agent collaboration** — AI Brain orchestrates query, inspection, ops, and Q&A experts; complex tasks run in parallel
+- 🎯 **AI application observability** (Roadmap) — LLM call chains · token analytics · agent topology · skill/tool/model tracing
+- ⚡ **eBPF APM** (Roadmap) — kernel-level, non-intrusive collection without code changes
+- 📊 **Dual-protocol APM foundation** — OTLP native ingestion + **SkyWalking native gRPC compatibility**; existing SkyWalking users can switch by changing the exporter address
+- 🚨 **Alerting loop** — threshold and change detection, scheduled evaluation, alert event history
+- 🔧 **Skill + Tool extensibility** — override built-in skills, add custom digital experts without touching core code
+- 🔌 **MCP both ways** — expose platform capabilities to Cursor / Claude; ingest external MCPs (Prometheus, etc.)
+- 🐳 **Minimal 3-component stack** — Ingest + Doris + Web; one Docker / K8s command, no middleware sprawl
+- 🌐 **Bring your own model** — OpenAI-compatible + Anthropic Messages; Kimi, DeepSeek, GLM, Bailian, Qianfan, Ollama, and more
 
 ---
 
-<h2 align="center" id="screenshots">Screenshots</h2>
+<h2 align="center" id="aiops-roadmap">AIOps Roadmap: Visible → Legion → Inspect → Diagnose → Repair → Predict → Answer</h2>
 
-<p align="center"><strong>AI Analysis</strong></p>
+<p align="center">Read the roadmap first, then expand each step. The full arc is the closed loop of AIOps — from "can see" to "can act" to "can accompany".</p>
 
-<table border="0" cellspacing="12" cellpadding="0" align="center">
+<table align="center" cellpadding="0" cellspacing="0" style="border:none;border-collapse:separate;border-spacing:3px;">
 <tr>
-<td align="center" width="450">
-  <img src="docs/images/screenshots/ai-interaction-1.jpg" alt="AI natural language query" width="450" />
-  <br/><sub>Natural language query · Metrics and traces in plain language</sub>
+<td align="center" style="background:#ede9fe;border:1px solid #c4b5fd;border-radius:10px;padding:12px 6px;width:104px;vertical-align:top;height:92px;">
+  <div style="display:inline-block;width:24px;height:24px;border-radius:50%;background:#7c3aed;color:#fff;font-size:12px;font-weight:700;line-height:24px;">1</div>
+  <div style="font-size:13px;font-weight:700;color:#5b21b6;margin-top:4px;">Visible</div>
+  <div style="font-size:11px;color:#6d28d9;margin-top:2px;line-height:1.4;min-height:32px;">Natural language</div>
 </td>
-<td align="center" width="450">
-  <img src="docs/images/screenshots/ai-interaction-2.jpg" alt="Multi-agent collaboration" width="450" />
-  <br/><sub>Multi-agent collaboration · Evidence synthesis and conclusions</sub>
+<td align="center" style="border:none;background:transparent;color:#93c5fd;font-size:20px;font-weight:700;padding:0 1px;vertical-align:middle;">→</td>
+<td align="center" style="background:#ffe4e6;border:1px solid #fda4af;border-radius:10px;padding:12px 6px;width:104px;vertical-align:top;height:92px;">
+  <div style="display:inline-block;width:24px;height:24px;border-radius:50%;background:#e11d48;color:#fff;font-size:12px;font-weight:700;line-height:24px;">2</div>
+  <div style="font-size:13px;font-weight:700;color:#9f1239;margin-top:4px;">Legion</div>
+  <div style="font-size:11px;color:#be123c;margin-top:2px;line-height:1.4;min-height:32px;">Multi-agent</div>
+</td>
+<td align="center" style="border:none;background:transparent;color:#93c5fd;font-size:20px;font-weight:700;padding:0 1px;vertical-align:middle;">→</td>
+<td align="center" style="background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:12px 6px;width:104px;vertical-align:top;height:92px;">
+  <div style="display:inline-block;width:24px;height:24px;border-radius:50%;background:#d97706;color:#fff;font-size:12px;font-weight:700;line-height:24px;">3</div>
+  <div style="font-size:13px;font-weight:700;color:#92400e;margin-top:4px;">Inspect</div>
+  <div style="font-size:11px;color:#b45309;margin-top:2px;line-height:1.4;min-height:32px;">Inspection</div>
+</td>
+<td align="center" style="border:none;background:transparent;color:#93c5fd;font-size:20px;font-weight:700;padding:0 1px;vertical-align:middle;">→</td>
+<td align="center" style="background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:12px 6px;width:104px;vertical-align:top;height:92px;">
+  <div style="display:inline-block;width:24px;height:24px;border-radius:50%;background:#d97706;color:#fff;font-size:12px;font-weight:700;line-height:24px;">4</div>
+  <div style="font-size:13px;font-weight:700;color:#92400e;margin-top:4px;">Diagnose</div>
+  <div style="font-size:11px;color:#b45309;margin-top:2px;line-height:1.4;min-height:32px;">Root cause</div>
+</td>
+<td align="center" style="border:none;background:transparent;color:#93c5fd;font-size:20px;font-weight:700;padding:0 1px;vertical-align:middle;">→</td>
+<td align="center" style="background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:12px 6px;width:104px;vertical-align:top;height:92px;">
+  <div style="display:inline-block;width:24px;height:24px;border-radius:50%;background:#d97706;color:#fff;font-size:12px;font-weight:700;line-height:24px;">5</div>
+  <div style="font-size:13px;font-weight:700;color:#92400e;margin-top:4px;">Repair</div>
+  <div style="font-size:11px;color:#b45309;margin-top:2px;line-height:1.4;min-height:32px;">Ops expert</div>
+</td>
+<td align="center" style="border:none;background:transparent;color:#93c5fd;font-size:20px;font-weight:700;padding:0 1px;vertical-align:middle;">→</td>
+<td align="center" style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;padding:12px 6px;width:104px;vertical-align:top;height:92px;">
+  <div style="display:inline-block;width:24px;height:24px;border-radius:50%;background:#059669;color:#fff;font-size:12px;font-weight:700;line-height:24px;">6</div>
+  <div style="font-size:13px;font-weight:700;color:#065f46;margin-top:4px;">Predict</div>
+  <div style="font-size:11px;color:#047857;margin-top:2px;line-height:1.4;min-height:32px;">Capacity</div>
+</td>
+<td align="center" style="border:none;background:transparent;color:#93c5fd;font-size:20px;font-weight:700;padding:0 1px;vertical-align:middle;">→</td>
+<td align="center" style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:10px;padding:12px 6px;width:104px;vertical-align:top;height:92px;">
+  <div style="display:inline-block;width:24px;height:24px;border-radius:50%;background:#475569;color:#fff;font-size:12px;font-weight:700;line-height:24px;">7</div>
+  <div style="font-size:13px;font-weight:700;color:#334155;margin-top:4px;">Answer</div>
+  <div style="font-size:11px;color:#475569;margin-top:2px;line-height:1.4;min-height:32px;">Q&A expert</div>
 </td>
 </tr>
 </table>
 
-<p align="center"><strong>APM Observability</strong></p>
+<table align="center" cellpadding="0" cellspacing="0" style="border:none;border-collapse:separate;border-spacing:6px;margin-top:8px;">
+<tr>
+<td align="center" style="border:none;background:transparent;font-size:11px;color:#64748b;padding:2px 8px;"><span style="display:inline-block;width:10px;height:10px;background:#c4b5fd;border-radius:3px;vertical-align:middle;"></span>&nbsp;Opener (lowest bar)</td>
+<td align="center" style="border:none;background:transparent;font-size:11px;color:#64748b;padding:2px 8px;"><span style="display:inline-block;width:10px;height:10px;background:#fda4af;border-radius:3px;vertical-align:middle;"></span>&nbsp;Legion</td>
+<td align="center" style="border:none;background:transparent;font-size:11px;color:#64748b;padding:2px 8px;"><span style="display:inline-block;width:10px;height:10px;background:#fcd34d;border-radius:3px;vertical-align:middle;"></span>&nbsp;Incident loop ③→④→⑤</td>
+<td align="center" style="border:none;background:transparent;font-size:11px;color:#64748b;padding:2px 8px;"><span style="display:inline-block;width:10px;height:10px;background:#a7f3d0;border-radius:3px;vertical-align:middle;"></span>&nbsp;Proactive prediction</td>
+<td align="center" style="border:none;background:transparent;font-size:11px;color:#64748b;padding:2px 8px;"><span style="display:inline-block;width:10px;height:10px;background:#cbd5e1;border-radius:3px;vertical-align:middle;"></span>&nbsp;Closing companion</td>
+</tr>
+</table>
+
+<table align="center" cellpadding="0" cellspacing="0" style="border:none;border-collapse:separate;border-spacing:0;max-width:760px;margin-top:14px;">
+<tr><td style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;font-size:13px;color:#78350f;line-height:1.7;">
+<b>Legion + incident loop:</b> ② makes clear it is not a single AI but a legion; then ③ inspection finds the anomaly → ④ root cause localization → ⑤ ops expert fixes it — a "detect → diagnose → repair" chain.
+</td></tr>
+<tr><td style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;padding:12px 16px;font-size:13px;color:#065f46;line-height:1.7;margin-top:8px;">
+<b>Proactive prediction + closing companion:</b> ⑥ moves from "post-incident firefighting" to "pre-incident prediction"; ⑦ the Q&A expert has your back — powerful features, plus someone to answer you.
+</td></tr>
+</table>
+
+---
+
+<h2 align="center" id="seven-capabilities">Seven Capabilities Expanded</h2>
+
+<p align="center"><strong>① Visible · Natural language query</strong></p>
+<p align="center">Ask "which service was slowest in the last hour" in plain English — AI queries 20 services itself, returns the top 3 with average latency. No query language to learn.</p>
+<p align="center">
+  <img src="docs/images/screenshots/nl-slowest.png" alt="Natural language query for slowest service" width="720" />
+</p>
+
+<p align="center"><strong>② Legion · Multi-agent parallel dispatch</strong></p>
+<p align="center">Don't pick a specific expert — hand the complex task to the AI Brain. It dispatches to the query + inspection experts in parallel, then synthesizes a forwardable incident report.</p>
+<p align="center">
+  <img src="docs/images/screenshots/multi-agent-process.png" alt="AI Brain dispatches dispatchExpertTask to query and inspection experts in parallel" width="720" />
+</p>
+
+---
+
+<p align="center"><strong>③ Inspect · Inspection + HTML report</strong></p>
+<p align="center">One sentence triggers a single-service inspection. 81 seconds later, a fully formatted HTML report appears: entry health 98, downstream MySQL 60, Redis 100, active alerts 0 — the entry looks perfectly healthy, yet the error log section surfaces 60 <code>InsufficientStockException</code> errors in 30 minutes, hidden behind HTTP 200. Preview and forward directly.</p>
+<p align="center">
+  <img src="docs/images/screenshots/inspect-report.png" alt="Inspection HTML report" width="720" />
+</p>
+
+<p align="center"><strong>④ Diagnose · Root cause analysis with evidence chain</strong></p>
+<p align="center">Ask "is the bottleneck in the app, the database, or downstream?" — AI pulls topology, ranks outbound call metrics, attributes by share. Bottleneck is downstream service-b at 73.2%; other components are cleared. The conclusion is ready to paste into an incident report.</p>
+<p align="center">
+  <img src="docs/images/screenshots/rca.png" alt="Root cause analysis" width="720" />
+</p>
+
+<p align="center"><strong>⑤ Repair · Ops expert SSHes in and acts</strong></p>
+<p align="center">Beyond reading dashboards, it can log into the machine and fix things. Container stuck in a restart loop? The ops expert SSHes in, runs docker logs / inspect / free -m, identifies OOM 137 — the container memory limit was only 10MB while the JVM needed 64MB. It removes the old container, recreates it with 512MB, and docker ps is stable again. The watershed from "can see" to "can repair".</p>
+<p align="center">
+  <img src="docs/images/screenshots/ops-expert.png" alt="Ops expert SSH repair" width="720" />
+</p>
+
+---
+
+<p align="center"><strong>⑥ Predict · Capacity health analysis</strong></p>
+<p align="center">From "post-incident firefighting" to "pre-incident prediction". AI clarifies the real dependency graph, then judges the high-latency Redis — 98 QPS is far below single-node 10k capacity, so the bottleneck is not capacity but big keys / slow commands. Clear advice: don't blindly scale up.</p>
+<p align="center">
+  <img src="docs/images/screenshots/capacity.png" alt="Capacity health analysis" width="720" />
+</p>
+
+<p align="center"><strong>⑦ Answer · Open-source product with a built-in concierge</strong></p>
+<p align="center">"How do I integrate the OTel SDK? Where do I configure alert thresholds?" The Q&A expert actually reads the product docs and returns OTLP ports (gRPC 4317 / HTTP 4318), the Spring Boot Java Agent one-liner for zero-code instrumentation, and the alert config menu path — its own docs, more reliable than a search engine.</p>
+<p align="center">
+  <img src="docs/images/screenshots/qa-expert.png" alt="Q&A expert" width="720" />
+</p>
+
+---
+
+<h2 align="center" id="data-ingestion">Data Ingestion: Dual-Protocol Native Compatibility</h2>
+
+<p align="center">DataBuff supports both OpenTelemetry and SkyWalking native ingestion — existing agents switch over without rework.</p>
+
+<table align="center" cellpadding="0" cellspacing="0" style="border-collapse:collapse;max-width:760px;">
+<tr>
+<th align="left" style="background:#f1f5f9;border:1px solid #cbd5e1;padding:10px 14px;font-size:14px;width:160px;">Protocol</th>
+<th align="left" style="background:#f1f5f9;border:1px solid #cbd5e1;padding:10px 14px;font-size:14px;width:200px;">Port / Endpoint</th>
+<th align="left" style="background:#f1f5f9;border:1px solid #cbd5e1;padding:10px 14px;font-size:14px;">Supported signals</th>
+</tr>
+<tr>
+<td style="border:1px solid #cbd5e1;padding:10px 14px;font-size:13px;"><b>OTLP</b> (OpenTelemetry native)</td>
+<td style="border:1px solid #cbd5e1;padding:10px 14px;font-size:13px;">gRPC <code>4317</code> · HTTP <code>4318</code></td>
+<td style="border:1px solid #cbd5e1;padding:10px 14px;font-size:13px;">Traces + Metrics + Logs</td>
+</tr>
+<tr>
+<td style="border:1px solid #cbd5e1;padding:10px 14px;font-size:13px;"><b>SkyWalking</b> native gRPC</td>
+<td style="border:1px solid #cbd5e1;padding:10px 14px;font-size:13px;">gRPC <code>11800</code></td>
+<td style="border:1px solid #cbd5e1;padding:10px 14px;font-size:13px;">Trace Segment + JVM metrics + Logs (reuse existing SW Agent, just change exporter address)</td>
+</tr>
+</table>
+
+---
+
+<h2 align="center" id="screenshots">Screenshots · The UI itself is a capable APM</h2>
+
+<p align="center">AI reads the data for you; the UI confirms what the AI said. Two legs walking. Global topology, service list, service detail, service flow — every viewpoint is there, drill down from the topology to a single trace.</p>
 
 <table border="0" cellspacing="12" cellpadding="0" align="center">
 <tr>
@@ -213,3 +333,8 @@ curl -fsSL https://databuff.ai/databuff/ai-apm-k8s-download-images.sh | bash
 </p>
 
 <br/>
+
+
+
+
+
