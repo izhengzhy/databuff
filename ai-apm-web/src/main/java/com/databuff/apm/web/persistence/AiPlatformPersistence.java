@@ -2,6 +2,8 @@ package com.databuff.apm.web.persistence;
 
 import com.databuff.apm.common.storage.ApmConfigRepository;
 import com.databuff.apm.common.storage.ApmReadRepository;
+import com.databuff.apm.web.ai.platform.capability.AiCapabilityDefinition;
+import com.databuff.apm.web.ai.platform.capability.CapabilityManagementService;
 import com.databuff.apm.web.ai.platform.expert.AiExpertDefinition;
 import com.databuff.apm.web.ai.platform.expert.ExpertManagementService;
 import com.databuff.apm.web.ai.platform.expert.ExpertRuntimeOptions;
@@ -32,6 +34,7 @@ public class AiPlatformPersistence {
     private final ToolManagementService toolManagementService;
     private final SkillManagementService skillManagementService;
     private final ExpertManagementService expertManagementService;
+    private final CapabilityManagementService capabilityManagementService;
     private final String configDatabase;
     private volatile boolean persistenceEnabled;
 
@@ -40,11 +43,13 @@ public class AiPlatformPersistence {
             ToolManagementService toolManagementService,
             SkillManagementService skillManagementService,
             ExpertManagementService expertManagementService,
+            CapabilityManagementService capabilityManagementService,
             ApmStorageProperties storageProperties) {
         this.readRepository = readRepository;
         this.toolManagementService = toolManagementService;
         this.skillManagementService = skillManagementService;
         this.expertManagementService = expertManagementService;
+        this.capabilityManagementService = capabilityManagementService;
         this.configDatabase = storageProperties.configDatabase();
     }
 
@@ -64,13 +69,17 @@ public class AiPlatformPersistence {
             List<AiExpertDefinition> experts = repository.loadAiExperts().stream()
                     .map(AiPlatformPersistence::toExpertDefinition)
                     .toList();
+            List<AiCapabilityDefinition> capabilities = repository.loadAiCapabilities().stream()
+                    .map(AiPlatformPersistence::toCapabilityDefinition)
+                    .toList();
 
             toolManagementService.applyPersistedRows(tools);
             skillManagementService.applyPersistedRows(skills);
             expertManagementService.applyPersistedRows(experts);
+            capabilityManagementService.applyPersistedRows(capabilities);
             persistenceEnabled = true;
-            log.info("AI platform persistence enabled ({} tools, {} skills, {} experts from store)",
-                    tools.size(), skills.size(), experts.size());
+            log.info("AI platform persistence enabled ({} tools, {} skills, {} experts, {} capabilities from store)",
+                    tools.size(), skills.size(), experts.size(), capabilities.size());
         } catch (Exception e) {
             log.warn("Failed to load AI platform config from store: {}", e.getMessage());
         }
@@ -142,6 +151,28 @@ public class AiPlatformPersistence {
         }
     }
 
+    public void persistCapability(AiCapabilityDefinition definition) {
+        if (!persistenceEnabled) {
+            return;
+        }
+        try {
+            new ApmConfigRepository(readRepository, configDatabase).upsertAiCapability(toCapabilityRow(definition));
+        } catch (Exception e) {
+            log.warn("Failed to persist AI capability {}: {}", definition.capabilityId(), e.getMessage());
+        }
+    }
+
+    public void deleteCapability(String capabilityId) {
+        if (!persistenceEnabled) {
+            return;
+        }
+        try {
+            new ApmConfigRepository(readRepository, configDatabase).deleteAiCapability(capabilityId);
+        } catch (Exception e) {
+            log.warn("Failed to delete AI capability {} from store: {}", capabilityId, e.getMessage());
+        }
+    }
+
     boolean persistenceEnabled() {
         return persistenceEnabled;
     }
@@ -190,6 +221,25 @@ public class AiPlatformPersistence {
                 writeJson(definition.toolIds()), writeJson(definition.skillIds()), writeJson(definition.options()),
                 definition.enabled(), definition.builtIn(), definition.version(),
                 definition.createdAt(), definition.updatedAt());
+    }
+
+    private static AiCapabilityDefinition toCapabilityDefinition(ApmConfigRepository.AiCapabilityRow row) {
+        return new AiCapabilityDefinition(
+                row.capabilityId(), row.name(), row.tagline(), null, row.expertId(),
+                CapabilityManagementService.readPrompts(row.promptsJson()),
+                row.enabled(), row.builtIn(), row.version(), row.createdAt(), row.updatedAt(),
+                row.defaultName(), row.defaultTagline(), row.defaultExpertId(),
+                CapabilityManagementService.readPrompts(row.defaultPromptsJson()));
+    }
+
+    private static ApmConfigRepository.AiCapabilityRow toCapabilityRow(AiCapabilityDefinition definition) {
+        return new ApmConfigRepository.AiCapabilityRow(
+                definition.capabilityId(), definition.name(), definition.tagline(), definition.expertId(),
+                CapabilityManagementService.writePrompts(definition.prompts()),
+                definition.enabled(), definition.builtIn(), definition.version(),
+                definition.createdAt(), definition.updatedAt(),
+                definition.defaultName(), definition.defaultTagline(), definition.defaultExpertId(),
+                CapabilityManagementService.writePrompts(definition.defaultPrompts()));
     }
 
     private static List<String> readStringList(String json) {

@@ -54,12 +54,13 @@ class ExpertDispatchToolTest {
     }
 
     @Test
-    void dispatchUsesChatScopeWhenTaskContextMissing() {
+    void dispatchUsesRuntimeContextWhenTaskContextMissing() {
         String sessionId = "s-scope";
         ExpertChatScopeRegistry.register(new ExpertChatContext.State(
                 sessionId, "admin", "brain", null, false, null));
         try {
-            dispatchTool.dispatchExpertTask("data", "count spans", "{}", null);
+            RuntimeContext ctx = RuntimeContext.builder().sessionId(sessionId).build();
+            dispatchTool.dispatchExpertTask("data", "count spans", "{}", ctx);
             ExpertTask created = taskService.listBySession(sessionId).stream()
                     .findFirst()
                     .orElseThrow();
@@ -73,8 +74,9 @@ class ExpertDispatchToolTest {
     @Test
     void dispatchCreatesTaskInContext() throws Exception {
         List<ExpertTaskEvent> events = new ArrayList<>();
+        RuntimeContext ctx = RuntimeContext.builder().sessionId("s-dispatch").build();
         String result = ExpertTaskContext.run("s-dispatch", "brain", events::add, () ->
-                dispatchTool.dispatchExpertTask("data", "count spans", "{}", null));
+                dispatchTool.dispatchExpertTask("data", "count spans", "{}", ctx));
         ExpertTask finished = taskService.listBySession("s-dispatch").stream()
                 .findFirst()
                 .orElseThrow();
@@ -123,13 +125,14 @@ class ExpertDispatchToolTest {
         String sessionId = "s-serial";
         ExpertChatScopeRegistry.register(new ExpertChatContext.State(
                 sessionId, "admin", "brain", null, false, null));
+        RuntimeContext ctx = RuntimeContext.builder().sessionId(sessionId).build();
         try {
             String first = ExpertTaskContext.run(sessionId, "brain", ignored -> {}, () ->
-                    dispatchTool.dispatchExpertTask("data", "count spans", "{}", null));
+                    dispatchTool.dispatchExpertTask("data", "count spans", "{}", ctx));
             String second = ExpertTaskContext.run(sessionId, "brain", ignored -> {}, () ->
-                    dispatchTool.dispatchExpertTask("data", "count spans again", "{}", null));
+                    dispatchTool.dispatchExpertTask("data", "count spans again", "{}", ctx));
             String otherExpert = ExpertTaskContext.run(sessionId, "brain", ignored -> {}, () ->
-                    dispatchTool.dispatchExpertTask("inspection", "inspect service-a", "{}", null));
+                    dispatchTool.dispatchExpertTask("inspection", "inspect service-a", "{}", ctx));
 
             assertThat(first).contains("异步任务已受理").contains("targetExpertId=data");
             assertThat(second).contains("禁止并行重复派发").contains("targetExpertId=data");
@@ -152,9 +155,10 @@ class ExpertDispatchToolTest {
         String sessionId = "s-serial-again";
         ExpertChatScopeRegistry.register(new ExpertChatContext.State(
                 sessionId, "admin", "brain", null, false, null));
+        RuntimeContext ctx = RuntimeContext.builder().sessionId(sessionId).build();
         try {
             String first = ExpertTaskContext.run(sessionId, "brain", ignored -> {}, () ->
-                    dispatchTool.dispatchExpertTask("data", "count spans", "{}", null));
+                    dispatchTool.dispatchExpertTask("data", "count spans", "{}", ctx));
             ExpertTask firstTask = taskService.listBySession(sessionId).stream()
                     .filter(t -> "data".equals(t.targetExpertId()))
                     .findFirst()
@@ -165,7 +169,7 @@ class ExpertDispatchToolTest {
                     .isTrue();
 
             String second = ExpertTaskContext.run(sessionId, "brain", ignored -> {}, () ->
-                    dispatchTool.dispatchExpertTask("data", "count spans again", "{}", null));
+                    dispatchTool.dispatchExpertTask("data", "count spans again", "{}", ctx));
 
             assertThat(first).contains("异步任务已受理");
             assertThat(second).contains("异步任务已受理");
@@ -186,7 +190,8 @@ class ExpertDispatchToolTest {
         ExpertChatScopeRegistry.register(new ExpertChatContext.State(
                 sessionId, "admin", "qa", null, true, null));
         try {
-            String result = dispatchTool.dispatchExpertTask("qa", "explain architecture", "{}", null);
+            RuntimeContext ctx = RuntimeContext.builder().sessionId(sessionId).build();
+            String result = dispatchTool.dispatchExpertTask("qa", "explain architecture", "{}", ctx);
             ExpertTask created = taskService.listBySession(sessionId).stream()
                     .findFirst()
                     .orElseThrow();

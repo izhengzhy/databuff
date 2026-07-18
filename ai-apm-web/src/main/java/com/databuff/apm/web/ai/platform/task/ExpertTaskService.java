@@ -11,8 +11,11 @@ import com.databuff.apm.web.ai.platform.runtime.ExpertChatScopeRegistry;
 import com.databuff.apm.web.ai.platform.runtime.ExpertRuntime;
 import com.databuff.apm.web.ai.platform.runtime.ExpertRuntimeEvent;
 import com.databuff.apm.web.ai.platform.runtime.ExpertRuntimeRegistry;
+import com.databuff.apm.web.ai.platform.runtime.SessionWorkspaceService;
+import com.databuff.apm.web.ai.platform.runtime.TaskGeneratedFileRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -44,9 +47,12 @@ public class ExpertTaskService {
     private final ExpertTaskPendingRegistry pendingRegistry;
     private final ExpertTaskTextGuard taskTextGuard;
     private final BrainContinuationService brainContinuationService;
+    private final SessionWorkspaceService workspaceService;
+    private final TaskGeneratedFileRegistry generatedFileRegistry;
     private final ThreadPoolTaskExecutor taskExecutor;
     private final ConcurrentMap<String, ExpertTask> tasks = new ConcurrentHashMap<>();
 
+    @Autowired
     public ExpertTaskService(
             ExpertManagementService expertManagementService,
             ObjectProvider<ExpertRuntimeRegistry> expertRuntimeRegistry,
@@ -54,7 +60,9 @@ public class ExpertTaskService {
             AiSessionStore sessionStore,
             ExpertTaskPendingRegistry pendingRegistry,
             ExpertTaskTextGuard taskTextGuard,
-            @Lazy BrainContinuationService brainContinuationService) {
+            @Lazy BrainContinuationService brainContinuationService,
+            SessionWorkspaceService workspaceService,
+            TaskGeneratedFileRegistry generatedFileRegistry) {
         this.expertManagementService = expertManagementService;
         this.expertRuntimeRegistry = expertRuntimeRegistry;
         this.persistence = persistence;
@@ -62,6 +70,8 @@ public class ExpertTaskService {
         this.pendingRegistry = pendingRegistry;
         this.taskTextGuard = taskTextGuard;
         this.brainContinuationService = brainContinuationService;
+        this.workspaceService = workspaceService;
+        this.generatedFileRegistry = generatedFileRegistry;
         this.taskExecutor = createExecutor();
     }
 
@@ -139,6 +149,11 @@ public class ExpertTaskService {
 
     public Optional<ExpertTask> get(String taskId) {
         return Optional.ofNullable(tasks.get(taskId));
+    }
+
+    public void cancelSessionTasks(String sessionId) {
+        pendingRegistry.cancelSessionTasks(sessionId);
+        generatedFileRegistry.removeSession(sessionId);
     }
 
     public List<ExpertTask> listBySession(String sessionId) {
@@ -336,7 +351,11 @@ public class ExpertTaskService {
                     new IllegalStateException("empty expert task response"));
             return;
         }
-        ExpertTask done = updateStatus(current, ExpertTaskStatus.SUCCEEDED, reply, null);
+        ExpertTask done = updateStatus(
+                withGeneratedFiles(current),
+                ExpertTaskStatus.SUCCEEDED,
+                reply,
+                null);
         publish(ExpertTaskEvent.completed(done));
         commitExpertDeliverable(done, roundIndex, reply);
     }
@@ -375,15 +394,22 @@ public class ExpertTaskService {
         if (!taskTextGuard.tryCommitExpertTaskText(task.sessionId(), roundIndex, task.taskId())) {
             return;
         }
+        Map<String, Object> deliverableMetadata = new LinkedHashMap<>();
+        deliverableMetadata.put(ExpertMessageConstants.META_SOURCE_EXPERT_ID, task.sourceExpertId());
+        deliverableMetadata.put(
+                ExpertMessageConstants.META_TRIGGER_SOURCE,
+                ExpertMessageConstants.TRIGGER_EXPERT_DISPATCH);
+        Object generatedFiles = task.metadata().get("generatedFiles");
+        if (generatedFiles instanceof List<?> files && !files.isEmpty()) {
+            deliverableMetadata.put("generatedFiles", files);
+        }
         sessionStore.appendExpertDeliverableText(
                 task.sessionId(),
                 task.targetExpertId(),
                 roundIndex,
                 task.taskId(),
                 reply,
-                Map.of(
-                        ExpertMessageConstants.META_SOURCE_EXPERT_ID, task.sourceExpertId(),
-                        ExpertMessageConstants.META_TRIGGER_SOURCE, ExpertMessageConstants.TRIGGER_EXPERT_DISPATCH));
+                Map.copyOf(deliverableMetadata));
         if ("brain".equals(task.sourceExpertId())) {
             brainContinuationService.notifyTaskFinished(ExpertTaskCompletionEvent.success(
                     task.sessionId(),
@@ -417,12 +443,39 @@ public class ExpertTaskService {
     }
 
     private ExpertTask failTask(ExpertTask current, ExpertTaskStatus status, String error) {
+        generatedFileRegistry.remove(current.sessionId(), current.taskId());
         ExpertTask failed = updateStatus(current, status, null, error);
         publish(ExpertTaskEvent.failed(failed));
         if (!"brain".equals(failed.sourceExpertId())) {
             pendingRegistry.removePending(failed.sessionId(), failed.taskId());
         }
         return failed;
+    }
+
+    ExpertTask withGeneratedFiles(ExpertTask task) {
+        List<String> ownedPaths = generatedFileRegistry.paths(task.sessionId(), task.taskId());
+        generatedFileRegistry.remove(task.sessionId(), task.taskId());
+        if (ownedPaths.isEmpty()) {
+            return task;
+        }
+        Map<String, SessionWorkspaceService.WorkspaceFileInfo> filesByPath =
+                workspaceService.listOutputFiles(task.sessionId()).stream()
+                        .collect(java.util.stream.Collectors.toMap(
+                                SessionWorkspaceService.WorkspaceFileInfo::relativePath,
+                                file -> file,
+                                (left, right) -> right,
+                                LinkedHashMap::new));
+        List<Map<String, Object>> generatedFiles = ownedPaths.stream()
+                .map(filesByPath::get)
+                .filter(java.util.Objects::nonNull)
+                .map(SessionWorkspaceService.WorkspaceFileInfo::toMetadata)
+                .toList();
+        if (generatedFiles.isEmpty()) {
+            return task;
+        }
+        Map<String, Object> metadata = new LinkedHashMap<>(task.metadata());
+        metadata.put("generatedFiles", generatedFiles);
+        return task.withMetadata(Map.copyOf(metadata));
     }
 
     private ExpertTask updateStatus(

@@ -93,7 +93,9 @@ class BrainAsyncRoutingIntegrationTest {
                 sessionStore,
                 pendingRegistry,
                 textGuard,
-                continuationService);
+                continuationService,
+                fixture.sessionWorkspaceService(),
+                new com.databuff.apm.web.ai.platform.runtime.TaskGeneratedFileRegistry());
         AiRuntimeRouter runtimeRouter = WebTestClusterSupport.standaloneAiRouter("web-1");
         orchestrator = TestBeanSupport.chatOrchestrator(
                 fixture.expertManagementService(),

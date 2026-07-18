@@ -10,21 +10,9 @@ public final class ExpertSessionResolver {
     private ExpertSessionResolver() {
     }
 
-    public static Optional<String> resolveSessionId() {
-        return ExpertTaskContext.sessionId()
-                .filter(ExpertChatScopeRegistry::validSessionId)
-                .or(() -> ExpertChatScopeRegistry.soleSessionId());
-    }
-
-    public static Optional<String> resolveSessionId(String hintSessionId) {
-        return resolveSessionId(hintSessionId, null);
-    }
-
     public static Optional<String> resolveSessionId(String hintSessionId, RuntimeContext runtimeContext) {
         return optionalChatSessionId(hintSessionId)
-                .or(() -> sessionIdFromRuntimeContext(runtimeContext))
-                .or(() -> ExpertChatScopeRegistry.resolveSessionId(hintSessionId))
-                .or(() -> ExpertTaskContext.sessionId().filter(ExpertChatScopeRegistry::validSessionId));
+                .or(() -> sessionIdFromRuntimeContext(runtimeContext));
     }
 
     public static Optional<String> sessionIdFromRuntimeContext(RuntimeContext runtimeContext) {
@@ -48,12 +36,6 @@ public final class ExpertSessionResolver {
     private static Optional<String> optionalChatSessionId(String sessionId) {
         String normalized = normalizeChatSessionId(sessionId);
         return normalized == null ? Optional.empty() : Optional.of(normalized);
-    }
-
-    public static String resolveSessionIdOrThrow() {
-        return resolveSessionId()
-                .orElseThrow(() -> new IllegalStateException(
-                        "sessionId unavailable for expert dispatch; ensure chat scope is active"));
     }
 
     public static String resolveSessionIdOrThrow(String hintSessionId, RuntimeContext runtimeContext) {

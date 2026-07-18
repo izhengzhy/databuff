@@ -56,7 +56,8 @@ public class ApmConfigRepository {
     public boolean aiPlatformSchemaReady() {
         return tableReady(DorisTableNames.CONFIG_AI_TOOL)
                 && tableReady(DorisTableNames.CONFIG_AI_SKILL)
-                && tableReady(DorisTableNames.CONFIG_AI_EXPERT);
+                && tableReady(DorisTableNames.CONFIG_AI_EXPERT)
+                && tableReady(DorisTableNames.CONFIG_AI_CAPABILITY);
     }
 
     public boolean aiExpertTaskSchemaReady() {
@@ -615,6 +616,71 @@ public class ApmConfigRepository {
         }
     }
 
+    public List<AiCapabilityRow> loadAiCapabilities() throws SQLException {
+        String sql = "SELECT capability_id, name, tagline, expert_id, prompts_json,"
+                + " enabled, built_in, version, created_at, updated_at,"
+                + " default_name, default_tagline, default_expert_id, default_prompts_json FROM "
+                + qualified(DorisTableNames.CONFIG_AI_CAPABILITY) + " ORDER BY capability_id";
+        List<AiCapabilityRow> rows = new ArrayList<>();
+        try (Connection connection = reader.connection();
+             Statement statement = connection.createStatement();
+             ResultSet rs = statement.executeQuery(sql)) {
+            while (rs.next()) {
+                rows.add(new AiCapabilityRow(
+                        rs.getString("capability_id"),
+                        rs.getString("name"),
+                        rs.getString("tagline"),
+                        rs.getString("expert_id"),
+                        rs.getString("prompts_json"),
+                        rs.getInt("enabled") == 1,
+                        rs.getInt("built_in") == 1,
+                        rs.getLong("version"),
+                        rs.getTimestamp("created_at").toInstant(),
+                        rs.getTimestamp("updated_at").toInstant(),
+                        rs.getString("default_name"),
+                        rs.getString("default_tagline"),
+                        rs.getString("default_expert_id"),
+                        rs.getString("default_prompts_json")));
+            }
+        }
+        return rows;
+    }
+
+    public void upsertAiCapability(AiCapabilityRow row) throws SQLException {
+        String sql = "INSERT INTO " + qualified(DorisTableNames.CONFIG_AI_CAPABILITY)
+                + " (capability_id, name, tagline, expert_id, prompts_json,"
+                + " enabled, built_in, version, created_at, updated_at,"
+                + " default_name, default_tagline, default_expert_id, default_prompts_json)"
+                + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        try (Connection connection = reader.connection();
+             PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, row.capabilityId());
+            ps.setString(2, row.name());
+            ps.setString(3, row.tagline());
+            ps.setString(4, row.expertId());
+            ps.setString(5, row.promptsJson());
+            ps.setInt(6, row.enabled() ? 1 : 0);
+            ps.setInt(7, row.builtIn() ? 1 : 0);
+            ps.setLong(8, row.version());
+            ps.setTimestamp(9, Timestamp.from(row.createdAt()));
+            ps.setTimestamp(10, Timestamp.from(row.updatedAt()));
+            ps.setString(11, row.defaultName());
+            ps.setString(12, row.defaultTagline());
+            ps.setString(13, row.defaultExpertId());
+            ps.setString(14, row.defaultPromptsJson());
+            ps.executeUpdate();
+        }
+    }
+
+    public void deleteAiCapability(String capabilityId) throws SQLException {
+        String sql = "DELETE FROM " + qualified(DorisTableNames.CONFIG_AI_CAPABILITY) + " WHERE capability_id = ?";
+        try (Connection connection = reader.connection();
+             PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, capabilityId);
+            ps.executeUpdate();
+        }
+    }
+
     public List<AlarmSilenceRow> loadActiveAlarmSilences() throws SQLException {
         String sql = "SELECT service, silenced_until, updated_at FROM "
                 + qualified(DorisTableNames.CONFIG_ALARM_SILENCE) + " WHERE silenced_until > NOW()";
@@ -1156,6 +1222,23 @@ public class ApmConfigRepository {
             long version,
             Instant createdAt,
             Instant updatedAt) {
+    }
+
+    public record AiCapabilityRow(
+            String capabilityId,
+            String name,
+            String tagline,
+            String expertId,
+            String promptsJson,
+            boolean enabled,
+            boolean builtIn,
+            long version,
+            Instant createdAt,
+            Instant updatedAt,
+            String defaultName,
+            String defaultTagline,
+            String defaultExpertId,
+            String defaultPromptsJson) {
     }
 
     public record AiExpertTaskRow(

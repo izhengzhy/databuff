@@ -23,6 +23,7 @@ import com.databuff.apm.web.ai.platform.runtime.ExpertRuntimeRegistry;
 import com.databuff.apm.web.ai.platform.runtime.SessionExpertRuntimeRegistry;
 import com.databuff.apm.web.ai.platform.runtime.SessionWorkspaceService;
 import com.databuff.apm.web.ai.platform.runtime.SessionWorkspaceTools;
+import com.databuff.apm.web.ai.platform.runtime.TaskGeneratedFileRegistry;
 import com.databuff.apm.web.ai.platform.runtime.SkillFileSyncService;
 import com.databuff.apm.web.ai.platform.skill.SkillManagementService;
 import com.databuff.apm.web.ai.platform.task.ExpertDispatchTool;
@@ -166,6 +167,8 @@ public final class TestAiSupport {
             BrainContinuationService brainContinuationService = new BrainContinuationService(
                     continuerRefProvider(brainContinuerRef),
                     pendingRegistry);
+            SessionWorkspaceService sessionWorkspaceService = new SessionWorkspaceService(agentRuntimeConfig);
+            TaskGeneratedFileRegistry generatedFileRegistry = new TaskGeneratedFileRegistry();
             ExpertTaskService expertTaskService = new ExpertTaskService(
                     expertManagementService,
                     providerOf(registryHolder),
@@ -173,7 +176,9 @@ public final class TestAiSupport {
                     sessionStore,
                     pendingRegistry,
                     taskTextGuard,
-                    brainContinuationService);
+                    brainContinuationService,
+                    sessionWorkspaceService,
+                    generatedFileRegistry);
             ExpertDispatchTool dispatchTool = new ExpertDispatchTool(
                     expertTaskServiceProvider(expertTaskService),
                     sessionStoreProvider(sessionStore));
@@ -188,9 +193,8 @@ public final class TestAiSupport {
             SkillFileSyncService skillFileSyncService = new SkillFileSyncService(
                     agentRuntimeConfig, skillManagementService, new DefaultResourceLoader());
 
-            SessionWorkspaceService sessionWorkspaceService = new SessionWorkspaceService(agentRuntimeConfig);
             SessionWorkspaceTools sessionWorkspaceTools = new SessionWorkspaceTools(
-                    sessionWorkspaceService, agentRuntimeConfig);
+                    sessionWorkspaceService, agentRuntimeConfig, generatedFileRegistry);
             BrainRoutingCatalog brainRoutingCatalog = new BrainRoutingCatalog(expertManagementService);
             AgentScopeRuntimeAdapter adapter = new AgentScopeRuntimeAdapter(
                     agentRuntimeConfig,

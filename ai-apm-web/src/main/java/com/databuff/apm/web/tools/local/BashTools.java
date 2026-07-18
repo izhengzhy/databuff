@@ -2,8 +2,10 @@ package com.databuff.apm.web.tools.local;
 
 import com.databuff.apm.web.ai.agent.AgentRuntimeConfig;
 import com.databuff.apm.web.ai.agent.ShellCommandPolicy;
+import com.databuff.apm.web.ai.platform.task.ExpertSessionResolver;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.agentscope.core.agent.RuntimeContext;
 import io.agentscope.core.tool.Tool;
 import io.agentscope.core.tool.ToolParam;
 import org.springframework.context.annotation.Lazy;
@@ -97,7 +99,8 @@ public class BashTools {
             Long timeout,
             @ToolParam(name = "run_in_background", required = false,
                     description = "Set to true to run this command in the background. Use BashOutput to read the output later.")
-            Boolean runInBackground) {
+            Boolean runInBackground,
+            RuntimeContext runtimeContext) {
         if (command == null || command.isBlank()) {
             return formatError("command is required");
         }
@@ -106,11 +109,11 @@ public class BashTools {
             return formatError("Command rejected: " + denied);
         }
         if (Boolean.TRUE.equals(runInBackground)) {
-            return startBackground(normalizeCommand(command.trim()));
+            return startBackground(normalizeCommand(command.trim()), runtimeContext);
         }
         String normalizedCommand = normalizeCommand(command.trim());
         long timeoutMs = normalizeTimeout(normalizedCommand, timeout);
-        String sessionId = sessionManager.resolveSessionId();
+        String sessionId = sessionManager.resolveSessionId(runtimeContext);
         try {
             BashSession.BashExecutionResult result = sessionManager.execute(
                     sessionId, normalizedCommand, timeoutMs, MAX_OUTPUT_CHARS);
@@ -152,9 +155,10 @@ public class BashTools {
         return "Shell " + shellId.trim() + " killed successfully.";
     }
 
-    private String startBackground(String command) {
+    private String startBackground(String command, RuntimeContext runtimeContext) {
         try {
-            String bashId = backgroundTaskManager.startBackground(sessionManager.resolveSessionId(), command);
+            String bashId = backgroundTaskManager.startBackground(
+                    sessionManager.resolveSessionId(runtimeContext), command);
             return "Background shell started.\nbash_id: " + bashId;
         } catch (Exception e) {
             return formatError(e.getMessage() == null ? "failed to start background shell" : e.getMessage());

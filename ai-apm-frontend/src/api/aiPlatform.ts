@@ -143,6 +143,18 @@ export interface AiExpertDefinition {
   version?: number;
 }
 
+export interface AiCapabilityDefinition {
+  capabilityId: string;
+  name: string;
+  tagline?: string;
+  color?: string;
+  expertId: string;
+  prompts: string[];
+  enabled: boolean;
+  builtIn: boolean;
+  version?: number;
+}
+
 export interface ExpertTask {
   taskId: string;
   sessionId?: string;
@@ -265,4 +277,12 @@ export default {
   reloadExpert: (expertId: string) => http.post(`/api/v1/ai/experts/${encodeURIComponent(expertId)}/reload`),
   debugExpert: (expertId: string, message: string) =>
     http.post(`/api/v1/ai/experts/${encodeURIComponent(expertId)}/debug`, { message }),
+
+  listCapabilities: () => http.get('/api/v1/ai/capabilities').then(unwrapList<AiCapabilityDefinition>),
+  getCapability: (capabilityId: string) => http.get(`/api/v1/ai/capabilities/${encodeURIComponent(capabilityId)}`),
+  updateCapability: (capabilityId: string, data: Partial<AiCapabilityDefinition>) =>
+    http.put(`/api/v1/ai/capabilities/${encodeURIComponent(capabilityId)}`, data),
+  enableCapability: (capabilityId: string) => http.post(`/api/v1/ai/capabilities/${encodeURIComponent(capabilityId)}/enable`),
+  disableCapability: (capabilityId: string) => http.post(`/api/v1/ai/capabilities/${encodeURIComponent(capabilityId)}/disable`),
+  resetCapability: (capabilityId: string) => http.post(`/api/v1/ai/capabilities/${encodeURIComponent(capabilityId)}/reset`),
 };

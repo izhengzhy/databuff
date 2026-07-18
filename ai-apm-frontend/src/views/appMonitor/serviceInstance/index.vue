@@ -16,7 +16,7 @@
             {{ $t('modules.views.appMonitor.response.s_598ea178') }}</el-button>
           <el-button type="primary" size="small" @click="viewLogsAnalysisHandle">
             <i class="db-icon db-icon-log font-12"></i>
-            日志分析</el-button>
+            {{ $t('modules.views.appMonitor.serviceDetail.s_40907441') }}</el-button>
         </div>
       </div>
 

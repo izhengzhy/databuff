@@ -32,4 +32,10 @@ public record ExpertTask(
                 taskId, parentTaskId, sessionId, sourceExpertId, targetExpertId,
                 nextStatus, input, output, error, metadata, createdAt, updatedAt, completedAt);
     }
+
+    public ExpertTask withMetadata(Map<String, Object> nextMetadata) {
+        return new ExpertTask(
+                taskId, parentTaskId, sessionId, sourceExpertId, targetExpertId,
+                status, input, output, error, nextMetadata, createdAt, updatedAt, completedAt);
+    }
 }

@@ -311,6 +311,22 @@ export default {
       }
     },
     "aiPlatform": {
+      "capabilities": {
+        "s_f3c11d27": "Homepage Settings",
+        "s_6825b886": "Manage the names, copy, and try-it prompts of the 7 AI capabilities on the landing page",
+        "s_d8b51f69": "Total Capabilities",
+        "s_039958e1": "One-line tagline",
+        "s_62783e84": "Routed Expert",
+        "s_89a07c5e": "Prompt Count",
+        "s_862b2e89": "Edit Capability",
+        "s_394bcf8d": "Capability Name",
+        "s_e70cb7f3": "Try-it Prompt",
+        "s_a4fc4861": "Enabled Status",
+        "s_0f378db8": "Reset to default successfully",
+        "s_d76ac80d": "Reset this capability to default? Current changes will be lost.",
+        "s_a808298f": "Prompt {value0}",
+        "s_faaadc44": "Index"
+      },
       "chat": {
         "s_c5ec3754": "Finished thinking in {duration}",
         "s_1a57bc0c": "Trend chart",
@@ -370,7 +386,59 @@ export default {
         "s_4dabf8a7": "Smart Inspection",
         "s_10dab24b": "Product Q&A",
         "s_79d3abe9": "Copy",
-        "s_694fc5ef": "Refresh"
+        "s_694fc5ef": "Refresh",
+        "s_69de8d7f": "Text",
+        "s_4f9b192c": "large",
+        "s_c2d94c82": "Preview add Failed",
+        "s_93177327": "Text Supports Online Preview, Text Download View",
+        "s_80a7c078": "DataBuff's 7 AI Capabilities",
+        "s_1a0ce947": "Pick a capability, try it instantly",
+        "s_8ae87cb9": "See It",
+        "s_4067e4c8": "Ask in plain language, AI queries the data for you",
+        "s_298974bb": "Which services were slowest in the last hour? List the top 3.",
+        "s_11f817a9": "Agent Legion",
+        "s_e28a802e": "Multi-agent collaboration — a legion you can dispatch by name",
+        "s_ef62e9e0": "Any anomalies in the cluster in the last hour? Run a joint diagnosis with Intelligent Data Query and Smart Inspection: Data Query checks service latency, error rates, and slow traces; Inspection runs tiered health checks; summarize into a forwardable incident report.",
+        "s_8c74b52c": "Inspect",
+        "s_0899f034": "One sentence yields a forwardable HTML inspection report",
+        "s_6c721b80": "Inspect service-b and produce a complete HTML inspection report.",
+        "s_e59f9ed2": "Diagnose",
+        "s_e57eb0c3": "Root cause analysis that assigns blame clearly",
+        "s_660479fe": "Where is the bottleneck for service-a in the last hour? Is the root cause the app, the database, or a downstream service?",
+        "s_0851d8ac": "Repair",
+        "s_1f08b26c": "Ops expert SSHs in, investigates and fixes it itself",
+        "s_59310494": "The ai-apm-demo container keeps restarting. SSH in, troubleshoot, and fix it.",
+        "s_d26daab4": "Disk usage on this host exceeds 90%. Find out which logs or containers are using the space and clean up what you can.",
+        "s_31e987d1": "Predict",
+        "s_b257f199": "Capacity analysis — tell scale-up from optimization",
+        "s_c08ba300": "Redis average latency of 366ms is high. Determine whether there is a capacity bottleneck, whether to scale up, and give capacity planning advice.",
+        "s_2fcec854": "Answer",
+        "s_43746844": "Product Q&A expert — reads our own docs, more reliable than search",
+        "s_9b248373": "How do I integrate the OpenTelemetry SDK? Where do I configure alert thresholds? Give me the navigation paths.",
+        "s_e0ed9228": "How do I deploy DataBuff with a single command? What prerequisites do I need?",
+        "s_4eb19ee1": "Try now",
+        "s_7bcf1bf2": "Another prompt",
+        "s_307325a8": "This expert is disabled and cannot be tried",
+        "s_7b659241": "Try",
+        "s_cbb60ddc": "Which services show an upward error-rate trend in the last hour? Give the top 3.",
+        "s_c72cdf69": "How many services are running in the cluster right now? Sort them by request volume, high to low.",
+        "s_133e7614": "Which service instance had the highest CPU usage in the last hour? List the top 3.",
+        "s_b4e19a48": "Run a full-cluster health inspection: Intelligent Data Query pulls P99 latency and error rate for every service; Smart Inspection runs tiered JVM, thread, and GC checks; merge into a report forwardable to the SRE channel.",
+        "s_65eba00e": "Any slow calls in the last 30 minutes? Have Intelligent Data Query chase the slow-trace root cause while Smart Inspection checks the related service instances health; summarize into a joint diagnostic conclusion.",
+        "s_51668218": "Run a legion-level consultation on service-a: Intelligent Data Query checks its downstream dependencies and outbound latency; Smart Inspection checks its own instances JVM and thread state; produce a report forwardable to the dev team.",
+        "s_16c6cb36": "Inspect service-a and produce a complete HTML inspection report.",
+        "s_7766fe07": "Inspect the MySQL database demo_apm and produce a complete HTML inspection report.",
+        "s_ce80662a": "Inspect the Redis cache and produce a complete HTML inspection report.",
+        "s_0de54296": "service-b error rate rose in the last hour. What is the root cause? Give the evidence chain.",
+        "s_a0351710": "Which service had a sudden P99 latency spike in the last hour? Which layer is the root cause in?",
+        "s_3595b138": "The HTTP call from service-a to service-b takes 100ms, which is high. Help me localize whether it is a network, application, or downstream database issue.",
+        "s_f552bab8": "Check this host memory usage, find the top-consuming process, and kill it if it is anomalous.",
+        "s_b6196a6b": "The DataBuff ai-apm-web container will not start. SSH in, check docker logs, and fix it if it is a configuration issue.",
+        "s_b751bd33": "What are the QPS and connection-count trends for MySQL demo_apm in the last hour? At the current growth rate, how long can the connection pool last?",
+        "s_bee0ec83": "What is the 7-day request-volume growth trend for service-a? At this rate, do we need to scale up next week?",
+        "s_da3b3acd": "Kafka consumer latency keeps growing. Help me tell whether consumers are underpowered or producers have abnormal traffic, and give capacity planning advice.",
+        "s_f6b7f663": "Which language SDKs does DataBuff support for ingestion? Give a minimal runnable example for each.",
+        "s_fb39284c": "I want to configure an alert for service-a P99 latency that triggers when it exceeds 500ms for 3 minutes. How do I set it up? Give the navigation path."
       },
       "experts": {
         "s_51c9c7d4": "Debug {value0}",
@@ -489,7 +557,8 @@ export default {
         "s_ab6d9907": "Delete Skill {value0}?",
         "s_5ed0e1e6": "Data Query Guidelines",
         "s_18d679e1": "Inspection Workflow",
-        "s_b0fdef01": "Summary Deliverable"
+        "s_b0fdef01": "Summary Deliverable",
+        "s_25f9c7fa": "Text"
       },
       "tools": {
         "s_5f7df379": "Tool Management",
@@ -584,7 +653,8 @@ export default {
         "s_65227369": "Host",
         "s_63cf5e77": "Partition name",
         "s_c62e34c5": "Alert type",
-        "s_606a249f": "Alert description"
+        "s_606a249f": "Alert description",
+        "s_858ac2d7": "Trigger time"
       },
       "alarmDetail": {
         "s_b9dbb7fe": "Alarm handling status changed to [{value0}]",
@@ -1225,7 +1295,8 @@ export default {
         "s_837fa33c": "Currentconnectnumber",
         "s_726cbbca": "columnCount",
         "s_b666bd9a": "connectnumber",
-        "s_7e687515": "Metric"
+        "s_7e687515": "Metric",
+        "s_40907441": "Log Analysis"
       },
       "serviceFlow": {
         "s_390576d4": "{value0} requests",
@@ -1453,7 +1524,8 @@ export default {
         "s_ce50ea0b": "{value0}Calls",
         "s_51a651c3": "ErrorSpan",
         "s_30d23ef4": "Operating system",
-        "s_1801d7de": "Infrastructure"
+        "s_1801d7de": "Infrastructure",
+        "s_f7444b29": "Text Log Analysis in View All"
       }
     },
     "authorization": {
@@ -2380,6 +2452,14 @@ export default {
         "s_189448a2": "Endpoint.",
         "s_7a5bf15a": "\"Application performance → Service\"and\"Tracing\"inViewnumber.",
         "s_44b60d01": "Seven, Issue"
+      },
+      "log": {
+        "s_4c71150a": "DataBuff Ingest already Supports OTLP Logs (gRPC",
+        "s_d70f404d": "). Log enter Doris aftercan Trace Details Text",
+        "s_cf2a53eb": "close View.",
+        "s_52209c63": "OTLP Text",
+        "s_329404de": "Text Enabled Trace ofupadd Log Export:",
+        "s_5abd47ba": "close Trace Text, Text LogRecord Text and Span One of trace/span updown (OTel Log Bridge or MDC enter"
       },
       "otelCollector": {
         "s_c69c12e7": "If OpenTelemetry Collector is already deployed, after reporting application telemetry data to Collector, modify the Collector configuration file and use",

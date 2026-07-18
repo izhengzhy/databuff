@@ -38,7 +38,6 @@ class ExpertChatScopeRegistryTest {
                 .get()
                 .extracting(ExpertChatContext.State::expertId)
                 .isEqualTo("brain");
-        assertThat(ExpertChatScopeRegistry.soleSessionId()).contains(sessionId);
     }
 
     @Test

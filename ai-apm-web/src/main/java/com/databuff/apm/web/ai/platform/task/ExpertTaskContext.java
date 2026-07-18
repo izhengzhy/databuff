@@ -76,12 +76,12 @@ public final class ExpertTaskContext {
         }
     }
 
-    public static Optional<String> sessionId() {
-        return currentState().map(State::sessionId);
+    public static Optional<String> sessionId(String sessionId) {
+        return peekStack(sessionId).map(State::sessionId);
     }
 
-    public static Optional<String> sourceExpertId() {
-        return currentState().map(State::sourceExpertId);
+    public static Optional<String> sourceExpertId(String sessionId) {
+        return peekStack(sessionId).map(State::sourceExpertId);
     }
 
     /**
@@ -127,56 +127,11 @@ public final class ExpertTaskContext {
         }
     }
 
-    private static Optional<State> currentState() {
-        // Prefer exact stack for the sole/parent chat scope, then unique parent task stack.
-        Optional<State> fromActiveChat = ExpertChatScopeRegistry.soleSessionId()
-                .flatMap(ExpertTaskContext::peekStack);
-        if (fromActiveChat.isPresent()) {
-            return fromActiveChat;
-        }
-        if (SCOPES.size() == 1) {
-            return peekStack(SCOPES.keySet().iterator().next());
-        }
-        // Multiple task stacks: resolve only when a unique parent logical session is present.
-        String parent = null;
-        for (String key : SCOPES.keySet()) {
-            String p = ExpertChatScopeRegistry.parentSessionId(key);
-            if (p == null) {
-                continue;
-            }
-            if (parent == null) {
-                parent = p;
-            } else if (!parent.equals(p)) {
-                return Optional.empty();
-            }
-        }
-        if (parent == null) {
+    private static Optional<State> peekStack(String sessionId) {
+        if (sessionId == null || sessionId.isBlank()) {
             return Optional.empty();
         }
-        Optional<State> parentFrame = peekStack(parent);
-        if (parentFrame.isPresent()) {
-            return parentFrame;
-        }
-        // No parent frame — if exactly one task stack for that parent, use it.
-        State onlyTask = null;
-        for (var entry : SCOPES.entrySet()) {
-            if (!parent.equals(ExpertChatScopeRegistry.parentSessionId(entry.getKey()))) {
-                continue;
-            }
-            State top = entry.getValue().peek();
-            if (top == null) {
-                continue;
-            }
-            if (onlyTask != null) {
-                return Optional.empty();
-            }
-            onlyTask = top;
-        }
-        return Optional.ofNullable(onlyTask);
-    }
-
-    private static Optional<State> peekStack(String sessionId) {
-        ConcurrentLinkedDeque<State> stack = SCOPES.get(sessionId);
+        ConcurrentLinkedDeque<State> stack = SCOPES.get(sessionId.trim());
         if (stack == null) {
             return Optional.empty();
         }

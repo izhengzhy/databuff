@@ -24,7 +24,7 @@
             <span
               v-if="traceInfo.trace_id"
               @click.stop="viewLogsAnalysisHandle"
-              class="db-blue cp font-12 ml-10">日志分析</span>
+              class="db-blue cp font-12 ml-10">{{ $t('modules.views.appMonitor.serviceDetail.s_40907441') }}</span>
           </span>
           <el-alert v-if="spanListOversize" :title="$t('modules.views.appMonitor.traceDetail.s_c605e33a')" type="error" :closable="false" class="oversize-info" />
         </div>

@@ -93,41 +93,6 @@ public final class ExpertChatScopeRegistry {
         return find(parent).filter(state -> !isTaskScopedSessionId(state.sessionId()));
     }
 
-    public static Optional<ExpertChatContext.State> soleActiveState() {
-        if (ACTIVE.isEmpty()) {
-            return Optional.empty();
-        }
-        if (ACTIVE.size() == 1) {
-            return Optional.of(ACTIVE.values().iterator().next());
-        }
-        // Prefer the unique parent (brain) scope when subtask scopes are also active.
-        ExpertChatContext.State parent = null;
-        for (ExpertChatContext.State state : ACTIVE.values()) {
-            if (isTaskScopedSessionId(state.sessionId())) {
-                continue;
-            }
-            if (parent != null) {
-                return Optional.empty();
-            }
-            parent = state;
-        }
-        return Optional.ofNullable(parent);
-    }
-
-    public static Optional<String> soleSessionId() {
-        return soleActiveState().map(state -> parentSessionId(state.sessionId()) != null
-                ? parentSessionId(state.sessionId())
-                : state.sessionId());
-    }
-
-    public static Optional<String> resolveSessionId(String hintSessionId) {
-        String parent = parentSessionId(hintSessionId);
-        if (parent != null) {
-            return Optional.of(parent);
-        }
-        return soleSessionId();
-    }
-
     public static boolean validSessionId(String sessionId) {
         return sessionId != null
                 && !sessionId.isBlank()

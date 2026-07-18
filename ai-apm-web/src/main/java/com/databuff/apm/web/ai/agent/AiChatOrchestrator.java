@@ -133,7 +133,7 @@ public class AiChatOrchestrator implements BrainRoundContinuer {
         }
         boolean aborted = sessionStore.abortSession(sessionId);
         sessionExpertRuntimeRegistry.release(sessionId);
-        expertTaskPendingRegistry.cancelSessionTasks(sessionId);
+        expertTaskService.cancelSessionTasks(sessionId);
         expertTaskTextGuard.clearSession(sessionId);
         Future<?> future = activeChatTasks.remove(sessionId);
         if (future != null) {
@@ -690,13 +690,61 @@ public class AiChatOrchestrator implements BrainRoundContinuer {
                 metadata.put("subtasks", subtasks);
             }
         }
-        List<SessionWorkspaceService.WorkspaceFileInfo> generated = sessionWorkspaceService.listNewOutputFiles(sessionId, outputsBefore);
-        if (!generated.isEmpty()) {
-            metadata.put("generatedFiles", generated.stream()
-                    .map(SessionWorkspaceService.WorkspaceFileInfo::toMetadata)
-                    .toList());
+        Map<String, Map<String, Object>> generatedByPath = new LinkedHashMap<>();
+        sessionWorkspaceService.listNewOutputFiles(sessionId, outputsBefore).stream()
+                .map(SessionWorkspaceService.WorkspaceFileInfo::toMetadata)
+                .forEach(file -> generatedByPath.put(String.valueOf(file.get("filePath")), file));
+        if ("brain".equals(expertId)) {
+            taskGeneratedFilesForCurrentRound(sessionId).forEach(file ->
+                    generatedByPath.putIfAbsent(String.valueOf(file.get("filePath")), file));
+        }
+        if (!generatedByPath.isEmpty()) {
+            metadata.put("generatedFiles", List.copyOf(generatedByPath.values()));
         }
         return Map.copyOf(metadata);
+    }
+
+    private List<Map<String, Object>> taskGeneratedFilesForCurrentRound(String sessionId) {
+        int roundIndex = sessionStore.peekCurrentRoundIndex(sessionId);
+        Map<String, Map<String, Object>> generatedByPath = new LinkedHashMap<>();
+        for (ExpertTask task : expertTaskService.listBySession(sessionId)) {
+            if (!"brain".equals(task.sourceExpertId())
+                    || metadataInt(task.metadata(), ExpertMessageConstants.META_ROUND_INDEX, 0) != roundIndex) {
+                continue;
+            }
+            Object raw = task.metadata().get("generatedFiles");
+            if (!(raw instanceof List<?> files)) {
+                continue;
+            }
+            for (Object item : files) {
+                if (!(item instanceof Map<?, ?> map)) {
+                    continue;
+                }
+                Object path = map.get("filePath");
+                if (path == null || String.valueOf(path).isBlank()) {
+                    continue;
+                }
+                Map<String, Object> file = new LinkedHashMap<>();
+                map.forEach((key, value) -> file.put(String.valueOf(key), value));
+                generatedByPath.putIfAbsent(String.valueOf(path).trim(), Map.copyOf(file));
+            }
+        }
+        return List.copyOf(generatedByPath.values());
+    }
+
+    private static int metadataInt(Map<String, Object> metadata, String key, int fallback) {
+        if (metadata == null || key == null) {
+            return fallback;
+        }
+        Object value = metadata.get(key);
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        try {
+            return value == null ? fallback : Integer.parseInt(String.valueOf(value));
+        } catch (NumberFormatException ignored) {
+            return fallback;
+        }
     }
 
     Map<String, Object> buildAssistantMetadata(String sessionId, String expertId) {

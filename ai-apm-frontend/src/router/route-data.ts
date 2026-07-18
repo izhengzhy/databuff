@@ -55,6 +55,16 @@ const aiPlatform: OptionalPropMenu[] = [
     leaf: true,
     order: 4,
   },
+  {
+    parentId: 1003,
+    id: 1705,
+    name: '首页配置',
+    path: '/aiPlatform/capabilities',
+    filePath: '/aiPlatform/capabilities',
+    isMenu: true,
+    leaf: true,
+    order: 3,
+  },
 ];
 
 // 全局大盘 1

@@ -15,10 +15,10 @@
         <div class="preview-actions">
           <el-button type="text" size="small" @click="toggleExpanded">
             <i :class="expanded ? 'el-icon-copy-document' : 'el-icon-full-screen'" />
-            {{ expanded ? '还原' : '放大' }}
+            {{ expanded ? $t('modules.views.aiPlatform.chat.s_69de8d7f') : $t('modules.views.aiPlatform.chat.s_4f9b192c')  }}
           </el-button>
           <el-button type="text" size="small" icon="el-icon-download" @click="$emit('download')">
-            下载
+            {{ $t('modules.views.configStatus.runLog.s_f26ef914') }}
           </el-button>
           <el-button type="text" size="small" icon="el-icon-close" @click="drawerVisible = false" />
         </div>
@@ -33,13 +33,14 @@
         />
         <pre v-else-if="previewKind === 'text' && textContent" class="preview-text">{{ textContent }}</pre>
         <div v-else-if="error" class="preview-empty">{{ error }}</div>
-        <div v-else class="preview-empty">暂不支持在线预览，请下载查看</div>
+        <div v-else class="preview-empty">{{ $t('modules.views.aiPlatform.chat.s_93177327') }}</div>
       </div>
     </div>
   </el-drawer>
 </template>
 
 <script lang="ts">
+import i18n from '@/i18n';
 import { Vue, Component, Prop, Watch } from 'vue-property-decorator'
 import AiPlatformApi from '@/api/aiPlatform'
 
@@ -148,7 +149,7 @@ export default class WorkspaceFilePreview extends Vue {
         this.textContent = await blob.text()
       }
     } catch (e: any) {
-      this.error = e?.message || '预览加载失败'
+      this.error = e?.message || i18n.t('modules.views.aiPlatform.chat.s_c2d94c82') as string
     } finally {
       this.loading = false
     }

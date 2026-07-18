@@ -45,6 +45,7 @@ public final class DorisTableNames {
     public static final String CONFIG_AI_SKILL = "config_ai_skill";
     public static final String CONFIG_AI_EXPERT = "config_ai_expert";
     public static final String CONFIG_AI_EXPERT_TASK = "config_ai_expert_task";
+    public static final String CONFIG_AI_CAPABILITY = "config_ai_capability";
     public static final String CONFIG_ALARM_SILENCE = "config_alarm_silence";
     public static final String CONFIG_COCKPIT = "config_cockpit";
     public static final String CONFIG_METRIC_CORE = "config_metric_core";

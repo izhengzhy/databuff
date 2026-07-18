@@ -1,6 +1,8 @@
 package com.databuff.apm.web.ai.platform.runtime;
 
 import com.databuff.apm.web.ai.agent.AgentRuntimeConfig;
+import com.databuff.apm.web.ai.platform.task.ExpertMessageConstants;
+import io.agentscope.core.agent.RuntimeContext;
 import io.agentscope.core.message.ImageBlock;
 import io.agentscope.core.message.TextBlock;
 import io.agentscope.core.message.ToolResultBlock;
@@ -25,6 +27,7 @@ class SessionWorkspaceToolsTest {
 
     private SessionWorkspaceService workspaceService;
     private SessionWorkspaceTools tools;
+    private TaskGeneratedFileRegistry generatedFileRegistry;
     private String sessionId;
 
     @BeforeEach
@@ -32,7 +35,8 @@ class SessionWorkspaceToolsTest {
         AgentRuntimeConfig config = new AgentRuntimeConfig();
         config.setWorkspaceDir(tempDir.toString());
         workspaceService = new SessionWorkspaceService(config);
-        tools = new SessionWorkspaceTools(workspaceService, config);
+        generatedFileRegistry = new TaskGeneratedFileRegistry();
+        tools = new SessionWorkspaceTools(workspaceService, config, generatedFileRegistry);
         sessionId = "session-test-tools-001";
         Files.createDirectories(workspaceService.uploadsDir(sessionId));
         ExpertChatScopeRegistry.register(new ExpertChatContext.State(
@@ -41,14 +45,15 @@ class SessionWorkspaceToolsTest {
 
     @AfterEach
     void tearDown() {
-        ExpertChatScopeRegistry.unregister(sessionId);
+        ExpertChatScopeRegistry.clearForTests();
     }
 
     @Test
     void readWorkspaceFileReturnsImageBlockForPng() throws Exception {
         Files.write(workspaceService.uploadsDir(sessionId).resolve("chart.png"), TINY_PNG);
 
-        ToolResultBlock result = tools.readWorkspaceFile("uploads/chart.png", null);
+        ToolResultBlock result = tools.readWorkspaceFile(
+                "uploads/chart.png", null, RuntimeContext.builder().sessionId(sessionId).build());
 
         assertThat(result.getOutput()).hasSize(2);
         assertThat(result.getOutput().get(0)).isInstanceOf(TextBlock.class);
@@ -60,10 +65,61 @@ class SessionWorkspaceToolsTest {
     void readWorkspaceFileReturnsTextForCsv() throws Exception {
         Files.writeString(workspaceService.uploadsDir(sessionId).resolve("metrics.csv"), "a,b\n1,2");
 
-        ToolResultBlock result = tools.readWorkspaceFile("uploads/metrics.csv", null);
+        ToolResultBlock result = tools.readWorkspaceFile(
+                "uploads/metrics.csv", null, RuntimeContext.builder().sessionId(sessionId).build());
 
         assertThat(result.getOutput()).hasSize(1);
         assertThat(result.getOutput().get(0)).isInstanceOf(TextBlock.class);
         assertThat(((TextBlock) result.getOutput().get(0)).getText()).contains("1: a,b");
+    }
+
+    @Test
+    void readWorkspaceFileResolvesSessionIdFromRuntimeContextWhenScopesAreAmbiguous() throws Exception {
+        // Simulate a second concurrent chat: register another parent brain scope so the global
+        // registry's soleSessionId() becomes ambiguous. Without RuntimeContext this used to throw
+        // "session workspace is unavailable outside chat context".
+        String otherSession = "session-test-tools-other";
+        Files.createDirectories(workspaceService.uploadsDir(otherSession));
+        ExpertChatScopeRegistry.register(new ExpertChatContext.State(
+                otherSession, "admin", "inspection", null, false, null));
+        Files.writeString(workspaceService.uploadsDir(sessionId).resolve("metrics.csv"), "a,b\n1,2");
+
+        RuntimeContext runtimeContext = RuntimeContext.builder().sessionId(sessionId).build();
+        ToolResultBlock result = tools.readWorkspaceFile("uploads/metrics.csv", null, runtimeContext);
+
+        assertThat(result.getOutput()).hasSize(1);
+        assertThat(result.getOutput().get(0)).isInstanceOf(TextBlock.class);
+        assertThat(((TextBlock) result.getOutput().get(0)).getText()).contains("1: a,b");
+    }
+
+    @Test
+    void writeWorkspaceFileRecordsOwningTask() {
+        String taskId = "task-report-1";
+        String runtimeSessionId = ExpertChatScopeRegistry.taskScopedSessionId(sessionId, taskId);
+        RuntimeContext runtimeContext = RuntimeContext.builder()
+                .sessionId(runtimeSessionId)
+                .build();
+
+        String result = tools.writeWorkspaceFile(
+                "inspection.html", "<html>report</html>", "overwrite", runtimeContext);
+
+        assertThat(result).isEqualTo("Wrote outputs/inspection.html");
+        assertThat(generatedFileRegistry.paths(sessionId, taskId))
+                .containsExactly("outputs/inspection.html");
+    }
+
+    @Test
+    void brainContinuationWriteIsNotAttributedToCompletedTask() {
+        String completedTaskId = "task-completed";
+        RuntimeContext runtimeContext = RuntimeContext.builder()
+                .sessionId(sessionId)
+                .put(ExpertMessageConstants.META_TASK_ID, completedTaskId)
+                .build();
+
+        String result = tools.writeWorkspaceFile(
+                "brain-summary.html", "<html>summary</html>", "overwrite", runtimeContext);
+
+        assertThat(result).isEqualTo("Wrote outputs/brain-summary.html");
+        assertThat(generatedFileRegistry.paths(sessionId, completedTaskId)).isEmpty();
     }
 }

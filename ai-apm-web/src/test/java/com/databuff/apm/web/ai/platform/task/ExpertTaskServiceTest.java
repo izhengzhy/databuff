@@ -9,6 +9,8 @@ import com.databuff.apm.web.ai.platform.runtime.ExpertChatResult;
 import com.databuff.apm.web.ai.platform.runtime.ExpertRuntime;
 import com.databuff.apm.web.ai.platform.runtime.ExpertRuntimeEvent;
 import com.databuff.apm.web.ai.platform.runtime.ExpertRuntimeRegistry;
+import com.databuff.apm.web.ai.platform.runtime.SessionWorkspaceService;
+import com.databuff.apm.web.ai.platform.runtime.TaskGeneratedFileRegistry;
 import com.databuff.apm.web.ai.tool.ApmToolkit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,9 +21,11 @@ import org.springframework.beans.factory.ObjectProvider;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -38,11 +42,14 @@ class ExpertTaskServiceTest {
     private ExpertTaskService taskService;
     private AiSessionStore sessionStore;
     private ExpertTaskPendingRegistry pendingRegistry;
+    private SessionWorkspaceService workspaceService;
+    private TaskGeneratedFileRegistry generatedFileRegistry;
 
     @BeforeEach
     void setUp() {
         TestAiSupport.AiFixture aiFixture = TestAiSupport.aiFixture();
         aiFixture.agentRuntimeConfig().setCustomSkillsDir(tempDir.toString());
+        aiFixture.agentRuntimeConfig().setWorkspaceDir(tempDir.resolve("workspaces").toString());
         aiFixture.store().updateProvider("openai", new UpdateLlmProviderRequest(
                 null, "sk-test", null, true));
         TestAiSupport.PlatformRuntimeFixture fixture =
@@ -59,6 +66,8 @@ class ExpertTaskServiceTest {
         ExpertTaskTextGuard taskTextGuard = new ExpertTaskTextGuard();
         BrainContinuationService brainContinuationService = new BrainContinuationService(
                 emptyContinuerProvider(), pendingRegistry);
+        workspaceService = fixture.sessionWorkspaceService();
+        generatedFileRegistry = new TaskGeneratedFileRegistry();
         taskService = new ExpertTaskService(
                 fixture.expertManagementService(),
                 providerOf(runtimeRegistry),
@@ -66,7 +75,9 @@ class ExpertTaskServiceTest {
                 sessionStore,
                 pendingRegistry,
                 taskTextGuard,
-                brainContinuationService);
+                brainContinuationService,
+                workspaceService,
+                generatedFileRegistry);
     }
 
     @AfterEach
@@ -102,6 +113,52 @@ class ExpertTaskServiceTest {
     }
 
     @Test
+    void generatedFilesAreAttachedToOwningTaskMetadata() throws Exception {
+        String sessionId = sessionStore.ensureSession(null, "brain", "rk", "web-1", "admin");
+        String taskId = "task-report";
+        workspaceService.ensureOutputsDir(sessionId);
+        Files.writeString(
+                workspaceService.resolveRelativePath(sessionId, "outputs/report.html"),
+                "<html>report</html>");
+        generatedFileRegistry.record(sessionId, taskId, "outputs/report.html");
+        ExpertTask task = new ExpertTask(
+                taskId,
+                null,
+                sessionId,
+                "brain",
+                "inspection",
+                ExpertTaskStatus.RUNNING,
+                "inspect",
+                null,
+                null,
+                Map.of(ExpertMessageConstants.META_ROUND_INDEX, 1),
+                Instant.now(),
+                Instant.now(),
+                null);
+
+        ExpertTask enriched = taskService.withGeneratedFiles(task);
+
+        assertThat((List<?>) enriched.metadata().get("generatedFiles"))
+                .singleElement()
+                .satisfies(item -> assertThat(((Map<?, ?>) item).get("filePath"))
+                        .isEqualTo("outputs/report.html"));
+        assertThat(generatedFileRegistry.paths(sessionId, taskId)).isEmpty();
+    }
+
+    @Test
+    void cancellingSessionClearsPendingGeneratedFileOwnership() {
+        String sessionId = sessionStore.ensureSession(null, "brain", "rk", "web-1", "admin");
+        String taskId = "task-cancelled";
+        pendingRegistry.addPending(sessionId, taskId);
+        generatedFileRegistry.record(sessionId, taskId, "outputs/partial-report.html");
+
+        taskService.cancelSessionTasks(sessionId);
+
+        assertThat(pendingRegistry.hasPending(sessionId)).isFalse();
+        assertThat(generatedFileRegistry.paths(sessionId, taskId)).isEmpty();
+    }
+
+    @Test
     void awaitingSubExpertResponsesTrueUntilDeliverableInSession() {
         AiSessionStore sessionStore = new AiSessionStore();
         ExpertTaskPendingRegistry pendingRegistry = new ExpertTaskPendingRegistry();
@@ -112,7 +169,9 @@ class ExpertTaskServiceTest {
                 sessionStore,
                 pendingRegistry,
                 new ExpertTaskTextGuard(),
-                Mockito.mock(BrainContinuationService.class));
+                Mockito.mock(BrainContinuationService.class),
+                workspaceService,
+                generatedFileRegistry);
         String sessionId = sessionStore.ensureSession(null, "brain", "rk", "web-1", "admin");
         sessionStore.appendUserMessage(sessionId, "hello", "brain", "admin", java.util.Map.of());
         ExpertTask task = new ExpertTask(

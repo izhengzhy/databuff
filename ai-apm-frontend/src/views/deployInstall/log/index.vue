@@ -1,22 +1,21 @@
 <template>
   <div class="config-wrapper">
     <p>
-      DataBuff Ingest 已支持 OTLP Logs（gRPC <code-view code="4317" :showCopy="false" type="inline" /> / HTTP <code-view code="4318" :showCopy="false" type="inline" />）。
-      日志写入 Doris 后可在 Trace 详情侧栏按 <code-view code="trace_id" :showCopy="false" type="inline" /> / <code-view code="span_id" :showCopy="false" type="inline" /> 关联查看。
+      {{ $t('modules.views.deployInstall.log.s_4c71150a') }} <code-view code="4317" :showCopy="false" type="inline" /> / HTTP <code-view code="4318" :showCopy="false" type="inline" />{{ $t('modules.views.deployInstall.log.s_d70f404d') }} <code-view code="trace_id" :showCopy="false" type="inline" /> / <code-view code="span_id" :showCopy="false" type="inline" /> {{ $t('modules.views.deployInstall.log.s_cf2a53eb') }}
     </p>
 
-    <h5>OTLP 端点</h5>
+    <h5>{{ $t('modules.views.deployInstall.log.s_52209c63') }}</h5>
     <marked-view :data="endpointTableText" />
 
     <h5>Java Agent / SDK</h5>
-    <p>在已启用 Trace 的基础上增加日志导出：</p>
+    <p>{{ $t('modules.views.deployInstall.log.s_329404de') }}</p>
     <code-view :code="javaAgentEnv" />
 
     <h5>OTel Collector（logs pipeline）</h5>
     <code-view :code="collectorConfig" />
 
     <p class="describe mt-12">
-      关联 Trace 时，请确保 LogRecord 携带与 Span 一致的 trace/span 上下文（OTel Log Bridge 或 MDC 注入 <code-view code="trace_id" :showCopy="false" type="inline" />）。
+      {{ $t('modules.views.deployInstall.log.s_5abd47ba') }} <code-view code="trace_id" :showCopy="false" type="inline" />）。
     </p>
   </div>
 </template>

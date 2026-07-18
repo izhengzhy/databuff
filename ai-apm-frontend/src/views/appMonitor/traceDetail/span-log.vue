@@ -28,7 +28,7 @@
     </el-timeline>
     <div v-if='!noMore' @click="loadMoreHandle" :class='["load-more-btn describe tc font-12", listLoading ? "" : "cp db-blue"]'>{{ listLoading ? $t('modules.views.appMonitor.traceDetail.s_26b5bd49') : $t('modules.views.appMonitor.traceDetail.s_77281549')  }}</div>
     <div v-if="traceId && logList.length" class="tc mt-8">
-      <span @click="viewAllLogsHandle" class="db-blue cp font-12">在日志分析中查看全部</span>
+      <span @click="viewAllLogsHandle" class="db-blue cp font-12">{{ $t('modules.views.appMonitor.traceDetail.s_f7444b29') }}</span>
     </div>
 
     <div v-if='!logList.length && !listLoading' class="describe tc mt-20">{{ $t('modules.components.charts.s_21efd88b') }}</div>

@@ -74,7 +74,9 @@ class ExpertAsyncRoutingIntegrationTest {
                 sessionStore,
                 pendingRegistry,
                 textGuard,
-                continuationService);
+                continuationService,
+                Mockito.mock(com.databuff.apm.web.ai.platform.runtime.SessionWorkspaceService.class),
+                new com.databuff.apm.web.ai.platform.runtime.TaskGeneratedFileRegistry());
     }
 
     @AfterEach

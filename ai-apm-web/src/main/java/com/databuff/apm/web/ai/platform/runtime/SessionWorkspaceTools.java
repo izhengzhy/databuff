@@ -2,11 +2,14 @@ package com.databuff.apm.web.ai.platform.runtime;
 
 import com.databuff.apm.web.ai.agent.AgentRuntimeConfig;
 import com.databuff.apm.web.ai.agent.ShellCommandPolicy;
+import com.databuff.apm.web.ai.platform.task.ExpertSessionResolver;
+import io.agentscope.core.agent.RuntimeContext;
 import io.agentscope.core.message.ImageBlock;
 import io.agentscope.core.message.TextBlock;
 import io.agentscope.core.message.ToolResultBlock;
 import io.agentscope.core.tool.Tool;
 import io.agentscope.core.tool.ToolParam;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
@@ -31,21 +34,26 @@ public class SessionWorkspaceTools {
     private final Set<String> allowedShellCommands;
     private final int shellTimeoutSeconds;
     private final ShellCommandPolicy shellPolicy;
+    private final TaskGeneratedFileRegistry generatedFileRegistry;
 
+    @Autowired
     public SessionWorkspaceTools(
             SessionWorkspaceService workspaceService,
-            AgentRuntimeConfig agentRuntimeConfig) {
+            AgentRuntimeConfig agentRuntimeConfig,
+            TaskGeneratedFileRegistry generatedFileRegistry) {
         this.workspaceService = workspaceService;
         this.allowedShellCommands = agentRuntimeConfig.workspaceShellCommands();
         this.shellTimeoutSeconds = agentRuntimeConfig.getWorkspaceShellTimeoutSeconds();
         this.shellPolicy = agentRuntimeConfig.shellCommandPolicy();
+        this.generatedFileRegistry = generatedFileRegistry;
     }
 
     @Tool(description = "List files in the current chat session workspace (uploads, outputs) or skill resources (relativePath=resources/{skillId}/...)")
     public String listWorkspaceFiles(
             @ToolParam(name = "relativePath", description = "Relative path under session workspace, e.g. uploads, outputs, or resources/skill.summary.html/templates")
-            String relativePath) {
-        String sessionId = requireSessionId();
+            String relativePath,
+            RuntimeContext runtimeContext) {
+        String sessionId = requireSessionId(runtimeContext);
         try {
             String listingPath = normalizeListingPath(relativePath);
             Path dir = workspaceService.resolveRelativePath(sessionId, listingPath);
@@ -84,8 +92,9 @@ public class SessionWorkspaceTools {
             @ToolParam(name = "filePath", description = "Relative file path, e.g. uploads/report.csv or resources/skill.summary.html/templates/summary-brief.html")
             String filePath,
             @ToolParam(name = "lineRange", description = "Optional line range for text files, e.g. 1-200")
-            String lineRange) {
-        String sessionId = requireSessionId();
+            String lineRange,
+            RuntimeContext runtimeContext) {
+        String sessionId = requireSessionId(runtimeContext);
         try {
             Path file = workspaceService.resolveRelativePath(sessionId, filePath);
             if (!Files.isRegularFile(file)) {
@@ -121,8 +130,9 @@ public class SessionWorkspaceTools {
             @ToolParam(name = "content", description = "Text content to write")
             String content,
             @ToolParam(name = "mode", description = "overwrite or append, default overwrite")
-            String mode) {
-        String sessionId = requireSessionId();
+            String mode,
+            RuntimeContext runtimeContext) {
+        String sessionId = requireSessionId(runtimeContext);
         if (content == null) {
             return "content is required";
         }
@@ -141,6 +151,7 @@ public class SessionWorkspaceTools {
                         java.nio.file.StandardOpenOption.CREATE,
                         java.nio.file.StandardOpenOption.TRUNCATE_EXISTING);
             }
+            recordTaskGeneratedFile(sessionId, relativePath, runtimeContext);
             return "Wrote " + relativePath;
         } catch (Exception e) {
             return "writeWorkspaceFile failed: " + e.getMessage();
@@ -152,8 +163,9 @@ public class SessionWorkspaceTools {
             @ToolParam(name = "command", description = "Shell command, e.g. head -n 20 uploads/log.txt")
             String command,
             @ToolParam(name = "timeoutSeconds", description = "Optional timeout in seconds")
-            Integer timeoutSeconds) {
-        String sessionId = requireSessionId();
+            Integer timeoutSeconds,
+            RuntimeContext runtimeContext) {
+        String sessionId = requireSessionId(runtimeContext);
         if (command == null || command.isBlank()) {
             return "command is required";
         }
@@ -189,13 +201,34 @@ public class SessionWorkspaceTools {
         }
     }
 
-    private static String requireSessionId() {
-        // Workspace is keyed by logical parent session; strip #task: if only a subtask scope is active.
-        return ExpertChatScopeRegistry.soleSessionId()
-                .or(() -> ExpertChatScopeRegistry.soleActiveState()
-                        .map(state -> ExpertChatScopeRegistry.parentSessionId(state.sessionId())))
-                .filter(id -> id != null && !id.isBlank())
-                .orElseThrow(() -> new IllegalStateException("session workspace is unavailable outside chat context"));
+    private static String requireSessionId(RuntimeContext runtimeContext) {
+        // Resolve from the per-call RuntimeContext first (carries the chat's sessionId even when
+        // multiple chats run concurrently on the shared streamExecutor), then fall back to the
+        // global chat scope registry / task context. Without RuntimeContext, concurrent parent
+        // brain scopes make ExpertChatScopeRegistry.soleSessionId() ambiguous and tools fail with
+        // "session workspace is unavailable outside chat context".
+        try {
+            return ExpertSessionResolver.resolveSessionIdOrThrow(null, runtimeContext);
+        } catch (Exception e) {
+            throw new IllegalStateException("session workspace is unavailable outside chat context", e);
+        }
+    }
+
+    private void recordTaskGeneratedFile(
+            String sessionId,
+            String relativePath,
+            RuntimeContext runtimeContext) {
+        if (runtimeContext == null) {
+            return;
+        }
+        String runtimeSessionId = runtimeContext.getSessionId();
+        if (!ExpertChatScopeRegistry.isTaskScopedSessionId(runtimeSessionId)) {
+            return;
+        }
+        int suffix = runtimeSessionId.indexOf(ExpertChatScopeRegistry.TASK_SESSION_SUFFIX);
+        String taskId = runtimeSessionId.substring(
+                suffix + ExpertChatScopeRegistry.TASK_SESSION_SUFFIX.length()).trim();
+        generatedFileRegistry.record(sessionId, taskId, relativePath);
     }
 
     private static String normalizeListingPath(String relativePath) {

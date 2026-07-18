@@ -81,15 +81,15 @@ export default defineConfig(() => {
     server: {
       proxy: {
         '/webapi': {
-          target: 'https://192.168.50.193',
+          target: process.env.VITE_PROXY_TARGET || 'https://192.168.50.193',
           secure: false,
-          // changeOrigin: true,
+          changeOrigin: true,
           // rewrite: (path) => path.replace(/^\/webapi/, '/webapi'),
         },
         '/api6972': {
-          target: 'https://192.168.50.193',
+          target: process.env.VITE_PROXY_TARGET || 'https://192.168.50.193',
           secure: false,
-          // changeOrigin: true,
+          changeOrigin: true,
           // rewrite: (path) => path.replace(/^\/api6972/, '/api6972'),
         },
       }

@@ -21,12 +21,12 @@
           <span class="time-range">{{ $t('modules.views.appMonitor.serviceCallDetail.s_c4023f57', listTimeDisplay) }}</span>
         </div>
       </template>
-      <el-table-column slot="suffix" label="日志" width="72" align="center" fixed="right">
+      <el-table-column slot="suffix" :label="$t('modules.utils.static.s_456d29ef')" width="72" align="center" fixed="right">
         <template slot-scope="{ row }">
           <span
             v-if="row.trace_id"
             @click.stop="viewLogsHandle(row)"
-            class="db-blue cp font-12">查看</span>
+            class="db-blue cp font-12">{{ $t('modules.views.metrics.list.s_607e7a4f') }}</span>
           <span v-else class="describe">-</span>
         </template>
       </el-table-column>

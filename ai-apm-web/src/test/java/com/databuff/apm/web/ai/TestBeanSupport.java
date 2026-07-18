@@ -15,6 +15,7 @@ import com.databuff.apm.web.ai.agent.AiSessionStore;
 import com.databuff.apm.web.ai.agent.AgentRuntimeConfig;
 import com.databuff.apm.web.ai.mcp.standard.JavaBeanToolExecutor;
 import com.databuff.apm.web.ai.platform.api.AiToolController;
+import com.databuff.apm.web.ai.platform.capability.CapabilityManagementService;
 import com.databuff.apm.web.ai.platform.expert.ExpertManagementService;
 import com.databuff.apm.web.ai.platform.runtime.AgentScopeToolFactory;
 import com.databuff.apm.web.ai.platform.runtime.ExpertRuntimeRegistry;
@@ -102,6 +103,10 @@ public final class TestBeanSupport {
         setField(service, "persistence", persistence);
         setField(service, "runtimeRegistry", runtimeRegistry);
         return service;
+    }
+
+    public static CapabilityManagementService capabilityManagementService() {
+        return new CapabilityManagementService();
     }
 
     public static InMemoryLlmProviderStore llmProviderStore() {

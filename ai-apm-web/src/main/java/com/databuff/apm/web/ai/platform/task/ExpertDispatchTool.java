@@ -74,7 +74,7 @@ public class ExpertDispatchTool {
      */
     private static String resolveSourceExpertId(String sessionId, String targetExpertId) {
         String source = ExpertTaskContext.outermostSourceExpertId(sessionId)
-                .or(() -> ExpertTaskContext.sourceExpertId())
+                .or(() -> ExpertTaskContext.sourceExpertId(sessionId))
                 .or(() -> ExpertChatScopeRegistry.findParent(sessionId)
                         .map(ExpertChatContext.State::expertId))
                 .orElse("brain");

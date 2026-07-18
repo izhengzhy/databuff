@@ -3,6 +3,7 @@ package com.databuff.apm.web.tools.local;
 import com.databuff.apm.web.ai.platform.runtime.ExpertChatContext;
 import com.databuff.apm.web.ai.platform.runtime.ExpertChatScopeRegistry;
 import com.databuff.apm.web.ai.platform.task.ExpertTaskContext;
+import io.agentscope.core.agent.RuntimeContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -177,35 +178,31 @@ class BashSessionManagerTest {
         }
 
         @Test
-        void resolveSessionIdUsesTaskContextSession() {
+        void resolveSessionIdReturnsDefaultWhenNoRuntimeContext() {
+            // Without a RuntimeContext (e.g. unit tests not wiring AgentScope), we land on
+            // "default". The previous ExpertTaskContext / ExpertChatScopeRegistry sole* fallbacks
+            // were removed because they are ambiguous under concurrent chats.
             ExpertTaskContext.runVoid("task-session", "brain", null, () ->
-                    assertThat(sessionManager.resolveSessionId()).isEqualTo("task-session"));
+                    assertThat(sessionManager.resolveSessionId()).isEqualTo("default"));
         }
 
         @Test
-        void resolveSessionIdUsesSoleChatScopeWhenTaskContextMissing() {
+        void resolveSessionIdUsesRuntimeContextWhenProvided() {
             ExpertChatScopeRegistry.register(new ExpertChatContext.State(
                     "chat-scope", "tester", "ops", "msg-1", false, null, null));
+            RuntimeContext ctx = RuntimeContext.builder().sessionId("chat-rt").build();
 
-            assertThat(sessionManager.resolveSessionId()).isEqualTo("chat-scope");
+            assertThat(sessionManager.resolveSessionId(ctx)).isEqualTo("chat-rt");
         }
 
         @Test
-        void resolveSessionIdPrefersTaskContextOverChatScope() {
+        void resolveSessionIdFallsBackToDefaultWhenRuntimeContextMissing() {
             ExpertChatScopeRegistry.register(new ExpertChatContext.State(
                     "chat-scope", "tester", "ops", "msg-1", false, null, null));
 
-            ExpertTaskContext.runVoid("task-session", "brain", null, () ->
-                    assertThat(sessionManager.resolveSessionId()).isEqualTo("task-session"));
-        }
-
-        @Test
-        void resolveSessionIdFallsBackWhenTaskContextSessionInvalid() {
-            ExpertChatScopeRegistry.register(new ExpertChatContext.State(
-                    "chat-scope", "tester", "ops", "msg-1", false, null, null));
-
-            ExpertTaskContext.runVoid("anonymous", "brain", null, () ->
-                    assertThat(sessionManager.resolveSessionId()).isEqualTo("chat-scope"));
+            // No RuntimeContext and no sole fallback → "default". The chat scope registry entry
+            // alone is not enough (it was ambiguous under concurrent chats).
+            assertThat(sessionManager.resolveSessionId()).isEqualTo("default");
         }
     }
 }

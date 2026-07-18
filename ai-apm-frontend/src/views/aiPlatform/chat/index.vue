@@ -21,6 +21,35 @@
     >
       <div class="chat-card">
         <div :class="['chat-main', { 'chat-main-idle': !conversationStarted }]">
+          <div v-if="!conversationStarted" class="capability-arc-panel">
+            <div class="capability-arc-head">
+              <div class="capability-arc-badge">
+                <i class="el-icon-magic-stroke capability-arc-icon"></i>
+                <span class="capability-arc-title">DataBuff · 7 大 AI 能力</span>
+              </div>
+              <span class="capability-arc-sub">
+                <i class="el-icon-mouse capability-arc-sub-icon"></i>点击步骤切换下方推荐体验
+              </span>
+            </div>
+            <div class="capability-arc">
+              <template v-for="(cap, idx) in capabilities">
+                <div
+                  :key="`cap-${cap.id}`"
+                  :class="['arc-step', `arc-${cap.theme}`, { 'arc-step-active': activeCapabilityIndex === idx }]"
+                  @click="selectCapability(idx)"
+                >
+                  <span class="arc-num">{{ idx + 1 }}</span>
+                  <span class="arc-cap">{{ cap.name }}</span>
+                  <span class="arc-case">{{ cap.tagline }}</span>
+                </div>
+                <div
+                  v-if="idx < capabilities.length - 1"
+                  :key="`arc-arrow-${idx}`"
+                  class="arc-arrow"
+                >→</div>
+              </template>
+            </div>
+          </div>
           <div
             :class="['header-hero', { 'header-hero-hidden': conversationStarted }]"
           >
@@ -364,19 +393,21 @@
 
             <div v-if="!conversationStarted" class="suggestion-panel">
               <div class="suggestion-head">
-                <span class="suggestion-title">{{ $t('modules.views.aiPlatform.chat.s_b87b8b60') }}</span>
+                <span class="suggestion-title">
+                  {{ activeCapability.name }} · {{ activeCapability.tagline }}
+                </span>
                 <el-button type="text" size="mini" icon="el-icon-refresh" @click="changeSuggestionBatch">{{ $t('modules.views.aiPlatform.chat.s_0e0b0ddf') }}</el-button>
               </div>
               <div class="suggestion-list">
                 <div
                   v-for="(item, index) in visibleSuggestions"
-                  :key="`${suggestionCursor}_${item.labelKey}`"
+                  :key="`${activeCapabilityIndex}_${index}`"
                   class="suggestion-item cp"
                   :style="{ animationDelay: `${index * 60}ms` }"
                   @click="fillSuggestion(item)"
                 >
                   <span class="suggestion-index">{{ index + 1 }}</span>
-                  <span class="suggestion-copy">{{ $t(item.labelKey) }}</span>
+                  <span class="suggestion-copy">{{ item.text }}</span>
                   <i class="el-icon-arrow-right"></i>
                 </div>
               </div>
@@ -530,6 +561,7 @@ import AiPlatformApi, {
   AiChatMessage,
   AiExpertDefinition,
   AiSessionSummary,
+  AiCapabilityDefinition,
   ExpertTask,
 } from '@/api/aiPlatform';
 import { getLlmStatus, listLlmProviders, getLlmProviderDetail } from '@/api/llmConfig';
@@ -587,11 +619,109 @@ interface ChatSuggestion {
   labelKey: string;
 }
 
-const DEFAULT_SUGGESTIONS: ChatSuggestion[] = [
-  { text: i18n.t('modules.views.aiPlatform.chat.s_80dbeb77') as string, textKey: 'modules.views.aiPlatform.chat.s_80dbeb77', labelKey: 'modules.views.aiPlatform.chat.s_80dbeb77' },
-  { text: i18n.t('modules.views.aiPlatform.chat.s_ed272468') as string, textKey: 'modules.views.aiPlatform.chat.s_ed272468', labelKey: 'modules.views.aiPlatform.chat.s_ed272468' },
-  { text: i18n.t('modules.views.aiPlatform.chat.s_c7e18d81') as string, textKey: 'modules.views.aiPlatform.chat.s_c7e18d81', labelKey: 'modules.views.aiPlatform.chat.s_c7e18d81' },
-  { text: i18n.t('modules.views.aiPlatform.chat.s_1d5efe38') as string, textKey: 'modules.views.aiPlatform.chat.s_1d5efe38', labelKey: 'modules.views.aiPlatform.chat.s_1d5efe38' },
+type CapabilityTheme = 'opener' | 'synth' | 'loop' | 'finale' | 'closing';
+
+interface AiCapability {
+  id: string;
+  name: string;
+  tagline: string;
+  theme: CapabilityTheme;
+  expertId: string;
+  prompts: string[];
+}
+
+const AI_CAPABILITIES: AiCapability[] = [
+  {
+    id: '1',
+    name: '看得见',
+    tagline: '自然语言问系统',
+    theme: 'opener',
+    expertId: 'data',
+    prompts: [
+      '查询最近1小时的服务列表',
+      '查询service-b服务的上下游拓扑',
+      '查询每个服务最近1小时的请求量趋势图',
+      '查询每个服务最近1小时的异常量趋势图',
+    ],
+  },
+  {
+    id: '2',
+    name: '军团协同',
+    tagline: '多 Agent 协同',
+    theme: 'synth',
+    expertId: 'brain',
+    prompts: [
+      '最近 1 小时整个集群有没有异常？请联合智能问数和智能巡检一起做综合诊断，最后汇总成故障报告',
+      '帮我联合诊断 service-b：智能问数查延迟和错误率并追慢 Trace，智能巡检做分级健康检查，最后汇总',
+      '让 AI 大脑并发派活：智能问数查慢 Trace，智能巡检做分级健康检查，汇总成可转发的报告',
+      '请 AI 大脑协调各位专家，给我一份当前集群的整体健康评估',
+    ],
+  },
+  {
+    id: '3',
+    name: '会巡检',
+    tagline: '服务巡检 + 报告',
+    theme: 'loop',
+    expertId: 'inspection',
+    prompts: [
+      '对 service-b 做一次巡检，输出完整的 HTML 巡检报告',
+      '巡检整个集群，生成一份可转发的健康报告',
+      '对 service-a 做分级健康检查，给出健康分',
+      '巡检 MySQL 和 Redis 的连接池与慢查询状态',
+    ],
+  },
+  {
+    id: '4',
+    name: '会诊断',
+    tagline: '根因分析',
+    theme: 'loop',
+    expertId: 'data',
+    prompts: [
+      'service-a 最近 1 小时瓶颈在哪里？根因在应用、数据库还是下游？',
+      'service-b 错误率升高，帮我做根因分析并给出证据链',
+      '最近 1 小时集群有哪些异常？给出根因链路',
+      'service-a 调用 service-b 慢，帮我定位是哪一层的问题',
+    ],
+  },
+  {
+    id: '5',
+    name: '会修',
+    tagline: '运维专家自动解决',
+    theme: 'loop',
+    expertId: 'ops',
+    prompts: [
+      '容器 ai-apm-demo 一直重启，帮我弄好',
+      'service-a 内存占用过高，帮我上机器看看并调优',
+      '帮我检查 demo 服务的日志，把报错修掉',
+      'service-b 的 MySQL 连接池打满了，帮我排查并修复',
+    ],
+  },
+  {
+    id: '6',
+    name: '会预测',
+    tagline: '容量预测',
+    theme: 'finale',
+    expertId: 'data',
+    prompts: [
+      '预测 service-a 未来 7 天的流量趋势',
+      '基于最近 30 天数据，预测集群何时需要扩容',
+      '预测 MySQL 存储空间何时用完',
+      '预测 service-b 下周峰值 QPS，给出扩容建议',
+    ],
+  },
+  {
+    id: '7',
+    name: '会答疑',
+    tagline: '答疑专家',
+    theme: 'closing',
+    expertId: 'qa',
+    prompts: [
+      'DataBuff 怎么接入 OpenTelemetry？',
+      '如何配置告警规则？给我一个示例',
+      'DataBuff 支持哪些数据存储后端？',
+      '怎么部署 DataBuff？给我一份部署指南',
+    ],
+  },
 ];
 
 @Component({
@@ -622,7 +752,7 @@ export default class AiPlatformChat extends Vue {
   private showSessionDrawer = false
   private previewFile: GeneratedFileMeta | null = null
   private previewVisible = false
-  private suggestionCursor = 0
+  private activeCapabilityIndex = 0
   private greetingNowTs = Date.now()
   private greetingTimer: number | null = null
   private uploadItems: UploadItem[] = []
@@ -642,6 +772,7 @@ export default class AiPlatformChat extends Vue {
   private sessionListLoading = false
   private readonly sessionPageSize = 20
   private experts: AiExpertDefinition[] = []
+  private remoteCapabilities: AiCapabilityDefinition[] = []
   private messages: AiChatMessage[] = []
   private displayContent: Record<string, string> = {}
   private tasks: ExpertTask[] = []
@@ -740,14 +871,47 @@ export default class AiPlatformChat extends Vue {
     }) as string
   }
 
-  private get visibleSuggestions (): ChatSuggestion[] {
-    const size = 4
-    const total = DEFAULT_SUGGESTIONS.length
-    const list: ChatSuggestion[] = []
-    for (let i = 0; i < size; i++) {
-      list.push(DEFAULT_SUGGESTIONS[(this.suggestionCursor + i) % total])
+  private get capabilities (): AiCapability[] {
+    if (!this.remoteCapabilities.length) {
+      return AI_CAPABILITIES
     }
-    return list
+    const themeByIndex: CapabilityTheme[] = ['opener', 'synth', 'loop', 'loop', 'loop', 'finale', 'closing']
+    const fallbackById = new Map(AI_CAPABILITIES.map(c => [c.id, c]))
+    const merged: AiCapability[] = []
+    const seen = new Set<string>()
+    for (const row of this.remoteCapabilities) {
+      if (!row || !row.enabled) {
+        continue
+      }
+      const id = row.capabilityId
+      const base = fallbackById.get(id)
+      const idx = merged.length
+      const prompts = (row.prompts && row.prompts.length) ? row.prompts : (base?.prompts || [])
+      merged.push({
+        id,
+        name: row.name || base?.name || id,
+        tagline: row.tagline || base?.tagline || '',
+        theme: themeByIndex[idx] || base?.theme || 'loop',
+        expertId: row.expertId || base?.expertId || '',
+        prompts,
+      })
+      seen.add(id)
+    }
+    AI_CAPABILITIES.forEach(c => {
+      if (!seen.has(c.id)) {
+        merged.push(c)
+      }
+    })
+    return merged.slice(0, 7)
+  }
+
+  private get activeCapability (): AiCapability {
+    return this.capabilities[this.activeCapabilityIndex] || this.capabilities[0] || AI_CAPABILITIES[0]
+  }
+
+  private get visibleSuggestions (): ChatSuggestion[] {
+    const cap = this.activeCapability
+    return cap.prompts.map((text) => ({ text, labelKey: text }))
   }
 
   private get inProgressRoundIndex (): number {
@@ -966,14 +1130,15 @@ export default class AiPlatformChat extends Vue {
           String(item.displayContent || '').trim()
           || this.messageThinkingDetails(item).length
           || this.messageTrendCharts(item).length
-          || this.messageAttachments(item).length,
+          || this.messageAttachments(item).length
+          || this.messageGeneratedFiles(item).length,
         )
       })
   }
 
   private async created () {
     this.bootLoading = true
-    await Promise.all([this.loadExperts(), this.loadSessionTotal(), this.reloadSessions(), this.loadLlmStatus(), this.loadModelOptions()])
+    await Promise.all([this.loadExperts(), this.loadCapabilities(), this.loadSessionTotal(), this.reloadSessions(), this.loadLlmStatus(), this.loadModelOptions()])
     const sessionId = this.routeSessionId()
     if (sessionId) {
       await this.selectSession(sessionId, false)
@@ -1417,11 +1582,20 @@ export default class AiPlatformChat extends Vue {
   }
 
   private changeSuggestionBatch () {
-    this.suggestionCursor = (this.suggestionCursor + 4) % DEFAULT_SUGGESTIONS.length
+    const next = (this.activeCapabilityIndex + 1) % this.capabilities.length
+    this.selectCapability(next)
+  }
+
+  private selectCapability (index: number) {
+    this.activeCapabilityIndex = index
+    const cap = this.capabilities[index]
+    if (cap && cap.expertId && !this.sending && !this.serverRunning) {
+      this.expertId = cap.expertId
+    }
   }
 
   private fillSuggestion (item: ChatSuggestion) {
-    this.draft = (i18n.t(item.labelKey) as string).slice(0, this.maxInputLength)
+    this.draft = (item.text || '').slice(0, this.maxInputLength)
     this.sendMessage()
   }
 
@@ -1439,6 +1613,13 @@ export default class AiPlatformChat extends Vue {
     const { result, error } = await toAsyncWait(AiPlatformApi.listExperts(), false)
     if (!error) {
       this.experts = result || []
+    }
+  }
+
+  private async loadCapabilities () {
+    const { result, error } = await toAsyncWait(AiPlatformApi.listCapabilities(), false)
+    if (!error && result && result.length) {
+      this.remoteCapabilities = result
     }
   }
 
@@ -2155,6 +2336,11 @@ export default class AiPlatformChat extends Vue {
   }
 }
 
+.chat-page:not(.chat-started) {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
 .chat-page.chat-started {
   background:
     linear-gradient(180deg, #f6f8fc 0%, #fbfcff 52%, #f7f9fc 100%);
@@ -2267,8 +2453,238 @@ export default class AiPlatformChat extends Vue {
 }
 
 .chat-main-idle {
+  justify-content: safe center;
+  gap: 38px;
+}
+
+/* ===== 7 大 AI 能力弧线 ===== */
+.capability-arc-panel {
+  flex: none;
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 4px 8px 8px;
+}
+
+.capability-arc-head {
+  position: relative;
+  display: flex;
+  align-items: center;
   justify-content: center;
-  gap: 22px;
+  margin-bottom: 18px;
+}
+
+.capability-arc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 16px 6px 12px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(41, 98, 255, 0.12));
+  border: 1px solid rgba(124, 58, 237, 0.22);
+  box-shadow: 0 6px 18px rgba(124, 58, 237, 0.1);
+  backdrop-filter: blur(6px);
+}
+
+.capability-arc-icon {
+  font-size: 15px;
+  background: linear-gradient(135deg, #8b5cf6, #2962ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.capability-arc-title {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  background: linear-gradient(135deg, #5b21b6 0%, #1e3a8a 60%, #2962ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.capability-arc-sub {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #94a3b8;
+  letter-spacing: 0.3px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.capability-arc-sub-icon {
+  font-size: 12px;
+}
+
+.capability-arc {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  padding: 6px 10px 4px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.capability-arc::-webkit-scrollbar {
+  height: 4px;
+}
+
+.capability-arc::-webkit-scrollbar-thumb {
+  background: rgba(41, 98, 255, 0.18);
+  border-radius: 4px;
+}
+
+.arc-step {
+  flex: 1 1 0;
+  min-width: 112px;
+  text-align: center;
+  padding: 14px 10px 12px;
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
+}
+
+.arc-step:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 24px rgba(43, 55, 86, 0.1);
+}
+
+.arc-step-active {
+  border-width: 2px;
+  box-shadow: 0 14px 28px rgba(41, 98, 255, 0.18);
+  transform: translateY(-3px);
+}
+
+.arc-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.arc-cap {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e3a8a;
+  line-height: 1.2;
+}
+
+.arc-case {
+  font-size: 11px;
+  color: #64748b;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.arc-arrow {
+  flex: none;
+  align-self: center;
+  color: #94a3b8;
+  font-size: 18px;
+  font-weight: 700;
+  padding: 0 2px;
+  line-height: 1;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+/* 主题配色 */
+.arc-step.arc-opener {
+  background: #ede9fe;
+  border-color: #c4b5fd;
+}
+.arc-step.arc-opener .arc-num {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+}
+.arc-step.arc-opener .arc-cap {
+  color: #5b21b6;
+}
+.arc-step.arc-opener.arc-step-active {
+  border-color: #7c3aed;
+  background: #ddd0fe;
+}
+
+.arc-step.arc-synth {
+  background: #ffe4e6;
+  border-color: #fda4af;
+}
+.arc-step.arc-synth .arc-num {
+  background: linear-gradient(135deg, #f43f5e, #e11d48);
+}
+.arc-step.arc-synth .arc-cap {
+  color: #9f1239;
+}
+.arc-step.arc-synth.arc-step-active {
+  border-color: #e11d48;
+  background: #fcd5da;
+}
+
+.arc-step.arc-loop {
+  background: #fef3c7;
+  border-color: #fcd34d;
+}
+.arc-step.arc-loop .arc-num {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+.arc-step.arc-loop .arc-cap {
+  color: #92400e;
+}
+.arc-step.arc-loop.arc-step-active {
+  border-color: #d97706;
+  background: #fde9b0;
+}
+
+.arc-step.arc-finale {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+}
+.arc-step.arc-finale .arc-num {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+.arc-step.arc-finale .arc-cap {
+  color: #065f46;
+}
+.arc-step.arc-finale.arc-step-active {
+  border-color: #059669;
+  background: #d4f5e6;
+}
+
+.arc-step.arc-closing {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+.arc-step.arc-closing .arc-num {
+  background: linear-gradient(135deg, #64748b, #475569);
+}
+.arc-step.arc-closing .arc-cap {
+  color: #334155;
+}
+.arc-step.arc-closing.arc-step-active {
+  border-color: #475569;
+  background: #e2e8f0;
 }
 
 .header-hero {
@@ -2278,7 +2694,7 @@ export default class AiPlatformChat extends Vue {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 4px 12px 16px;
+  padding: 8px 12px 22px;
   max-height: 360px;
   opacity: 1;
   transform: translateY(0);
@@ -2688,7 +3104,7 @@ export default class AiPlatformChat extends Vue {
 }
 
 .suggestion-panel {
-  margin-top: 18px;
+  margin-top: 28px;
   padding: 2px 0 8px;
 }
 
@@ -2708,7 +3124,7 @@ export default class AiPlatformChat extends Vue {
 .suggestion-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 14px;
 }
 
 .suggestion-item {
@@ -3408,6 +3824,36 @@ export default class AiPlatformChat extends Vue {
 
   .suggestion-list {
     grid-template-columns: 1fr;
+  }
+
+  .capability-arc-panel {
+    padding: 0;
+  }
+
+  .capability-arc-sub {
+    display: none;
+  }
+
+  .capability-arc {
+    gap: 4px;
+  }
+
+  .arc-step {
+    min-width: 96px;
+    padding: 10px 6px 8px;
+  }
+
+  .arc-cap {
+    font-size: 12px;
+  }
+
+  .arc-case {
+    font-size: 10px;
+  }
+
+  .arc-arrow {
+    font-size: 14px;
+    padding: 0 2px;
   }
 
   .composer-actions {

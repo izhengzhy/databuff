@@ -3,6 +3,7 @@ package com.databuff.apm.web.persistence;
 import com.databuff.apm.web.TestStorageSupport;
 import com.databuff.apm.web.ai.TestBeanSupport;
 import com.databuff.apm.common.storage.ApmReadRepository;
+import com.databuff.apm.web.ai.platform.capability.CapabilityManagementService;
 import com.databuff.apm.web.ai.platform.expert.ExpertManagementService;
 import com.databuff.apm.web.ai.platform.skill.SkillManagementService;
 import com.databuff.apm.web.ai.platform.tool.ToolManagementService;
@@ -30,6 +31,7 @@ class AiPlatformPersistenceTest {
         ResultSet toolRs = mock(ResultSet.class);
         ResultSet skillRs = mock(ResultSet.class);
         ResultSet expertRs = mock(ResultSet.class);
+        ResultSet capabilityRs = mock(ResultSet.class);
         Instant now = Instant.parse("2026-06-06T08:00:00Z");
 
         when(reader.connection()).thenReturn(connection);
@@ -47,6 +49,9 @@ class AiPlatformPersistenceTest {
             }
             if (sql.contains("config_ai_expert")) {
                 return expertRs;
+            }
+            if (sql.contains("config_ai_capability")) {
+                return capabilityRs;
             }
             return schemaRs;
         });
@@ -101,8 +106,10 @@ class AiPlatformPersistenceTest {
         ToolManagementService toolService = TestBeanSupport.toolManagementService();
         SkillManagementService skillService = TestBeanSupport.skillManagementService();
         ExpertManagementService expertService = TestBeanSupport.expertManagementService(toolService, skillService);
+        CapabilityManagementService capabilityService = TestBeanSupport.capabilityManagementService();
+        when(capabilityRs.next()).thenReturn(false);
         AiPlatformPersistence sync = new AiPlatformPersistence(
-                reader, toolService, skillService, expertService, TestStorageSupport.storage());
+                reader, toolService, skillService, expertService, capabilityService, TestStorageSupport.storage());
 
         sync.reloadFromStore();
 

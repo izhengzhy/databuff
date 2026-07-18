@@ -80,7 +80,7 @@
                         v-for="item in serviceOptions"
                         :key="item.id"
                         :label="item.id"
-                        class="filter-checkbox">{{ item.name }}</el-checkbox>
+                        class="filter-checkbox">{{ item.nameKey ? $t(item.nameKey) : item.name }}</el-checkbox>
                     </el-checkbox-group>
                   </simplebar>
                   <div v-else class="describe filter-empty">{{ $t('modules.components.charts.s_21efd88b') }}</div>
@@ -190,7 +190,7 @@
               <span
                 v-if="row.traceId"
                 @click.stop="viewTraceHandle(row)"
-                class="db-blue cp font-12">查看</span>
+                class="db-blue cp font-12">{{ $t('modules.views.metrics.list.s_607e7a4f') }}</span>
               <span v-else class="describe">-</span>
             </template>
           </el-table-column>

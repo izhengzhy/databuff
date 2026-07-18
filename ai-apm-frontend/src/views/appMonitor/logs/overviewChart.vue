@@ -80,7 +80,7 @@ export default class LogsOverviewChart extends Vue {
   }
 
   get logLabel () {
-    return i18n.locale === 'en-US' ? 'Log' : '日志';
+    return i18n.locale === 'en-US' ? 'Log' : i18n.t('modules.utils.static.s_456d29ef') as string;
   }
 
   get severityChartTitle () {

@@ -1,8 +1,8 @@
 package com.databuff.apm.web.tools.local;
 
-import com.databuff.apm.web.ai.platform.runtime.ExpertChatContext;
 import com.databuff.apm.web.ai.platform.runtime.ExpertChatScopeRegistry;
-import com.databuff.apm.web.ai.platform.task.ExpertTaskContext;
+import com.databuff.apm.web.ai.platform.task.ExpertSessionResolver;
+import io.agentscope.core.agent.RuntimeContext;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -40,11 +40,18 @@ public class BashSessionManager {
     }
 
     public String resolveSessionId() {
-        // Prefer exact runtime scope (sessionId#task:…) so parallel experts do not share a bash session.
-        return ExpertTaskContext.sessionId()
+        return resolveSessionId(null);
+    }
+
+    public String resolveSessionId(RuntimeContext runtimeContext) {
+        // Priority: per-call RuntimeContext (most specific, threadsafe under concurrent chats)
+        //          > "default" (last resort).
+        // In production BashTools always passes RuntimeContext, so the RuntimeContext branch
+        // resolves first. The previous ExpertTaskContext.sole* / ExpertChatScopeRegistry.sole*
+        // fallbacks were removed because they are ambiguous when 2+ chats run concurrently on
+        // the shared streamExecutor.
+        return ExpertSessionResolver.sessionIdFromRuntimeContext(runtimeContext)
                 .filter(ExpertChatScopeRegistry::validSessionId)
-                .or(() -> ExpertChatScopeRegistry.soleActiveState().map(ExpertChatContext.State::sessionId))
-                .or(() -> ExpertChatScopeRegistry.soleSessionId())
                 .orElse("default");
     }
 
