@@ -1589,9 +1589,10 @@ export default class AiPlatformChat extends Vue {
   private selectCapability (index: number) {
     this.activeCapabilityIndex = index
     const cap = this.capabilities[index]
-    if (cap && cap.expertId && !this.sending && !this.serverRunning) {
-      this.expertId = cap.expertId
+    if (this.sending || this.serverRunning) {
+      return
     }
+    this.expertId = (cap && cap.expertId) || DEFAULT_EXPERT_ID
   }
 
   private fillSuggestion (item: ChatSuggestion) {
