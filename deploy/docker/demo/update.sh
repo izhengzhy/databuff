@@ -23,6 +23,18 @@ SKIP_PULL_IMAGES="${SKIP_PULL_IMAGES:-0}"
 SKIP_START="${SKIP_START:-0}"
 INGEST_PORT="${INGEST_PORT:-4318}"
 
+# 先记录外部显式指定的目标版本（wrapper 传入的 APM_VERSION 或后续 --version）。
+# env.sh 里写死的 export APM_VERSION=<安装版本> 不能覆盖它，否则升级会被钉回旧版。
+REQUESTED_VERSION="${APM_VERSION:-}"
+
+if [[ -f "${ROOT}/env.sh" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  . "${ROOT}/env.sh"
+  set +a
+fi
+[[ -n "$REQUESTED_VERSION" ]] && APM_VERSION="$REQUESTED_VERSION"
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --version=*)
@@ -84,13 +96,6 @@ elif [[ -f "${ROOT}/../../common/scripts/demo-deploy-lib.sh" ]]; then
   . "${ROOT}/../../common/scripts/demo-deploy-lib.sh"
 else
   fail "缺少 demo-deploy-lib.sh"
-fi
-
-if [[ -f "${ROOT}/env.sh" ]]; then
-  set -a
-  # shellcheck disable=SC1091
-  . "${ROOT}/env.sh"
-  set +a
 fi
 
 PKG_BASE="${APM_PKG_BASE:-${PKG_BASE:-}}"

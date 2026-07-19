@@ -62,6 +62,7 @@ done
 
 CYN='\033[36m'
 RED='\033[31m'
+YLW='\033[33m'
 BLD='\033[1m'
 DIM='\033[2m'
 RST='\033[0m'
@@ -110,18 +111,38 @@ if [[ -z "$INGEST_HOST" ]]; then
 fi
 [[ -n "$INGEST_HOST" ]] || fail "无法获取本机 IP，请设置 INGEST_HOST"
 
+# 总是先从目标版本 demo 包刷新本机 update.sh / scripts/ / env.sh 里的 APM_VERSION，
+# 避免执行旧版内层 update.sh（它会 source 旧 env.sh 把 APM_VERSION 钉回老版本 → 404）。
 UPDATE_SCRIPT="${INSTALL_DIR}/update.sh"
-if [[ ! -x "$UPDATE_SCRIPT" ]]; then
-  echo -e "${CYN}[demo-update]${RST} 安装目录缺少 update.sh，从目标版本部署包引导升级 ..."
-  TMP_PKG="$(mktemp "${TMPDIR:-/tmp}/apm-demo-update-bootstrap.XXXXXX.tar.gz")"
-  DEMO_PKG="databuff-apm-demo-${APM_VERSION}.tar.gz"
-  PKG_URL="$(apm_docker_pkg_download_url "$DEMO_PKG")"
-  curl -fsSL "$PKG_URL" -o "$TMP_PKG"
-  STAGING="$(mktemp -d "${TMPDIR:-/tmp}/apm-demo-update-bootstrap-stage.XXXXXX")"
+echo -e "${CYN}[demo-update]${RST} 刷新本机 update.sh 与 scripts/ ..."
+TMP_PKG="$(mktemp "${TMPDIR:-/tmp}/apm-demo-update-bootstrap.XXXXXX.tar.gz")"
+STAGING="$(mktemp -d "${TMPDIR:-/tmp}/apm-demo-update-bootstrap-stage.XXXXXX")"
+DEMO_PKG="databuff-apm-demo-${APM_VERSION}.tar.gz"
+PKG_URL="$(apm_docker_pkg_download_url "$DEMO_PKG")"
+if curl -fsSL "$PKG_URL" -o "$TMP_PKG"; then
   tar -xzf "$TMP_PKG" -C "$STAGING" --strip-components=1
   rm -f "$TMP_PKG"
-  chmod +x "${STAGING}/update.sh" "${STAGING}/scripts/"*.sh 2>/dev/null || true
-  UPDATE_SCRIPT="${STAGING}/update.sh"
+  mkdir -p "${INSTALL_DIR}/scripts"
+  [[ -f "${STAGING}/update.sh" ]] && { cp -f "${STAGING}/update.sh" "${INSTALL_DIR}/update.sh"; chmod +x "${INSTALL_DIR}/update.sh"; }
+  [[ -d "${STAGING}/scripts" ]] && { cp -Rf "${STAGING}/scripts/." "${INSTALL_DIR}/scripts/"; chmod +x "${INSTALL_DIR}/scripts/"*.sh 2>/dev/null || true; }
+  # 旧 env.sh 写死 export APM_VERSION=<旧版>，会被内层 update.sh source 后覆盖 --version。
+  # 把这行改成目标版本，其余用户自定义项保留。
+  if [[ -f "${INSTALL_DIR}/env.sh" ]]; then
+    if grep -q '^export APM_VERSION=' "${INSTALL_DIR}/env.sh"; then
+      sed -i "s/^export APM_VERSION=.*/export APM_VERSION=${APM_VERSION}/" "${INSTALL_DIR}/env.sh"
+    else
+      printf '\nexport APM_VERSION=%s\n' "$APM_VERSION" >> "${INSTALL_DIR}/env.sh"
+    fi
+  fi
+  rm -rf "$STAGING"
+  UPDATE_SCRIPT="${INSTALL_DIR}/update.sh"
+else
+  rm -f "$TMP_PKG"
+  rm -rf "$STAGING"
+  if [[ ! -x "$UPDATE_SCRIPT" ]]; then
+    fail "无法刷新 update.sh，且安装目录缺少可执行 update.sh"
+  fi
+  echo -e "${CYN}[demo-update]${RST} ${YLW}刷新失败，使用本机已有 update.sh（可能不支持新参数）${RST}"
 fi
 
 exec env \
