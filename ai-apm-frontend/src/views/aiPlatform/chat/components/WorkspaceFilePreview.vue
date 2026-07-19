@@ -25,12 +25,18 @@
       </div>
       <div v-loading="loading" class="preview-body">
         <iframe
-          v-if="previewKind === 'html' && src"
+          v-if="(previewKind === 'html' || previewKind === 'svg') && src"
           :src="src"
           class="preview-frame"
           :title="fileName"
-          sandbox="allow-same-origin"
+          sandbox="allow-scripts allow-same-origin"
         />
+        <div
+          v-else-if="previewKind === 'markdown' && textContent"
+          class="preview-markdown"
+        >
+          <marked-view :data="textContent" />
+        </div>
         <pre v-else-if="previewKind === 'text' && textContent" class="preview-text">{{ textContent }}</pre>
         <div v-else-if="error" class="preview-empty">{{ error }}</div>
         <div v-else class="preview-empty">{{ $t('modules.views.aiPlatform.chat.s_93177327') }}</div>
@@ -43,8 +49,12 @@
 import i18n from '@/i18n';
 import { Vue, Component, Prop, Watch } from 'vue-property-decorator'
 import AiPlatformApi from '@/api/aiPlatform'
+import MarkedView from '@/components/marked-view.vue'
 
-@Component({ name: 'WorkspaceFilePreview' })
+@Component({
+  name: 'WorkspaceFilePreview',
+  components: { MarkedView },
+})
 export default class WorkspaceFilePreview extends Vue {
   @Prop({ type: Boolean, default: false }) readonly visible!: boolean
   @Prop({ type: String, required: true }) readonly sessionId!: string
@@ -74,12 +84,18 @@ export default class WorkspaceFilePreview extends Vue {
     return this.expanded ? '82%' : '64%'
   }
 
-  private get previewKind (): 'html' | 'text' | 'other' {
+  private get previewKind (): 'html' | 'svg' | 'markdown' | 'text' | 'other' {
     const name = (this.fileName || this.filePath || '').toLowerCase()
     if (/\.(html?|htm)$/.test(name)) {
       return 'html'
     }
-    if (/\.(md|markdown|txt|log|csv|json)$/.test(name)) {
+    if (/\.svg$/.test(name)) {
+      return 'svg'
+    }
+    if (/\.(md|markdown)$/.test(name)) {
+      return 'markdown'
+    }
+    if (/\.(txt|log|csv|json)$/.test(name)) {
       return 'text'
     }
     return 'other'
@@ -139,11 +155,16 @@ export default class WorkspaceFilePreview extends Vue {
         preview: true,
       })
       const blob = response?.data instanceof Blob ? response.data : new Blob([response?.data || ''])
-      if (this.previewKind === 'html') {
-        const htmlBlob = blob.type && blob.type.includes('html')
+      if (this.previewKind === 'html' || this.previewKind === 'svg') {
+        const mimeType = this.previewKind === 'svg'
+          ? 'image/svg+xml'
+          : 'text/html;charset=utf-8'
+        const previewBlob = blob.type && (
+          blob.type.includes('html') || blob.type.includes('svg')
+        )
           ? blob
-          : new Blob([await blob.text()], { type: 'text/html;charset=utf-8' })
-        this.objectUrl = URL.createObjectURL(htmlBlob)
+          : new Blob([await blob.text()], { type: mimeType })
+        this.objectUrl = URL.createObjectURL(previewBlob)
         this.src = this.objectUrl
       } else {
         this.textContent = await blob.text()
@@ -233,6 +254,13 @@ export default class WorkspaceFilePreview extends Vue {
   width: 100%;
   height: 100%;
   border: 0;
+  background: #fff;
+}
+
+.workspace-file-preview-drawer .preview-markdown {
+  height: 100%;
+  overflow: auto;
+  padding: 24px 28px;
   background: #fff;
 }
 

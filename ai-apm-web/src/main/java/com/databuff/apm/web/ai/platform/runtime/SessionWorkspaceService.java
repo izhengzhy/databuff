@@ -294,7 +294,7 @@ public class SessionWorkspaceService {
                     Image attachments are included in this message for visual analysis.
                     For text files, use workspace tools to inspect them:
                     - listWorkspaceFiles: list uploaded files (relativePath=uploads)
-                    - readWorkspaceFile: read a text or image file (filePath, optional lineRange like 1-200)
+                    - readWorkspaceFile: read a text or image file (default lines 1-9999; continue with lineRange if more content remains)
                     - writeWorkspaceFile: write deliverables to outputs/ for user download
                     - executeWorkspaceShell: run allowed shell commands in the session workspace
                     """);
@@ -302,7 +302,7 @@ public class SessionWorkspaceService {
             builder.append("""
                     Use workspace tools to inspect them:
                     - listWorkspaceFiles: list uploaded files (relativePath=uploads)
-                    - readWorkspaceFile: read a text or image file (filePath, optional lineRange like 1-200)
+                    - readWorkspaceFile: read a text or image file (default lines 1-9999; continue with lineRange if more content remains)
                     - writeWorkspaceFile: write deliverables to outputs/ for user download
                     - executeWorkspaceShell: run allowed shell commands in the session workspace
                     """);

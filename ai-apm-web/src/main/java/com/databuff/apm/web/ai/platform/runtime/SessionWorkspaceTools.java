@@ -30,6 +30,8 @@ import java.util.stream.Stream;
 @Lazy
 public class SessionWorkspaceTools {
 
+    private static final String DEFAULT_LINE_RANGE = "1-9999";
+
     private final SessionWorkspaceService workspaceService;
     private final Set<String> allowedShellCommands;
     private final int shellTimeoutSeconds;
@@ -87,11 +89,13 @@ public class SessionWorkspaceTools {
         }
     }
 
-    @Tool(description = "Read a text or image file from the current chat session workspace or skill resources (e.g. resources/skill.summary.html/templates/inspection-report.html)")
+    @Tool(description = "Read a text or image file from the current chat session workspace or skill resources. "
+            + "Omit lineRange to read lines 1-9999 by default; if the file has more content, continue with subsequent ranges. "
+            + "Do not read the same line range of the same file more than once.")
     public ToolResultBlock readWorkspaceFile(
-            @ToolParam(name = "filePath", description = "Relative file path, e.g. uploads/report.csv or resources/skill.summary.html/templates/summary-brief.html")
+            @ToolParam(name = "filePath", description = "Relative file path, e.g. uploads/report.csv or resources/skill.summary.html/templates/inspection-report.html")
             String filePath,
-            @ToolParam(name = "lineRange", description = "Optional line range for text files, e.g. 1-200")
+            @ToolParam(name = "lineRange", required = false, description = "Optional line range, e.g. 10000-19998; default 1-9999")
             String lineRange,
             RuntimeContext runtimeContext) {
         String sessionId = requireSessionId(runtimeContext);
@@ -243,7 +247,7 @@ public class SessionWorkspaceTools {
             return new int[]{0, -1};
         }
         if (lineRange == null || lineRange.isBlank()) {
-            return new int[]{0, totalLines - 1};
+            lineRange = DEFAULT_LINE_RANGE;
         }
         String[] parts = lineRange.trim().split("-", 2);
         int start = parsePositiveInt(parts[0], 1);

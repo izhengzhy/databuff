@@ -8,6 +8,7 @@ import com.databuff.apm.web.portal.ServicePortalService;
 import com.databuff.apm.web.portal.TracePortalService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,6 +23,8 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -51,6 +54,11 @@ class InspectToolsTest {
         ReflectionTestUtils.setField(inspectTools, "alarmStore", alarmStore);
         ReflectionTestUtils.setField(inspectTools, "objectMapper", objectMapper);
         ReflectionTestUtils.setField(inspectTools, "metricDatabase", "databuff");
+    }
+
+    @AfterEach
+    void tearDown() {
+        inspectTools.shutdownInspectionExecutor();
     }
 
     @Test
@@ -89,7 +97,7 @@ class InspectToolsTest {
                         "componentType", "service.db")),
                 "upflowServiceStats", List.of(),
                 "serviceId2Name", List.of(Map.of("serviceId", "db-order", "name", "order-db"))));
-        when(servicePortalService.getServiceInstance(any())).thenReturn(
+        when(servicePortalService.getServiceInstance(any(), any())).thenReturn(
                 List.of(Map.of("serviceInstance", "pod-a", "hostName", "h1", "serviceCall", 10)),
                 List.of(
                         Map.of("serviceInstance", "pod-a", "hostName", "h1", "serviceCall", 10),
@@ -155,6 +163,8 @@ class InspectToolsTest {
                 .contains("上下游依赖")
                 .contains("失败 Trace")
                 .contains("服务实例");
+        verify(logPortalService, times(1)).trend(any());
+        verify(servicePortalService, times(1)).serviceInfo(any());
     }
 
     private static Map<String, Object> errorSpikeSeries() {

@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.agentscope.core.tool.Tool;
 import io.agentscope.core.tool.ToolParam;
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
@@ -23,6 +24,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Local APM data tools for the data expert.
@@ -44,10 +51,16 @@ public class DataTools {
     @Autowired
     private ObjectMapper objectMapper;
     private String metricDatabase;
+    private final ExecutorService traceQueryExecutor = createTraceQueryExecutor();
 
     @PostConstruct
     void initMetricDatabase() {
         metricDatabase = storageProperties == null ? "databuff" : storageProperties.metricDatabase();
+    }
+
+    @PreDestroy
+    void shutdownTraceQueryExecutor() {
+        traceQueryExecutor.shutdown();
     }
 
     @Tool(converter = PlainTextToolResultConverter.class, description = "Query service list from the service catalog (meta_service with metric fallback). Optional keyword filters by service name; literal \"null\" means no filter. Defaults to the last 1 hour when fromTime/toTime are omitted; pass both in yyyy-MM-dd HH:mm:ss for a custom window (obtain via getCurrentTimeRange or getTimeRangeAroundTime). Returns up to 20 services. Do not use queryMetricData for service lists.")
@@ -216,12 +229,17 @@ public class DataTools {
         putIfNotBlank(body, "resource", resource);
         applyDirection(body, direction);
 
+        Map<String, Object> traceBody = new LinkedHashMap<>(body);
+        traceBody.put("includeTotal", false);
+        CompletableFuture<Map<String, Object>> metricStats = CompletableFuture.supplyAsync(
+                () -> servicePortalService.callGraphStats(body), traceQueryExecutor);
+        Map<String, Object> traces = tracePortalService.callSpans(traceBody);
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("fromTime", from);
         response.put("toTime", to);
         response.put("condition", body);
-        response.put("metricStats", servicePortalService.callGraphStats(body));
-        response.put("traces", tracePortalService.callSpans(body));
+        response.put("metricStats", metricStats.join());
+        response.put("traces", traces);
         return json(response);
     }
 
@@ -646,6 +664,23 @@ public class DataTools {
             default -> {
             }
         }
+    }
+
+    private static ExecutorService createTraceQueryExecutor() {
+        AtomicInteger threadSequence = new AtomicInteger();
+        return new ThreadPoolExecutor(
+                4,
+                4,
+                0L,
+                TimeUnit.MILLISECONDS,
+                new ArrayBlockingQueue<>(32),
+                runnable -> {
+                    Thread thread = new Thread(
+                            runnable, "data-tools-trace-" + threadSequence.incrementAndGet());
+                    thread.setDaemon(true);
+                    return thread;
+                },
+                new ThreadPoolExecutor.CallerRunsPolicy());
     }
 
     private static void putIfNotBlank(Map<String, Object> body, String key, String value) {

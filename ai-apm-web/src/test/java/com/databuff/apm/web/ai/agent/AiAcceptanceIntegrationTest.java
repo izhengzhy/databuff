@@ -100,8 +100,9 @@ class AiAcceptanceIntegrationTest {
         String sessionId = store.ensureSession(null, "brain", "session:key", "web-1");
 
         ExpertTaskContext.run(sessionId, "brain", null, () -> {
-            fixture.expertDispatchTool().dispatchExpertTask("data", "health summary", "{}", null);
-            fixture.expertDispatchTool().dispatchExpertTask("inspection", "triage alerts", "{}", null);
+            String contextJson = "{\"sessionId\":\"" + sessionId + "\"}";
+            fixture.expertDispatchTool().dispatchExpertTask("data", "health summary", contextJson, null);
+            fixture.expertDispatchTool().dispatchExpertTask("inspection", "triage alerts", contextJson, null);
             return null;
         });
 

@@ -35,6 +35,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Component
 public class AgentScopeSessionHook {
@@ -75,6 +76,7 @@ public class AgentScopeSessionHook {
         private final Map<String, ToolTrace> toolTraces = new LinkedHashMap<>();
         private final StringBuilder pendingTextBeforeTool = new StringBuilder();
         private final StringBuilder pendingThinkingBeforeTool = new StringBuilder();
+        private final AtomicBoolean finished = new AtomicBoolean(false);
 
         private TraceRecorder(ExpertChatContext.State ctx) {
             this.ctx = ctx;
@@ -124,7 +126,8 @@ public class AgentScopeSessionHook {
                 }
                 trace.callEnded = true;
                 trace.callEndedAtMs = System.currentTimeMillis();
-                sessionStore.updateToolCallInput(ctx.sessionId(), trace.toolCallId, trace.input.toString());
+                sessionStore.updateToolCallInput(
+                        storeSessionId(), trace.toolCallId, ctx.taskId(), trace.input.toString());
                 return Flux.empty();
             }
             if (type == AgentEventType.TOOL_RESULT_START && event instanceof ToolResultStartEvent start) {
@@ -161,13 +164,17 @@ public class AgentScopeSessionHook {
 
         /** Flush buffered assistant text and finalize streaming rows at end of stream. */
         public void finish() {
-            sessionStore.endReasoningSegment(ctx.sessionId(), ctx.expertId());
+            if (!finished.compareAndSet(false, true)) {
+                return;
+            }
+            String storeSessionId = storeSessionId();
+            sessionStore.endReasoningSegment(storeSessionId, ctx.expertId());
             flushPendingTextBeforeTool();
-            sessionStore.finalizeRoundStreaming(ctx.sessionId(), ctx.expertId());
+            sessionStore.finalizeRoundStreaming(storeSessionId, ctx.expertId());
         }
 
         private Flux<ExpertRuntimeEvent> recordToolCallStart(ToolCallStartEvent event) {
-            sessionStore.endReasoningSegment(ctx.sessionId(), ctx.expertId());
+            sessionStore.endReasoningSegment(storeSessionId(), ctx.expertId());
             ExpertRuntimeEvent pendingReasoning = flushPendingTextBeforeTool();
             ToolTrace trace = toolTrace(event.getToolCallId());
             trace.toolName = isBlank(event.getToolCallName()) ? "tool" : event.getToolCallName();
@@ -264,7 +271,7 @@ public class AgentScopeSessionHook {
             Map<String, Object> metadata = baseMetadata(ctx);
             metadata.putAll(extra);
             sessionStore.appendTraceMessage(
-                    ctx.sessionId(),
+                    storeSessionId(),
                     ctx.expertId(),
                     ctx.userName(),
                     messageType,
@@ -272,11 +279,22 @@ public class AgentScopeSessionHook {
                     status,
                     metadata);
         }
+
+        private String storeSessionId() {
+            String logicalSessionId = ExpertChatScopeRegistry.parentSessionId(ctx.sessionId());
+            return logicalSessionId == null ? ctx.sessionId() : logicalSessionId;
+        }
     }
 
     private static Map<String, Object> baseMetadata(ExpertChatContext.State ctx) {
         Map<String, Object> metadata = new LinkedHashMap<>();
-        metadata.put("sessionId", ctx.sessionId());
+        String runtimeSessionId = ctx.sessionId();
+        String logicalSessionId = ExpertChatScopeRegistry.parentSessionId(runtimeSessionId);
+        metadata.put(ExpertMessageConstants.META_SESSION_ID,
+                logicalSessionId == null ? runtimeSessionId : logicalSessionId);
+        if (logicalSessionId != null && !logicalSessionId.equals(runtimeSessionId)) {
+            metadata.put(ExpertMessageConstants.META_RUNTIME_SESSION_ID, runtimeSessionId);
+        }
         metadata.put("userName", ctx.userName());
         metadata.put("expertId", ctx.expertId());
         if (ctx.taskId() != null && !ctx.taskId().isBlank()) {

@@ -4,7 +4,7 @@
 
 ## 概述
 
-`plugin.ts` 负责插件市场/插件管理相关能力，包括插件安装卸载、Dashboard UID 查询、插件指标与插件预设规则。
+`plugin.ts` 负责插件市场/插件管理相关能力，包括插件安装卸载、Dashboard UID 查询与插件指标。
 
 ## 接口说明
 
@@ -14,11 +14,9 @@
 | `installedPlugin` | `POST` | `/plugin/installedPlugin` | 安装插件 |
 | `unInstalledPlugin` | `POST` | `/plugin/unInstalledPlugin` | 卸载插件 |
 | `getDashboardUID` | `POST` | `/plugin/getDashBoardUId` | 获取 Dashboard UID |
-| `getPresetMonitorByPlugin` | `POST` | `/monitor/findPresetMonitorByPluge` | 查询插件预设规则 |
 | `getMetricByPlugin` | `POST` | `/plugin/findPluginMetrics` | 查询插件指标 |
 | `openPluginMetrics` | `POST` | `/plugin/openPluginMetrics` | 开启/关闭插件指标 |
 
 ## 使用特点
 
-- 插件预设规则接口挂在 `monitor` 域下，不在 `plugin` 域
 - 绝大多数插件操作均使用 `POST`

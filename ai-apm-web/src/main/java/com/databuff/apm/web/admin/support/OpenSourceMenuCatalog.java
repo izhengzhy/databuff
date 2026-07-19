@@ -50,7 +50,7 @@ public final class OpenSourceMenuCatalog {
         menus.add(menu(1003, 1020, "告警配置", "/config/alarm", null, true, true, 1, false, false));
         menus.add(menu(1003, 1035, "模型配置", "/config/llm", null, true, true, 2, false, false));
         menus.add(menu(1003, 1036, "登录设置", "/config/login", null, true, true, 2.5, false, false));
-        menus.add(menu(1003, 1705, "首页配置", "/aiPlatform/capabilities", null, true, true, 3, false, false));
+        menus.add(menu(1003, 1705, "首页配置", "/config/capabilities", null, true, true, 3, false, false));
         return menus;
     }
 

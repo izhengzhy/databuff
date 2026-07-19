@@ -28,13 +28,8 @@ Evaluation mechanics: [Architecture · Alerting](../架构设计/告警_en.md).
 
 | Feature | Path |
 |---------|------|
-| Detection rules | Configuration → Alert Config → Detection Rules |
-| Preset rules | Detection Rules → Preset Rules (one-click copy) |
-| Convergence policy | Configuration → Alert Config → Convergence |
-| Silence schedule | Configuration → Alert Config → Silence |
+| Detection rules | Configuration → Alert Config |
 | Alert list | Alert Center → Alert List |
-
-
 
 ---
 
@@ -50,9 +45,7 @@ flowchart LR
 
 ### 1. Create a Detection Rule
 
-**Configuration → Alert Config → Detection Rules → New Rule**
-
-Or copy a template from **Preset Rules** and adjust.
+**Configuration → Alert Config → New Rule**
 
 Configurable fields:
 
@@ -75,13 +68,6 @@ Filter by service, severity, status. Click an alert for details:
 
 Alerts auto-resolve when metrics recover.
 
-### 3. Advanced Config
-
-| Setting | Purpose |
-|---------|---------|
-| **Convergence** | Merge similar alerts to reduce list noise |
-| **Silence** | Suppress alert evaluation during maintenance windows |
-
 ---
 
 ## Working with AI
@@ -99,8 +85,8 @@ AI queries metrics, traces, and topology automatically. For Agent integration, u
 | Symptom | Action |
 |---------|--------|
 | No alerts after creating rules | Ensure services have metrics; evaluation runs every minute; verify rule scope (see [Docker](../运维参考/Docker运维_en.md#common-issues) / [K8s](../运维参考/K8s运维_en.md#common-issues) ops troubleshooting) |
-| No alerts after Demo install | Manually enable a rule in Preset Rules first; install demo app for traffic; wait 1–2 evaluation cycles |
-| Too many alerts | Tune thresholds; add convergence or silence policies |
+| No alerts after Demo install | Create and enable a detection rule first; install demo app for traffic; wait 1–2 evaluation cycles |
+| Too many alerts | Tune thresholds or narrow the monitoring scope |
 
 
 # Alert Notification Channel (Webhook)
@@ -139,3 +125,4 @@ Below is an example of the JSON payload sent by the DataBuff system to your webh
   "status": "CRITICAL",
   "message": "Memory usage exceeded 92% on instance node-01."
 }
+```

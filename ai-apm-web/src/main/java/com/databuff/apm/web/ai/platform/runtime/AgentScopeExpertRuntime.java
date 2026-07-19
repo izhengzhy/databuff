@@ -97,6 +97,8 @@ public class AgentScopeExpertRuntime implements ExpertRuntime {
             Flux<AgentEvent> agentEvents = agent.streamEvents(userMessage, runtimeContext);
             return agentEvents
                     .flatMap(recorder::record)
+                    .doOnComplete(recorder::finish)
+                    .doOnError(error -> recorder.finish())
                     .doFinally(signal -> {
                         recorder.finish();
                         ExpertChatScopeRegistry.unregister(context.sessionId());

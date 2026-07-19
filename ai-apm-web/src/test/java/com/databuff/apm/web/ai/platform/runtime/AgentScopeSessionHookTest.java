@@ -1,6 +1,7 @@
 package com.databuff.apm.web.ai.platform.runtime;
 
 import com.databuff.apm.web.ai.agent.AiSessionStore;
+import com.databuff.apm.web.ai.platform.task.ExpertMessageConstants;
 import com.databuff.apm.web.tools.local.CommonTools;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.agentscope.core.event.TextBlockDeltaEvent;
@@ -148,6 +149,49 @@ class AgentScopeSessionHookTest {
                 .isNotBlank()
                 .contains("fromTime")
                 .contains("toTime");
+    }
+
+    @Test
+    void taskScopedRecorderPersistsToolTraceToParentSessionAndKeepsRuntimeIdentity() {
+        AiSessionStore store = new AiSessionStore();
+        String sessionId = store.ensureSession(null, "brain", "rk", "web-1", "admin");
+        store.appendUserMessage(sessionId, "巡检 service-a", "brain", "admin", Map.of());
+        String taskId = "task-inspection-1";
+        String runtimeSessionId = ExpertChatScopeRegistry.taskScopedSessionId(sessionId, taskId);
+        AgentScopeSessionHook hook = new AgentScopeSessionHook(store);
+        AgentScopeSessionHook.TraceRecorder recorder = hook.newTraceRecorder(new ExpertChatContext.State(
+                runtimeSessionId, "admin", "inspection", null, true, null, taskId));
+        ToolUseBlock toolUse = ToolUseBlock.builder()
+                .id("call-inspect-1")
+                .name("inspectService")
+                .input(Map.of("serviceName", "service-a"))
+                .build();
+
+        hook.captureToolResult(runtimeSessionId, toolUse, ToolResultBlock.text("{\"status\":\"ok\"}"), 17L);
+        recorder.record(new ToolCallStartEvent("reply-1", "call-inspect-1", "inspectService")).blockLast();
+        recorder.record(new ToolResultEndEvent(
+                "reply-1", "call-inspect-1", "inspectService", ToolResultState.SUCCESS)).blockLast();
+        recorder.finish();
+        recorder.finish();
+
+        assertThat(store.activeRoundMessages(runtimeSessionId)).isEmpty();
+        assertThat(store.activeRoundMessages(sessionId))
+                .filteredOn(message -> "TOOL_CALL".equals(message.messageType())
+                        || "TOOL_RESULT".equals(message.messageType()))
+                .hasSize(2)
+                .allSatisfy(message -> assertThat(message.metadata())
+                        .containsEntry(ExpertMessageConstants.META_SESSION_ID, sessionId)
+                        .containsEntry(ExpertMessageConstants.META_RUNTIME_SESSION_ID, runtimeSessionId)
+                        .containsEntry(ExpertMessageConstants.META_TASK_ID, taskId)
+                        .containsEntry("expertId", "inspection"));
+        AiSessionStore.ChatMessage result = store.activeRoundMessages(sessionId).stream()
+                .filter(message -> "TOOL_RESULT".equals(message.messageType()))
+                .findFirst()
+                .orElseThrow();
+        assertThat(result.metadata())
+                .containsEntry("durationMs", 17L)
+                .containsEntry("toolResult", "{\"status\":\"ok\"}");
+        assertThat(String.valueOf(result.metadata().get("toolInput"))).contains("service-a");
     }
 
     @Test

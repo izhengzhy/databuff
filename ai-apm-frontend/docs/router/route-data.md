@@ -246,9 +246,6 @@
 |----|------|------|------|
 | 1020 | 告警配置 | /config/alarm | ✓ |
 | 1021 | 检测规则 | /config/rule | ✓ |
-| 1022 | 收敛策略 | /config/convergence | ✓ |
-| 1023 | 响应策略 | /config/response | ✓ |
-| 1024 | 静默计划 | /config/silence | ✓ |
 
 ### 配置管理 - 其他
 
@@ -277,11 +274,8 @@
 
 | ID | 名称 | 路径 | menuId |
 |----|------|------|--------|
-| 1061 | 推荐规则 | /configManage/alarm/rulePreset | 1003 |
 | 1062 | 新建规则 | /configManage/alarm/ruleSetting | 1003 |
-| 1063 | 新建收敛策略 | /configManage/alarm/convgSetting | 1003 |
 | 1064 | 新建响应策略 | /configManage/alarm/responseSetting | 1003 |
-| 1065 | 新建静默计划 | /configManage/alarm/silenceSetting | 1003 |
 | 1067 | 更新包管理 | /config/agentPackages | 1002 |
 | 1068 | 请求属性设置 | /config/request/attrCollSetting | 1003 |
 | 1070 | 运行日志 | /config/runLog | 1002 |

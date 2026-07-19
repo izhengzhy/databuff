@@ -1247,6 +1247,12 @@ public class ServicePortalService {
      * Time range accepts epoch-ms {@code start}/{@code end} or legacy {@code fromTime}/{@code toTime}.
      */
     public List<Map<String, Object>> getServiceInstance(Map<String, Object> body) {
+        return getServiceInstance(body, null);
+    }
+
+    public List<Map<String, Object>> getServiceInstance(
+            Map<String, Object> body,
+            Map<String, Object> preloadedServiceInfo) {
         String serviceId = resolveServiceId(body);
         if (serviceId == null || serviceId.isBlank()) {
             return List.of();
@@ -1260,7 +1266,10 @@ public class ServicePortalService {
             instanceFilter = stringValue(body.get("si"), null);
         }
 
-        Map<String, Object> traceServiceEntity = serviceInfo(body);
+        Map<String, Object> traceServiceEntity = preloadedServiceInfo;
+        if (traceServiceEntity == null) {
+            traceServiceEntity = serviceInfo(body);
+        }
         if (traceServiceEntity == null) {
             traceServiceEntity = minimalTraceServiceEntity(serviceId);
         }

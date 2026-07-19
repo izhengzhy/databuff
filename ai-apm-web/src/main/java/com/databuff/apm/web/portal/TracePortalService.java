@@ -389,6 +389,7 @@ public class TracePortalService {
         int size = ServicePortalService.intValue(body.get("size"), 50);
         String sortField = ServicePortalService.stringValue(body.get("sortField"), "start");
         String sortOrder = ServicePortalService.stringValue(body.get("sortOrder"), "desc");
+        boolean includeTotal = !"false".equalsIgnoreCase(String.valueOf(body.getOrDefault("includeTotal", true)));
 
         MetaServicePoint srcMeta = loadMetaService(srcServiceId);
         MetaServicePoint dstMeta = loadMetaService(serviceId);
@@ -398,18 +399,18 @@ public class TracePortalService {
             return queryVirtualCallSpans(
                     response, from, to, fromTimeText, toTimeText, componentType, serviceId, srcServiceId,
                     serviceInstance, srcServiceInstance, resource, httpMethod, rootResourceQuery,
-                    offset, size, sortField, sortOrder);
+                    offset, size, sortField, sortOrder, includeTotal);
         }
 
         CallSpanQuery clientQuery = webCallClientQuery(
                 from, to, fromTimeText, toTimeText, componentType, serviceId, srcServiceId, serviceInstance,
                 srcServiceInstance, resource, httpMethod, rootResourceQuery, offset, size, sortField, sortOrder);
-        CallSpanPage page = queryWebCallSpans(clientQuery, serviceId, true);
+        CallSpanPage page = queryWebCallSpans(clientQuery, serviceId, true, includeTotal);
         if (page.rows().isEmpty()) {
             CallSpanQuery serverQuery = webCallServerQuery(
                     from, to, fromTimeText, toTimeText, componentType, serviceId, srcServiceId, serviceInstance,
                     srcServiceInstance, resource, httpMethod, rootResourceQuery, offset, size, sortField, sortOrder);
-            page = queryWebCallSpans(serverQuery, serviceId, false);
+            page = queryWebCallSpans(serverQuery, serviceId, false, includeTotal);
         }
 
         response.put("data", page.rows());
@@ -1668,12 +1669,10 @@ public class TracePortalService {
             int offset,
             int size,
             String sortField,
-            String sortOrder) {
+            String sortOrder,
+            boolean includeTotal) {
         try {
             // 组件调用（DB/Redis/MQ 等）：请求里的 serviceId 表示下游目标，对应 span.dstServiceId。
-            long total = readRepository.queryCallSpanCount(MetricQueryBuilder.callSpanCountSql(
-                    traceDatabase, from, to, fromTimeText, toTimeText, null, null, srcServiceId, srcServiceInstance,
-                    serviceId, serviceInstance, resource, httpMethod, rootResourceQuery, false, componentType));
             List<CallSpanRow> spans = readRepository.queryCallSpans(MetricQueryBuilder.callSpanListSql(
                     traceDatabase, from, to, fromTimeText, toTimeText, null, null, srcServiceId, srcServiceInstance,
                     serviceId, serviceInstance, resource, httpMethod, rootResourceQuery, false, componentType,
@@ -1681,6 +1680,12 @@ public class TracePortalService {
             List<Map<String, Object>> rows = spans.stream()
                     .map(span -> toVirtualCallSpanRow(span, componentType))
                     .toList();
+            long total = includeTotal
+                    ? readRepository.queryCallSpanCount(MetricQueryBuilder.callSpanCountSql(
+                            traceDatabase, from, to, fromTimeText, toTimeText, null, null,
+                            srcServiceId, srcServiceInstance, serviceId, serviceInstance,
+                            resource, httpMethod, rootResourceQuery, false, componentType))
+                    : offset + rows.size();
             response.put("data", rows);
             response.put("total", total);
         } catch (Exception ignored) {
@@ -1689,26 +1694,10 @@ public class TracePortalService {
         return response;
     }
 
-    private CallSpanPage queryWebCallSpans(CallSpanQuery query, String dstServiceId, boolean clientFirst) {
+    private CallSpanPage queryWebCallSpans(
+            CallSpanQuery query, String dstServiceId, boolean clientFirst, boolean includeTotal) {
         try {
             Boolean inbound = clientFirst ? false : true;
-            long total = readRepository.queryCallSpanCount(MetricQueryBuilder.callSpanCountSql(
-                    traceDatabase,
-                    query.from(),
-                    query.to(),
-                    query.fromTimeText(),
-                    query.toTimeText(),
-                    query.serviceId(),
-                    query.serviceInstance(),
-                    query.srcServiceId(),
-                    query.srcServiceInstance(),
-                    query.dstServiceId(),
-                    query.dstServiceInstance(),
-                    query.resource(),
-                    query.httpMethod(),
-                    query.rootResourceQuery(),
-                    inbound,
-                    query.componentType()));
             List<CallSpanRow> spans = readRepository.queryCallSpans(MetricQueryBuilder.callSpanListSql(
                     traceDatabase,
                     query.from(),
@@ -1730,10 +1719,29 @@ public class TracePortalService {
                     query.sortOrder(),
                     query.size(),
                     query.offset()));
-            if (clientFirst) {
-                return new CallSpanPage(buildClientFirstRows(spans, query, dstServiceId), total);
-            }
-            return new CallSpanPage(buildServerFirstRows(spans, query.componentType()), total);
+            List<Map<String, Object>> rows = clientFirst
+                    ? buildClientFirstRows(spans, query, dstServiceId)
+                    : buildServerFirstRows(spans, query.componentType());
+            long total = includeTotal
+                    ? readRepository.queryCallSpanCount(MetricQueryBuilder.callSpanCountSql(
+                            traceDatabase,
+                            query.from(),
+                            query.to(),
+                            query.fromTimeText(),
+                            query.toTimeText(),
+                            query.serviceId(),
+                            query.serviceInstance(),
+                            query.srcServiceId(),
+                            query.srcServiceInstance(),
+                            query.dstServiceId(),
+                            query.dstServiceInstance(),
+                            query.resource(),
+                            query.httpMethod(),
+                            query.rootResourceQuery(),
+                            inbound,
+                            query.componentType()))
+                    : query.offset() + rows.size();
+            return new CallSpanPage(rows, total);
         } catch (Exception e) {
             return new CallSpanPage(List.of(), 0);
         }

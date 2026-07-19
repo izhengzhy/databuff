@@ -186,14 +186,8 @@ const appMonitor: BreadcrumbPath = {
 | /config/relationest | /config → /config/manage |
 | /config/alarm | /config → /config/manage |
 | /config/rule | /config → /config/manage → /config/alarm |
-| /configManage/alarm/rulePreset | /config → /config/manage → /config/alarm → /config/rule |
 | /configManage/alarm/ruleSetting | /config → /config/manage → /config/alarm → /config/rule |
-| /config/convergence | /config → /config/manage → /config/alarm |
-| /configManage/alarm/convgSetting | /config → /config/manage → /config/alarm → /config/convergence |
-| /config/response | /config → /config/manage → /config/alarm |
-| /configManage/alarm/responseSetting | /config → /config/manage → /config/alarm → /config/response |
-| /config/silence | /config → /config/manage → /config/alarm |
-| /configManage/alarm/silenceSetting | /config → /config/manage → /config/alarm → /config/silence |
+| /configManage/alarm/responseSetting | /config → /config/manage → /config/alarm |
 | /config/ai | /config → /config/manage |
 | /config/envTag | /config → /config/manage |
 | /config/envTagSetting | /config → /config/manage → /config/envTag |

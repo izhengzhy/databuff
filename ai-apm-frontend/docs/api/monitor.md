@@ -4,7 +4,7 @@
 
 ## 概述
 
-`monitor.ts` 主要封装检测规则管理接口，分为普通检测规则、预设规则和系统检测规则三类，覆盖列表、详情、增删改、启停、导出与预览图能力。
+`monitor.ts` 主要封装检测规则管理接口，分为普通检测规则和系统检测规则两类，覆盖列表、详情、增删改、启停、导出与预览图能力。
 
 ## 接口分组
 
@@ -21,17 +21,6 @@
 | `exportRule` | `POST` | `/monitor/export` | 导出规则 |
 | `getPreviewMetricGraph` | `POST` | `/monitor/previewMonitorGraphV3` | 预览指标图 |
 | `getEntityObjects` | `GET` | `/monitor/monitorObjs` | 获取实体对象 |
-
-### 预设规则
-
-| 方法 | HTTP | 路径 | 说明 |
-|------|------|------|------|
-| `getPresetMonitorService` | `POST` | `/monitor/presetMonitorObject` | 获取告警规则服务列表 |
-| `getPresetMonitorByService` | `POST` | `/monitor/presetMonitorList` | 查询服务下推荐规则 |
-| `openPresetMonitor` | `POST` | `/monitor/openPresetMonitor` | 开启单个预设规则 |
-| `batchOpenPresetMonitor` | `POST` | `/monitor/batchOpenPresetMonitor` | 批量开启/关闭预设规则 |
-| `batchDelPresetMonitor` | `POST` | `/monitor/batchDelMonitorForRecommand` | 批量删除预设规则 |
-| `updatePresetMonitor` | `POST` | `/monitor/updatePresetMonitor` | 上传预设规则文件 |
 
 ### 系统检测规则
 

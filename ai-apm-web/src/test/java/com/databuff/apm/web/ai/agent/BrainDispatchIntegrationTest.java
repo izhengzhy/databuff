@@ -22,8 +22,9 @@ class BrainDispatchIntegrationTest {
         List<ExpertTaskEvent> events = new ArrayList<>();
 
         ExpertTaskContext.run("s-brain", "brain", events::add, () -> {
-            fixture.expertDispatchTool().dispatchExpertTask("data", "health summary", "{}", null);
-            fixture.expertDispatchTool().dispatchExpertTask("inspection", "triage alerts", "{}", null);
+            String contextJson = "{\"sessionId\":\"s-brain\"}";
+            fixture.expertDispatchTool().dispatchExpertTask("data", "health summary", contextJson, null);
+            fixture.expertDispatchTool().dispatchExpertTask("inspection", "triage alerts", contextJson, null);
             return null;
         });
 

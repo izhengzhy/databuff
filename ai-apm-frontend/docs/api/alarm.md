@@ -9,9 +9,7 @@
 - 告警列表 / 详情
 - 事件详情
 - 通知记录
-- 收敛策略
 - 响应策略
-- 静默计划
 - 系统事件
 - AI 根因分析
 
@@ -48,19 +46,6 @@
 
 ## 配置类接口
 
-### 收敛策略
-
-| 方法 | HTTP | 路径 | 说明 |
-|------|------|------|------|
-| `getConvergenceList` | `POST` | `/monitor/api/convergence-policy/search` | 列表 |
-| `getConvergenceDetail` | `GET` | `/monitor/api/convergence-policy/{id}` | 详情 |
-| `createConvergence` | `POST` | `/monitor/api/convergence-policy/` | 创建 |
-| `updateConvergence` | `PUT` | `/monitor/api/convergence-policy/{id}` | 更新 |
-| `deleteConvergence` | `DELETE` | `/monitor/api/convergence-policy/delete` | 删除 |
-| `toggleConvergenceEnable` | `PUT` | `/monitor/api/convergence-policy/enable/{enabled}` | 启停 |
-| `exportConvergence` | `POST` | `/monitor/api/convergence-policy/export` | 导出 |
-| `getSeparateAlarm` | `GET` | `/monitor/api/convergence-policy/def` | 获取默认单独告警配置 |
-
 ### 响应策略
 
 | 方法 | HTTP | 路径 | 说明 |
@@ -71,21 +56,6 @@
 | `deleteResponse` | `POST` | `/respPolicy/delete` | 删除 |
 | `toggleResponseEnable` | `POST` | `/respPolicy/publish` | 启停 |
 | `exportResponse` | `POST` | `/respPolicy/export` | 导出 |
-
-### 静默计划
-
-| 方法 | HTTP | 路径 | 说明 |
-|------|------|------|------|
-| `getSilenceList` | `POST` | `/monitor/monitorSilenceList` | 列表 |
-| `getSilenceDetail` | `POST` | `/monitor/silenceInfo` | 详情 |
-| `createSilence` | `POST` | `/monitor/addSilencePlan` | 创建 |
-| `updateSilence` | `POST` | `/monitor/editSilencePlan` | 更新 |
-| `deleteSilence` | `POST` | `/monitor/delSilencePlan` | 删除 |
-| `toggleSilenceEnable` | `POST` | `/monitor/publishSilencePlan` | 启停 |
-| `exportSilence` | `POST` | `/monitor/exportSilence` | 导出 |
-| `cancelSilence` | `POST` | `/monitor/cancelSilencePlan` | 取消 |
-| `batchAddSilence` | `POST` | `/monitor/batchAddSilencePlan` | 批量添加 |
-| `getSilenceTimePreview` | `POST` | `/monitor/previewSilenceTime` | 时间预览 |
 
 ## 系统事件与 AI
 

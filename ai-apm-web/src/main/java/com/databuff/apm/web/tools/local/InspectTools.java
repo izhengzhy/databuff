@@ -16,6 +16,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.agentscope.core.tool.Tool;
 import io.agentscope.core.tool.ToolParam;
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
@@ -27,6 +28,15 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 @Component
 @Lazy
@@ -36,6 +46,8 @@ public class InspectTools {
     private static final int LOG_SAMPLE_SIZE = 5;
     private static final int TRACE_SAMPLE_SIZE = 8;
     private static final int DEPENDENCY_SAMPLE_SIZE = 8;
+    private static final int INSPECTION_CONCURRENCY = 8;
+    private static final int INSPECTION_QUEUE_CAPACITY = 64;
     private static final double DEPENDENCY_ERR_RATE_THRESHOLD = 0.05;
     private static final Set<String> ERROR_SEVERITIES = Set.of("ERROR", "FATAL", "error", "fatal");
     private static final Set<String> WARN_SEVERITIES = Set.of("WARN", "WARNING", "warn", "warning");
@@ -58,11 +70,17 @@ public class InspectTools {
     private ApmStorageProperties storageProperties;
     @Autowired
     private ObjectMapper objectMapper;
+    private final ExecutorService inspectionExecutor = createInspectionExecutor();
     private String metricDatabase;
 
     @PostConstruct
     void initMetricDatabase() {
         metricDatabase = storageProperties == null ? "databuff" : storageProperties.metricDatabase();
+    }
+
+    @PreDestroy
+    void shutdownInspectionExecutor() {
+        inspectionExecutor.shutdown();
     }
 
     @Tool(converter = PlainTextToolResultConverter.class, description = "Inspect one service by serviceName. No time range input is required. Covers entry metrics, ERROR/WARN logs, keyword logs, alarms, dependencies, error traces, instances; web services also check exception, JVM GC, CPU and memory.")
@@ -95,18 +113,46 @@ public class InspectTools {
         result.put("serviceInfo", serviceInfo == null ? Map.of() : serviceInfo);
         result.put("fromTime", from);
         result.put("toTime", to);
-        result.put("entryMetrics", inspectEntryMetrics(body));
-        result.put("logMetrics", inspectLogMetrics(service, from, to));
-        result.put("logKeywordMetrics", inspectLogKeywords(service, from, to));
-        result.put("alarmMetrics", inspectAlarmMetrics(service, serviceInfo, from, to));
-        result.put("dependencyMetrics", inspectDependencyMetrics(service, from, to));
-        result.put("traceMetrics", inspectErrorTraces(service, from, to));
-        result.put("instanceMetrics", inspectInstanceMetrics(service, from, to, prevFrom, prevTo));
+        CompletableFuture<Map<String, Object>> entryMetrics =
+                submitInspection(() -> inspectEntryMetrics(body));
+        CompletableFuture<Map<String, Object>> logMetrics =
+                submitInspection(() -> inspectLogMetrics(service, from, to));
+        List<CompletableFuture<KeywordInspection>> keywordInspections = LOG_KEYWORDS.stream()
+                .map(keyword -> submitInspection(() -> inspectLogKeyword(service, from, to, keyword)))
+                .toList();
+        CompletableFuture<Map<String, Object>> alarmMetrics =
+                submitInspection(() -> inspectAlarmMetrics(service, serviceInfo, from, to));
+        CompletableFuture<Map<String, Object>> dependencyMetrics =
+                submitInspection(() -> inspectDependencyMetrics(service, from, to));
+        CompletableFuture<Map<String, Object>> traceMetrics =
+                submitInspection(() -> inspectErrorTraces(service, from, to));
+        CompletableFuture<Map<String, Object>> instanceMetrics =
+                submitInspection(() -> inspectInstanceMetrics(
+                        service, from, to, prevFrom, prevTo, serviceInfo));
 
-        if (isWebService(serviceType, serviceInfo)) {
-            result.put("exceptionMetrics", inspectExceptionMetrics(body));
-            result.put("jvmMetrics", inspectJvmMetrics(service, from, to));
-            result.put("resourceMetrics", inspectResourceMetrics(service, from, to));
+        boolean webService = isWebService(serviceType, serviceInfo);
+        CompletableFuture<Map<String, Object>> exceptionMetrics = webService
+                ? submitInspection(() -> inspectExceptionMetrics(body))
+                : null;
+        CompletableFuture<Map<String, Object>> jvmMetrics = webService
+                ? submitInspection(() -> inspectJvmMetrics(service, from, to))
+                : null;
+        CompletableFuture<Map<String, Object>> resourceMetrics = webService
+                ? submitInspection(() -> inspectResourceMetrics(service, from, to))
+                : null;
+
+        result.put("entryMetrics", await(entryMetrics));
+        result.put("logMetrics", await(logMetrics));
+        result.put("logKeywordMetrics", inspectLogKeywords(keywordInspections));
+        result.put("alarmMetrics", await(alarmMetrics));
+        result.put("dependencyMetrics", await(dependencyMetrics));
+        result.put("traceMetrics", await(traceMetrics));
+        result.put("instanceMetrics", await(instanceMetrics));
+
+        if (webService) {
+            result.put("exceptionMetrics", await(exceptionMetrics));
+            result.put("jvmMetrics", await(jvmMetrics));
+            result.put("resourceMetrics", await(resourceMetrics));
         }
         result.put("summary", summarize(result));
         return json(result);
@@ -155,27 +201,19 @@ public class InspectTools {
 
     private Map<String, Object> inspectLogMetrics(String serviceName, String fromTime, String toTime) {
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("errorLogs", inspectLogSeverityTrend(
-                serviceName, fromTime, toTime, ERROR_SEVERITIES, "ERROR 日志量"));
-        result.put("warnLogs", inspectLogSeverityTrend(
-                serviceName, fromTime, toTime, WARN_SEVERITIES, "WARN 日志量"));
+        Object severityCnts = queryLogSeverityTrend(serviceName, fromTime, toTime);
+        result.put("errorLogs", inspectLogSeverityTrend(severityCnts, ERROR_SEVERITIES, "ERROR 日志量"));
+        result.put("warnLogs", inspectLogSeverityTrend(severityCnts, WARN_SEVERITIES, "WARN 日志量"));
         result.put("errorSamples", sampleErrorLogs(serviceName, fromTime, toTime));
         return result;
     }
 
-    private Map<String, Object> inspectLogSeverityTrend(
+    private Object queryLogSeverityTrend(
             String serviceName,
             String fromTime,
-            String toTime,
-            Set<String> severities,
-            String label) {
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("label", label);
+            String toTime) {
         if (logPortalService == null) {
-            result.put("data", Map.of());
-            result.put("detection", detectAnomaly(List.of()));
-            result.put("error", "logPortalService is not ready");
-            return result;
+            return null;
         }
         try {
             Map<String, Object> body = new LinkedHashMap<>();
@@ -186,18 +224,29 @@ public class InspectTools {
             Map<String, Object> response = logPortalService.trend(body);
             Object dataNode = response == null ? null : response.get("data");
             Map<?, ?> data = dataNode instanceof Map<?, ?> map ? map : Map.of();
-            List<Double> values = extractSeveritySeries(data.get("severityCnts"), severities);
-            result.put("data", Map.of(
-                    "severityCnts", data.get("severityCnts") == null ? Map.of() : data.get("severityCnts"),
-                    "total", values.stream().mapToDouble(Double::doubleValue).sum()));
-            result.put("detection", detectAnomaly(values));
-            return result;
-        } catch (Exception e) {
-            result.put("data", Map.of());
-            result.put("detection", detectAnomaly(List.of()));
-            result.put("error", e.getMessage() == null ? "log trend query failed" : e.getMessage());
-            return result;
+            return data.get("severityCnts");
+        } catch (Exception ignored) {
+            return null;
         }
+    }
+
+    private Map<String, Object> inspectLogSeverityTrend(
+            Object severityCnts,
+            Set<String> severities,
+            String label) {
+        List<Double> values = extractSeveritySeries(severityCnts, severities);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("label", label);
+        result.put("data", Map.of(
+                "severityCnts", severityCnts == null ? Map.of() : severityCnts,
+                "total", values.stream().mapToDouble(Double::doubleValue).sum()));
+        result.put("detection", detectAnomaly(values));
+        if (severityCnts == null) {
+            result.put("error", logPortalService == null
+                    ? "logPortalService is not ready"
+                    : "log trend query failed");
+        }
+        return result;
     }
 
     private List<Map<String, Object>> sampleErrorLogs(String serviceName, String fromTime, String toTime) {
@@ -356,51 +405,23 @@ public class InspectTools {
         return result;
     }
 
-    private Map<String, Object> inspectLogKeywords(String serviceName, String fromTime, String toTime) {
+    private Map<String, Object> inspectLogKeywords(
+            List<CompletableFuture<KeywordInspection>> keywordInspections) {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("label", "日志关键词");
         List<Map<String, Object>> hits = new ArrayList<>();
         List<Map<String, Object>> samples = new ArrayList<>();
         long totalHits = 0L;
-        if (logPortalService != null) {
-            for (String keyword : LOG_KEYWORDS) {
-                try {
-                    Map<String, Object> body = new LinkedHashMap<>();
-                    body.put("fromTime", fromTime);
-                    body.put("toTime", toTime);
-                    body.put("services", List.of(serviceName));
-                    body.put("query", keyword);
-                    body.put("offset", 0);
-                    body.put("size", 3);
-                    Map<String, Object> response = logPortalService.search(body);
-                    long total = response == null ? 0L : (long) numberValue(response.get("total"));
-                    if (total <= 0) {
-                        continue;
-                    }
-                    totalHits += total;
-                    Map<String, Object> hit = new LinkedHashMap<>();
-                    hit.put("keyword", keyword);
-                    hit.put("total", total);
-                    hits.add(hit);
-                    Object data = response.get("data");
-                    if (data instanceof List<?> rows) {
-                        for (Object row : rows) {
-                            if (!(row instanceof Map<?, ?> map) || samples.size() >= LOG_SAMPLE_SIZE) {
-                                continue;
-                            }
-                            Map<String, Object> sample = new LinkedHashMap<>();
-                            sample.put("keyword", keyword);
-                            sample.put("timestamp", map.get("timestamp"));
-                            sample.put("severity", map.get("severity"));
-                            sample.put("message", map.get("message") != null ? map.get("message") : map.get("body"));
-                            sample.put("traceId", map.get("traceId"));
-                            samples.add(sample);
-                        }
-                    }
-                } catch (Exception ignored) {
-                    // keep scanning other keywords
-                }
+        for (CompletableFuture<KeywordInspection> future : keywordInspections) {
+            KeywordInspection inspection = await(future);
+            if (inspection.total() <= 0) {
+                continue;
             }
+            totalHits += inspection.total();
+            hits.add(Map.of("keyword", inspection.keyword(), "total", inspection.total()));
+            inspection.samples().stream()
+                    .limit(Math.max(0, LOG_SAMPLE_SIZE - samples.size()))
+                    .forEach(samples::add);
         }
         result.put("hits", hits);
         result.put("totalHits", totalHits);
@@ -413,6 +434,49 @@ public class InspectTools {
                 : "未命中 OOM/timeout 等关键词");
         result.put("detection", detection);
         return result;
+    }
+
+    private KeywordInspection inspectLogKeyword(
+            String serviceName,
+            String fromTime,
+            String toTime,
+            String keyword) {
+        if (logPortalService == null) {
+            return new KeywordInspection(keyword, 0L, List.of());
+        }
+        try {
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("fromTime", fromTime);
+            body.put("toTime", toTime);
+            body.put("services", List.of(serviceName));
+            body.put("query", keyword);
+            body.put("offset", 0);
+            body.put("size", 3);
+            Map<String, Object> response = logPortalService.search(body);
+            long total = response == null ? 0L : (long) numberValue(response.get("total"));
+            if (total <= 0) {
+                return new KeywordInspection(keyword, 0L, List.of());
+            }
+            List<Map<String, Object>> samples = new ArrayList<>();
+            Object data = response.get("data");
+            if (data instanceof List<?> rows) {
+                for (Object row : rows) {
+                    if (!(row instanceof Map<?, ?> map)) {
+                        continue;
+                    }
+                    Map<String, Object> sample = new LinkedHashMap<>();
+                    sample.put("keyword", keyword);
+                    sample.put("timestamp", map.get("timestamp"));
+                    sample.put("severity", map.get("severity"));
+                    sample.put("message", map.get("message") != null ? map.get("message") : map.get("body"));
+                    sample.put("traceId", map.get("traceId"));
+                    samples.add(sample);
+                }
+            }
+            return new KeywordInspection(keyword, total, samples);
+        } catch (Exception ignored) {
+            return new KeywordInspection(keyword, 0L, List.of());
+        }
     }
 
     private Map<String, Object> inspectDependencyMetrics(String serviceName, String fromTime, String toTime) {
@@ -519,11 +583,12 @@ public class InspectTools {
             String fromTime,
             String toTime,
             String prevFrom,
-            String prevTo) {
+            String prevTo,
+            Map<String, Object> serviceInfo) {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("label", "服务实例");
-        List<Map<String, Object>> current = listInstances(serviceName, fromTime, toTime);
-        List<Map<String, Object>> previous = listInstances(serviceName, prevFrom, prevTo);
+        List<Map<String, Object>> current = listInstances(serviceName, fromTime, toTime, serviceInfo);
+        List<Map<String, Object>> previous = listInstances(serviceName, prevFrom, prevTo, serviceInfo);
         int currentCount = current.size();
         int previousCount = previous.size();
         Set<String> previousIds = new java.util.HashSet<>();
@@ -568,7 +633,11 @@ public class InspectTools {
         return result;
     }
 
-    private List<Map<String, Object>> listInstances(String serviceName, String fromTime, String toTime) {
+    private List<Map<String, Object>> listInstances(
+            String serviceName,
+            String fromTime,
+            String toTime,
+            Map<String, Object> serviceInfo) {
         if (servicePortalService == null) {
             return List.of();
         }
@@ -578,7 +647,7 @@ public class InspectTools {
             body.put("serviceName", serviceName);
             body.put("fromTime", fromTime);
             body.put("toTime", toTime);
-            List<Map<String, Object>> rows = servicePortalService.getServiceInstance(body);
+            List<Map<String, Object>> rows = servicePortalService.getServiceInstance(body, serviceInfo);
             if (rows == null) {
                 return List.of();
             }
@@ -872,11 +941,50 @@ public class InspectTools {
         return value == null ? "" : value.replace("'", "''");
     }
 
+    private <T> CompletableFuture<T> submitInspection(Supplier<T> supplier) {
+        return CompletableFuture.supplyAsync(supplier, inspectionExecutor);
+    }
+
+    private static <T> T await(CompletableFuture<T> future) {
+        try {
+            return future.join();
+        } catch (CompletionException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            throw new IllegalStateException("inspection query failed", cause);
+        }
+    }
+
+    private static ExecutorService createInspectionExecutor() {
+        AtomicInteger threadSequence = new AtomicInteger();
+        ThreadFactory threadFactory = runnable -> {
+            Thread thread = new Thread(runnable, "service-inspection-" + threadSequence.incrementAndGet());
+            thread.setDaemon(true);
+            return thread;
+        };
+        return new ThreadPoolExecutor(
+                INSPECTION_CONCURRENCY,
+                INSPECTION_CONCURRENCY,
+                0L,
+                TimeUnit.MILLISECONDS,
+                new ArrayBlockingQueue<>(INSPECTION_QUEUE_CAPACITY),
+                threadFactory,
+                new ThreadPoolExecutor.CallerRunsPolicy());
+    }
+
     private String json(Object value) {
         try {
             return objectMapper.writeValueAsString(value);
         } catch (JsonProcessingException e) {
             return String.valueOf(value);
         }
+    }
+
+    private record KeywordInspection(
+            String keyword,
+            long total,
+            List<Map<String, Object>> samples) {
     }
 }

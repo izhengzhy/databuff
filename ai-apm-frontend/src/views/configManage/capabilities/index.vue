@@ -111,10 +111,10 @@
 import { Vue, Component } from 'vue-property-decorator'
 import i18n from '@/i18n'
 import { Form } from 'element-ui'
-import AiPlatformPage from '../components/AiPlatformPage.vue'
-import StatPill from '../components/stat-pill.vue'
+import AiPlatformPage from '@/views/aiPlatform/components/AiPlatformPage.vue'
+import StatPill from '@/views/aiPlatform/components/stat-pill.vue'
 import AiPlatformApi, { AiCapabilityDefinition, AiExpertDefinition } from '@/api/aiPlatform'
-import { EXPERT_NAME_KEYS } from '../chat/constants'
+import { EXPERT_NAME_KEYS } from '@/views/aiPlatform/chat/constants'
 import { toAsyncWait } from '@/utils/common'
 
 @Component({

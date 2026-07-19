@@ -65,8 +65,14 @@ public class SessionWorkspaceController {
         if (lower.endsWith(".md") || lower.endsWith(".txt") || lower.endsWith(".log") || lower.endsWith(".csv")) {
             return new MediaType("text", "plain", java.nio.charset.StandardCharsets.UTF_8);
         }
+        if (lower.endsWith(".markdown")) {
+            return new MediaType("text", "markdown", java.nio.charset.StandardCharsets.UTF_8);
+        }
         if (lower.endsWith(".json")) {
             return MediaType.APPLICATION_JSON;
+        }
+        if (lower.endsWith(".svg")) {
+            return MediaType.parseMediaType("image/svg+xml");
         }
         return MediaType.APPLICATION_OCTET_STREAM;
     }

@@ -75,55 +75,6 @@ export default {
     })
   },
 
-  /** 获取告警规则服务列表 */
-  getPresetMonitorService: (data?: any) => {
-    return http.request({
-      url: '/monitor/presetMonitorObject',
-      method: 'post',
-      data
-    })
-  },
-  /** 获取服务下的推荐规则列表 */
-  getPresetMonitorByService: (data?: any) => {
-    return http.request({
-      url: '/monitor/presetMonitorList',
-      method: 'post',
-      data
-    })
-  },
-  // 开启预设规则
-  openPresetMonitor: (data?: any) => {
-    return http.request({
-      url: '/monitor/openPresetMonitor',
-      method: 'post',
-      data
-    })
-  },
-  // 批量开启/关闭预设规则
-  batchOpenPresetMonitor: (data?: any) => {
-    return http.request({
-      url: '/monitor/batchOpenPresetMonitor',
-      method: 'post',
-      data
-    })
-  },
-  // 批量删除预设规则 
-  batchDelPresetMonitor: (data: any): AxiosPromise => {
-    return http.request({
-      url: '/monitor/batchDelMonitorForRecommand',
-      method: 'post',
-      data
-    })
-  },
-  // 上传预设规则文件
-  updatePresetMonitor: (data?: any) => {
-    return http.request({
-      url: '/monitor/updatePresetMonitor',
-      method: 'post',
-      data
-    })
-  },
-
   // 获取实体对象
   getEntityObjects (params?: any) {
     return http.request({

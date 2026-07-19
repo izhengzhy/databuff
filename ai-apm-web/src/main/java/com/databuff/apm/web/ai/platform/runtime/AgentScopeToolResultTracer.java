@@ -40,8 +40,13 @@ public class AgentScopeToolResultTracer implements Tracer {
             return;
         }
         long durationMs = Math.max(0L, System.currentTimeMillis() - startedAtMs);
-        String sessionId = ExpertSessionResolver.sessionIdFromRuntimeContext(param.getRuntimeContext())
-                .orElse("");
-        sessionHook.captureToolResult(sessionId, param.getToolUseBlock(), result, durationMs);
+        String runtimeSessionId = param.getRuntimeContext() == null
+                ? null
+                : param.getRuntimeContext().getSessionId();
+        if (runtimeSessionId == null || runtimeSessionId.isBlank()) {
+            runtimeSessionId = ExpertSessionResolver.sessionIdFromRuntimeContext(param.getRuntimeContext())
+                    .orElse("");
+        }
+        sessionHook.captureToolResult(runtimeSessionId, param.getToolUseBlock(), result, durationMs);
     }
 }

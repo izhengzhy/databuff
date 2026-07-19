@@ -107,9 +107,7 @@ export default class RoleGroup extends Vue {
       '/sysManage/systemEvent',
       '/sysManage/operationAudit',
       // '/configManage/alarm/ruleSetting',
-      // '/configManage/alarm/convgSetting',
       // '/configManage/alarm/responseSetting',
-      // '/configManage/alarm/silenceSetting',
     ]
     return !ignoreList.includes(currPath);
   }

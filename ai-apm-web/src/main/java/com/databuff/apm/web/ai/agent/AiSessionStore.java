@@ -475,6 +475,10 @@ public class AiSessionStore {
     }
 
     public void updateToolCallInput(String sessionId, String toolCallId, String toolInput) {
+        updateToolCallInput(sessionId, toolCallId, null, toolInput);
+    }
+
+    public void updateToolCallInput(String sessionId, String toolCallId, String taskId, String toolInput) {
         if (sessionId == null || sessionId.isBlank() || toolCallId == null || toolCallId.isBlank()) {
             return;
         }
@@ -489,6 +493,12 @@ public class AiSessionStore {
             Object existingCallId = message.metadata().get("toolCallId");
             if (existingCallId == null || !toolCallId.equals(String.valueOf(existingCallId))) {
                 continue;
+            }
+            if (taskId != null && !taskId.isBlank()) {
+                Object existingTaskId = message.metadata().get(ExpertMessageConstants.META_TASK_ID);
+                if (existingTaskId == null || !taskId.equals(String.valueOf(existingTaskId))) {
+                    continue;
+                }
             }
             Map<String, Object> metadata = new LinkedHashMap<>(message.metadata());
             metadata.put("toolInput", toolInput == null ? "" : toolInput);

@@ -19,6 +19,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class TracePortalServiceTest {
@@ -644,6 +646,36 @@ class TracePortalServiceTest {
         assertThat(client.get("span_id")).isEqualTo("s1");
         assertThat(server.get("span_id")).isEqualTo("s2");
         assertThat(rows.get(0).get("httpMethod")).isEqualTo("GET");
+    }
+
+    @Test
+    void skipsCallSpanCountWhenTotalIsNotRequested() throws Exception {
+        ApmReadRepository reader = mock(ApmReadRepository.class);
+        when(reader.queryMetaServices(anyString())).thenReturn(List.of(new ApmQueryModels.MetaServicePoint(
+                "demo-order", "demo-order", null, null, null, null, null, null, null, null, null, null,
+                false, null, null, null, null)));
+        ApmQueryModels.CallSpanRow clientSpan = new ApmQueryModels.CallSpanRow(
+                "t1", "s1", "0", 100L, 110L, "GET /orders", 1_000_000L, 0, 0,
+                "demo-pay", "pay-id", "pay-1", "", "", "",
+                "demo-order", "demo-order", "order-1", 0, 1,
+                "GET /orders", "{}", null, 200, "GET", "/orders", null);
+        when(reader.queryCallSpans(anyString()))
+                .thenReturn(List.of(clientSpan))
+                .thenReturn(List.of());
+
+        TracePortalService service = new TracePortalService(
+                mock(TraceQueryService.class), mock(ServiceFlowService.class), reader, TestStorageSupport.storage());
+        Map<String, Object> response = service.callSpans(Map.of(
+                "serviceId", "demo-order",
+                "componentType", "service.http",
+                "fromTime", "2026-06-01 11:00:00",
+                "toTime", "2026-06-01 13:00:00",
+                "offset", 0,
+                "size", 10,
+                "includeTotal", false));
+
+        assertThat(response.get("total")).isEqualTo(1L);
+        verify(reader, never()).queryCallSpanCount(anyString());
     }
 
     @Test

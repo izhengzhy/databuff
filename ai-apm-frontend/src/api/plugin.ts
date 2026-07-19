@@ -47,17 +47,6 @@ export default {
   },
 
   /**
-   * 获取插件的检测规则列表
-   */
-  getPresetMonitorByPlugin: (data: any): AxiosPromise => {
-    return http.request({
-      url: '/monitor/findPresetMonitorByPluge',
-      method: 'post',
-      data,
-    })
-  },
-
-  /**
    * 获取插件的指标列表
    */
   getMetricByPlugin: (data: any): AxiosPromise => {

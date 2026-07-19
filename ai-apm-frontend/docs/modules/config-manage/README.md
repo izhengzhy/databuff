@@ -18,25 +18,17 @@
 | 页面 | `/config/request` | `entity/request/index.vue` | 请求监控配置 |
 | 页面 | `/config/relationest` | `entity/relation/index.vue` | 拓扑配置 |
 | 页面 | `/config/rule` | `alarm/rule/index.vue` | 检测规则 |
-| 页面 | `/config/convergence` | `alarm/convergence/index.vue` | 收敛策略 |
-| 页面 | `/config/response` | `alarm/response/index.vue` | 响应策略 |
-| 页面 | `/config/silence` | `alarm/silence/index.vue` | 静默计划 |
 | 页面 | `/config/ai` | `ai/index.vue` | Databuff AI 配置 |
 | 页面 | `/config/envTag` | `envTag/index.vue` | 环境标签配置 |
-| 静态页 | `/configManage/alarm/rulePreset` | `alarm/rulePreset/index.vue` | 推荐规则 |
 | 静态页 | `/configManage/alarm/ruleSetting` | `alarm/ruleSetting/index.vue` | 新建/编辑规则 |
-| 静态页 | `/configManage/alarm/convgSetting` | `alarm/convgSetting/index.vue` | 新建/编辑收敛策略 |
 | 静态页 | `/configManage/alarm/responseSetting` | `alarm/responseSetting/index.vue` | 新建/编辑响应策略 |
-| 静态页 | `/configManage/alarm/silenceSetting` | `alarm/silenceSetting/index.vue` | 新建/编辑静默计划 |
 | 静态页 | `/config/request/attrCollSetting` | `entity/request/attrCollSetting/index.vue` | 请求属性采集设置 |
 | 静态页 | `/config/business/manage` | `entity/business/manage/index.vue` | 业务系统管理 |
 | 静态页 | `/config/envTagSetting` | `envTag/setting/index.vue` | 环境标签编辑页 |
 
 ## 典型导航关系
 
-- 检测规则 -> 推荐规则: `/configManage/alarm/rulePreset`
-- 检测规则 / 推荐规则 -> 规则设置: `/configManage/alarm/ruleSetting?...`
-- 收敛策略 / 响应策略 / 静默计划 -> 对应设置页: `/configManage/alarm/*Setting?...`
+- 检测规则 -> 规则设置: `/configManage/alarm/ruleSetting?...`
 - 业务系统监控 -> 业务系统管理: `/config/business/manage?...`
 - 请求监控 -> 请求属性采集设置: `/config/request/attrCollSetting?id=...`
 - 环境标签列表 -> 环境标签编辑: `/config/envTagSetting?id=...&key=...`
@@ -44,8 +36,8 @@
 ## 主要依赖 API
 
 - `config.ts`: AI 配置、服务监控全局配置
-- `monitor.ts`: 检测规则、推荐规则、系统规则详情
-- `alarm.ts`: 收敛、响应、静默策略
+- `monitor.ts`: 检测规则、系统规则详情
+- `alarm.ts`: 响应策略
 - `envTag.ts`: 环境标签与标签值
 - `bs.ts`: 业务系统与空间地图配置
 - `process.ts`: 进程采集与进程识别规则

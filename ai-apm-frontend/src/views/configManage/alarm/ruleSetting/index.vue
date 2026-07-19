@@ -14,7 +14,6 @@ import i18n from '@/i18n';
 import MetricRule from './metric-rule.vue';
 import { toAsyncWait } from '@/utils/common'
 import MonitorApi from '@/api/monitor';
-import PluginApi from '@/api/plugin';
 import {
   ALARM_DETAIL_PATH,
   SYSTEM_RULE_LIST_PATH,
@@ -40,7 +39,7 @@ export default class RuleSetting extends Vue {
   }
 
   private async created() {
-    const { id, mode, mid, pn } = this.$route.query
+    const { id, mode } = this.$route.query
     // 设置面包屑
     this.$nextTick(() => {
       this.$store.commit('UPDATE_BREADCRUMB', [{
@@ -65,22 +64,6 @@ export default class RuleSetting extends Vue {
         delete result.data.id
       }
       this.detail = result.data
-    } else if (mid && mode === 'c') {
-      this.detailLoading = true;
-      const { result, error } = await toAsyncWait(PluginApi.getPresetMonitorByPlugin({ monitorObject: pn }))
-      this.detailLoading = false;
-      // 先通过插件规则列表接口找到该条规则，再触发编辑按钮
-      const detail = (result.data || []).find((t: any) => t.id === +mid)
-      if (error || !detail || !this.ruleTypes.includes(detail.classification)) {
-        this.$message.error(error || !detail ? i18n.t('modules.views.configManage.alarm.s_e24facea') as string : i18n.t('modules.views.configManage.alarm.s_c69cb424') as string);
-        this.routerTimer = setTimeout(() => {
-          this.closeHandle(true)
-        }, 2500)
-        return;
-      }
-      delete detail.id
-      detail.ruleName = detail.ruleName || detail.name
-      this.detail = detail
     }
   }
 

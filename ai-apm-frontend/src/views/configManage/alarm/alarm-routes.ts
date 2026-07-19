@@ -14,14 +14,13 @@ export const ALARM_TAB_PATH: Record<AlarmTab, string> = {
 
 export const ALARM_DETAIL_PATH = {
   ruleSetting: '/configManage/alarm/ruleSetting',
-  rulePreset: '/configManage/alarm/rulePreset',
   responseSetting: '/configManage/alarm/responseSetting',
   systemRuleSetting: '/sysManage/ruleSetting',
 } as const;
 
 export const SYSTEM_RULE_LIST_PATH = '/sysManage/systemRule';
 
-const DETAIL_QUERY_KEYS = ['mode', 'id', 'mid', 'pn'] as const;
+const DETAIL_QUERY_KEYS = ['mode', 'id'] as const;
 
 const LIST_PATHS = new Set<string>([ALARM_LIST_PATH, ...Object.values(ALARM_TAB_PATH)]);
 

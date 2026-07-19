@@ -2,5 +2,5 @@
   "schema_version": 4,
   "upgrade_type": "A",
   "min_upgrade_from": "0.1.0",
-  "notes": "V004 expands long-text VARCHAR limits, adds config_ai_capability (capability_id 1-7 as display order), and seeds the seven homepage capabilities."
+  "notes": "V004 expands long-text VARCHAR limits, seeds three built-in detection rules, and adds config_ai_capability with homepage capability seeds."
 }

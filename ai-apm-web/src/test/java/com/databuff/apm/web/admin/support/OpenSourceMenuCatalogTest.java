@@ -106,8 +106,8 @@ class OpenSourceMenuCatalogTest {
                 .toList();
 
         assertThat(configChildren).containsExactly(
-                "/aiPlatform/capabilities",
                 "/config/alarm",
+                "/config/capabilities",
                 "/config/llm",
                 "/config/login");
     }

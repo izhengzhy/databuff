@@ -227,6 +227,9 @@ class DataToolsTest {
                 .containsEntry("srcServiceId", "order")
                 .containsEntry("serviceId", "pay")
                 .containsEntry("isOut", 1);
+        ArgumentCaptor<Map<String, Object>> traceCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(tracePortalService).callSpans(traceCaptor.capture());
+        assertThat(traceCaptor.getValue()).containsEntry("includeTotal", false);
         assertThat(output).contains("\"metricStats\"").contains("\"trace_id\":\"t1\"");
     }
 

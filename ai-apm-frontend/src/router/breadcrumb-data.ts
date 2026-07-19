@@ -169,7 +169,6 @@ const config: BreadcrumbPath = {
   '/config/alarm': ['/config', '/config/manage'],
   // 检测规则
   '/config/rule': ['/config', '/config/manage', '/config/alarm'],
-  '/configManage/alarm/rulePreset': ['/config', '/config/manage', '/config/alarm'],
   '/configManage/alarm/ruleSetting': ['/config', '/config/manage', '/config/alarm'],
   '/configManage/alarm/responseSetting': ['/config', '/config/manage', '/config/alarm'],
   // AI配置

@@ -5,7 +5,7 @@
 
 ## 页面职责
 
-插件页用于查看插件授权状态、启用或停用插件，并在详情弹窗中查看概述、配置说明、指标和预设检测规则。
+插件页用于查看插件授权状态、启用或停用插件，并在详情弹窗中查看概述、配置说明与指标。
 
 ## 页面结构
 
@@ -18,14 +18,12 @@
   - 概述
   - 配置
   - 指标
-  - 检测规则
 
 ## 主要接口
 
 - `PluginApi.getPluginList`
 - `PluginApi.installedPlugin`
 - `PluginApi.unInstalledPlugin`
-- `PluginApi.getPresetMonitorByPlugin`
 - `PluginApi.getMetricByPlugin`
 
 详细接口见:
@@ -36,9 +34,7 @@
 
 - 列表页读取 `query` 作为名称搜索词
 - 若 URL 带 `id`，列表加载完成后会自动打开对应插件详情弹窗
-- 插件详情里点击规则行会跳到:
-  - `/configManage/alarm/ruleSetting?id=...` 或
-  - `/configManage/alarm/ruleSetting?mid=...&pn=...`
+- 插件详情里点击规则行会跳到 `/configManage/alarm/ruleSetting?id=...`
 
 ## 注意事项
 
